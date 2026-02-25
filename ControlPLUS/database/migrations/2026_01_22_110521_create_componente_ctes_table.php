@@ -1,0 +1,34 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('componente_ctes', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('cte_id')->index('componente_ctes_cte_id_foreign');
+            $table->string('nome', 30);
+            $table->decimal('valor', 10, 4);
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::dropIfExists('componente_ctes');
+    }
+};

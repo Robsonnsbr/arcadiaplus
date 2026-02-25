@@ -1,0 +1,32 @@
+Implementado:
+
+  -módulo Trade-in separado (tabela tradeins, model Tradein, controller TradeinController)
+  -criação de trade-in no PDV via modal e POST web /trade-in/store
+  -rotas web para Trade-in (index, edit, update, status, accept, reject, cancel, termo.pdf)
+  -modal de status no PDV com polling e atualização de status/valor/aceite
+  -confirmação de aceitar/recusar/cancelar no PDV (SweetAlert)
+  -bloqueios de fechamento do modal com flag e cancelamento explícito
+  -mapeamento de status para PT-BR no modal do PDV
+  -botão TRADE-IN no PDV e criação quando não há tradein_id
+  -geração de termo PDF com marcação de term_generated_at
+  -regra de habilitação dos botões aceitar/recusar via term_generated_at
+  -saldo Trade-in no PDV (consulta web e exibição)
+  crédito no aceite (tradein_credit_movements, idempotente)
+  -endpoint de saldo de crédito por cliente
+  -débito de crédito no backend do PDV (tradein_credit_movements, idempotente)
+  -validação de saldo com lockForUpdate no débito
+  -correções de origem_id e cálculo de saldo no débito
+  -UI de Trade-in no menu (rotas /trade-in)
+  -tela de avaliação técnica do Trade-in (index/form/update)
+  -reset de estado do trade-in ao trocar cliente no PDV
+
+Implementar:
+
+    -Add a possibilidade do vendedor alterar valor da avaliacao final com aprovacao do gestor
+    -Atribuir Estoque -> avaliar se faz mais sentido apenas abrir o novo produto e add estoque.
+    -Possibilidade de add vários produtos no mesmo trade-in
+
+
+EM ANDAMENTO:
+
+    -CORRIR ERROS DO FLUXO DE TRADEIN

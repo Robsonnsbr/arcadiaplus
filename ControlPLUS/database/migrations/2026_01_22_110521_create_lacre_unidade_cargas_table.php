@@ -1,0 +1,33 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('lacre_unidade_cargas', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('info_id')->index('lacre_unidade_cargas_info_id_foreign');
+            $table->string('numero', 20);
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::dropIfExists('lacre_unidade_cargas');
+    }
+};
