@@ -173,6 +173,18 @@ class Produto extends Model
 		return $this->hasMany(Estoque::class, 'produto_id');
 	}
 
+	public function produtoUnicos()
+	{
+		return $this->hasMany(ProdutoUnico::class, 'produto_id');
+	}
+
+	public function produtoUnicosDisponiveis()
+	{
+		return $this->hasMany(ProdutoUnico::class, 'produto_id')
+			->where('em_estoque', 1)
+			->orderBy('codigo', 'asc');
+	}
+
 	public function categoria(){
 		return $this->belongsTo(CategoriaProduto::class, 'categoria_id');
 	}

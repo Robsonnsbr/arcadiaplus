@@ -34,7 +34,15 @@ class EstoqueController extends Controller
 
         $local_id = $request->local_id;
         $categoria_id = $request->categoria_id;
-        $data = Estoque::select('estoques.*', 'produtos.nome as produto_nome', 'localizacaos.nome as localizacao_nome')
+        $data = Estoque::with([
+            'local',
+            'produtoVariacao',
+            'produto.categoria',
+            'produto.produtoUnicosDisponiveis' => function ($q) {
+                $q->select('id', 'produto_id', 'codigo', 'em_estoque');
+            },
+        ])
+        ->select('estoques.*', 'produtos.nome as produto_nome', 'localizacaos.nome as localizacao_nome')
         ->join('produtos', 'produtos.id', '=', 'estoques.produto_id')
         ->join('localizacaos', 'localizacaos.id', '=', 'estoques.local_id')
         ->where('produtos.empresa_id', request()->empresa_id)
