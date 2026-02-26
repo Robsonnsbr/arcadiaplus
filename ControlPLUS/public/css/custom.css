@@ -20,3 +20,35 @@
     z-index: 1049;
     transform: none;
 }
+
+/* Dropdowns inside responsive tables: prevent vertical clipping and hover/stacking overlap */
+.table-responsive.dropdown-fix,
+.table-responsive-sm.dropdown-fix,
+.table-responsive-md.dropdown-fix,
+.table-responsive-lg.dropdown-fix,
+.table-responsive-xl.dropdown-fix,
+.table-responsive-xxl.dropdown-fix {
+    overflow-x: auto;
+    overflow-y: visible !important;
+}
+
+.table tr.dropdown-row-zindex-active,
+.table tbody tr.dropdown-row-zindex-active {
+    position: relative;
+    z-index: 1060;
+}
+
+.table tr.dropdown-row-zindex-active > td,
+.table tr.dropdown-row-zindex-active > th {
+    position: relative;
+    z-index: 1060;
+}
+
+.dropdown.dropdown-table-active {
+    position: relative;
+    z-index: 1061;
+}
+
+.dropdown.dropdown-table-active .dropdown-menu.show {
+    z-index: 1062;
+}
