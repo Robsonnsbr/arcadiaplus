@@ -1,0 +1,22 @@
+/* Global dropdown fix:
+ * app.css currently applies `transform: translateX(100%)` to `.dropdown-menu.show`,
+ * which shifts open menus and causes visual/hit-test issues (ghost hover on elements below).
+ * Restore Bootstrap behavior while keeping Popper inline transforms intact.
+ */
+.dropdown-menu {
+    --ct-dropdown-zindex: 1049;
+    background-color: var(--ct-dropdown-bg, var(--bs-dropdown-bg, #fff));
+    opacity: 1;
+    pointer-events: auto;
+    background-clip: padding-box;
+}
+
+.dropdown.show {
+    position: relative;
+    z-index: 1048;
+}
+
+.dropdown-menu.show {
+    z-index: 1049;
+    transform: none;
+}
