@@ -1,7 +1,5 @@
 @extends('layouts.app', ['title' => 'Home'])
-@php
- dump(Auth::user()->empresa->empresa->ambiente)
-@endphp
+\
 @if (!__isContador())
     @section('css')
         <link rel="stylesheet" type="text/css" href="/css/home.css">

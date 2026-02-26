@@ -61,7 +61,7 @@
 
 @section('js')
 <script type="text/javascript">
-	$(".btn-delete-row").on("click", function (e) {
+	$(document).on("click", ".btn-delete-row", function (e) {
 		e.preventDefault();
 
 		swal({
@@ -72,11 +72,16 @@
 			buttons: ["Cancelar", "Excluir"],
 			dangerMode: true,
 		}).then((isConfirm) => {
-			if (isConfirm) {
-				$(this).closest('tr').remove()
+				if (isConfirm) {
+					const $row = $(this).closest('tr');
+					const $select = $row.find('.produto_id');
+					if ($select.hasClass('select2-hidden-accessible')) {
+						$select.select2('destroy');
+					}
+					$row.remove()
 
-			} else {
-				swal("", "Este item está salvo!", "info");
+				} else {
+					swal("", "Este item está salvo!", "info");
 			}
 		});
 	});
@@ -93,13 +98,12 @@
             data: function (params) {
                 let empresa_id = $('#empresa_id').val()
 
-                console.clear();
-
-                var query = {
-                    pesquisa: params.term,
-                    empresa_id: empresa_id,
-                    usuario_id: $('#usuario_id').val(),
-                };
+	                var query = {
+	                    pesquisa: params.term,
+	                    empresa_id: empresa_id,
+	                    usuario_id: $('#usuario_id').val(),
+	                    is_compra: 1,
+	                };
                 // console.log(query)
                 return query;
             },
