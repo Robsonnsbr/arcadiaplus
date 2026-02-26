@@ -76,6 +76,27 @@
             margin-bottom: 0.6rem;
         }
 
+        .garantia-box {
+            border: 1px solid #999;
+            padding: 10px 12px;
+            margin-top: 18px;
+            margin-bottom: 8px;
+            text-align: left;
+            page-break-inside: auto;
+        }
+
+        .garantia-box .titulo {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        .garantia-box .texto {
+            font-size: 10px;
+            line-height: 1.35;
+            white-space: normal;
+        }
+
         footer {
             position: fixed;
             bottom: 1.9cm;
@@ -1014,26 +1035,22 @@
         </table>
     @endif
 
-    <br><br><br>
-    <table>
-        <tr>
-            <td class="" style="width: 350px;">
-                <strong>
-                    ________________________________________
-                </strong><br>
-                <span style="font-size: 11px;">{{ $config->nome }}</span>
-
-            </td>
-            @if ($item->cliente)
-                <td class="" style="width: 350px;">
-                    <strong>
-                        ________________________________________
-                    </strong><br>
-                    <span style="font-size: 11px;">{{ $item->cliente->razao_social }}</span>
-                </td>
-            @endif
-        </tr>
-    </table>
+    <div class="garantia-box">
+        <div class="titulo">SOBRE A GARANTIA:</div>
+        <div class="texto">
+            Garantia de acessórios de 90 dias a contar partir da data de compra. Garantia de aparelhos Seminovos
+            a partir da data de compra tem prazo de 3 meses para modelos abaixo do Iphone X e de 12 meses para
+            modelos acima do Iphone 11, para aparelhos Novos 1 ano de garantia pela Apple. GARANTIA É CANCELADA
+            automaticamente nos seguintes casos: queda, esmagamentos, sobrecargas elétricas, exposição a altas
+            temperaturas, umidade ou líquidos, exposição a poeira ou limalha de metais ou em casos que seja
+            contatado mau uso do aparelho, instalações, modificações ou atualizações no sistema operacional;
+            Abertura do equipamento ou tentativa de conserto destes por terceiros que não sejam os técnicos
+            autorizados pela SUPERSTORE, mesmo que para realizações de outros serviços, bem como a violação do
+            selo/lacre de garantia colocado pela SUPERSTORE.
+            <br><br>
+            AGRADECEMOS PELA CONFIANÇA.
+        </div>
+    </div>
 
     @if ($configGeral && $configGeral->mensagem_padrao_impressao_venda != '')
         <br><br>
