@@ -400,7 +400,7 @@
                                                 <input type='hidden' name='_line[]' value='{{ $key }}' />
 
                                             </div>
-                                            <select class="form-control select2 produto_id" name="produto_id[]" id="inp-produto_id">
+                                            <select class="form-control select2 produto_id" name="produto_id[]" data-role="produto-select">
                                                 <option value="{{ $prod->produto_id }}">{{ $prod->produto->nome }}</option>
                                             </select>
                                             @if($prod->variacao_id)
@@ -523,7 +523,7 @@
                                             <div class="dimensoes-hidden">
 
                                             </div>
-                                            <select required class="form-control select2 produto_id" name="produto_id[]" id="inp-produto_id">
+                                            <select required class="form-control select2 produto_id" name="produto_id[]" data-role="produto-select">
                                             </select>
                                             <div style="width: 400px;"></div>
                                             <input name="variacao_id[]" type="hidden" value="">
@@ -1161,5 +1161,4 @@
 @include('modals._variacao')
 @include('modals._fatura_venda')
 @include('modals._lista_precos')
-
 
