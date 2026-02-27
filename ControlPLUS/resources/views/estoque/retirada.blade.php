@@ -51,6 +51,14 @@
                         @endforeach
                     </select>
                 </div>
+                @else
+                @php
+                $localPadraoRetirada = __getLocalAtivo();
+                if(!$localPadraoRetirada && request()->empresa_id){
+                    $localPadraoRetirada = __getLocalPadraoEmpresa(request()->empresa_id);
+                }
+                @endphp
+                <input type="hidden" name="local_id" value="{{ $localPadraoRetirada ? $localPadraoRetirada->id : '' }}">
                 @endif
 
                 <input name="produto_variacao_id" id="produto_variacao_id" type="hidden">

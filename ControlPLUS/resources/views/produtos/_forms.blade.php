@@ -248,24 +248,76 @@
                     !!}
                 </div>
 
-                @if(__countLocalAtivo() > 1)
-                <div class="col-md-4">
-                    <label for="">Disponibilidade</label>
+                @php
+                    $locaisProdutoForm = (isset($locaisProdutoForm) && $locaisProdutoForm)
+                        ? $locaisProdutoForm
+                        : __getLocaisAtivoUsuario();
 
+                    if ((!$locaisProdutoForm || $locaisProdutoForm->count() === 0) && request()->empresa_id) {
+                        $localPadraoForm = __getLocalPadraoEmpresa(request()->empresa_id);
+                        $locaisProdutoForm = $localPadraoForm ? collect([$localPadraoForm]) : collect();
+                    }
+
+                    $localPadraoIdForm = $localPadraoId ?? null;
+                    if (!$localPadraoIdForm && request()->empresa_id) {
+                        $localPadraoForm = __getLocalPadraoEmpresa(request()->empresa_id);
+                        $localPadraoIdForm = $localPadraoForm ? $localPadraoForm->id : null;
+                    }
+                @endphp
+
+                @if(!isset($item))
+                <div class="col-md-4">
+                    <label for="local_id">Local de armazenamento</label>
                     @php
-                        $locaisSelecionados = isset($item)
-                            ? $item->estoqueLocais->pluck('local_id')->unique()->toArray()
-                            : [];
+                        $localSelecionadoCreate = old('local_id', $localPadraoIdForm);
+                        if(!$localSelecionadoCreate && $locaisProdutoForm->count() > 0){
+                            $localSelecionadoCreate = $locaisProdutoForm->first()->id;
+                        }
                     @endphp
-                    <select required class="select2 form-control select2-multiple" data-toggle="select2" name="locais[]" multiple="multiple">
-                        @foreach(__getLocaisAtivoUsuario() as $local)
-                        <option @if(sizeof(__getLocaisAtivoUsuario()) == 1) selected @endif @if(in_array($local->id, $locaisSelecionados)) selected @endif value="{{ $local->id }}">{{ $local->descricao }}</option>
+                    <select required class="select2 form-control" data-toggle="select2" name="local_id" id="local_id">
+                        <option value="">Selecione</option>
+                        @foreach($locaisProdutoForm as $local)
+                        <option
+                            @if((string)$localSelecionadoCreate === (string)$local->id) selected @endif
+                            value="{{ $local->id }}">{{ $local->descricao }}</option>
                         @endforeach
                     </select>
+                    @if($errors->has('local_id'))
+                    <p class="text-danger">{{ $errors->first('local_id') }}</p>
+                    @endif
                 </div>
                 @else
+                    @if($locaisProdutoForm->count() > 1)
+                    <div class="col-md-4">
+                        <label for="">Disponibilidade</label>
 
-                <input type="hidden" value="{{ __getLocalAtivo() ? __getLocalAtivo()->id : '' }}" name="local_id">
+                        @php
+                            $locaisSelecionados = old('locais', isset($item)
+                                ? $item->locais->pluck('localizacao_id')->unique()->toArray()
+                                : []);
+                            if(!is_array($locaisSelecionados)){
+                                $locaisSelecionados = [$locaisSelecionados];
+                            }
+                        @endphp
+                        <select required class="select2 form-control select2-multiple" data-toggle="select2" name="locais[]" multiple="multiple">
+                            @foreach($locaisProdutoForm as $local)
+                            <option @if(in_array($local->id, $locaisSelecionados)) selected @endif value="{{ $local->id }}">{{ $local->descricao }}</option>
+                            @endforeach
+                        </select>
+                        @if($errors->has('locais'))
+                        <p class="text-danger">{{ $errors->first('locais') }}</p>
+                        @endif
+                    </div>
+                    @else
+                        @php
+                            $localEdicaoSelecionado = old('local_id',
+                                (isset($item) && $item->locais->first())
+                                    ? $item->locais->first()->localizacao_id
+                                    : ($localPadraoIdForm ?: (__getLocalAtivo() ? __getLocalAtivo()->id : ''))
+                            );
+                        @endphp
+                        <input type="hidden" value="{{ $localEdicaoSelecionado }}" name="local_id">
+                    @endif
                 @endif
 
                 <div class="col-md-2">

@@ -76,7 +76,7 @@
                     @endif
                 </td>
                 @if(__countLocalAtivo() > 1)
-                <td data-label="Local">{{ $item->local->descricao }}</td>
+                <td data-label="Local">{{ $item->local ? $item->local->descricao : '--' }}</td>
                 @endif
                 <td>
                     <form style="width: 200px;" action="{{ route('estoque.destroy', $item->id) }}" method="post" id="form-{{$item->id}}">

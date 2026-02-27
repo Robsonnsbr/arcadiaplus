@@ -31,7 +31,7 @@
                             <td style="width: 60%;">
                                 @if($l->local)
 
-                                <select class="form-select" name="local_id[]">
+                                <select class="form-select" name="local_id[]" required>
                                     <option value="">Selecione</option>
                                     @foreach(__getLocaisAtivoUsuario() as $localAtivo)
                                     <option @if($l->local_id == $localAtivo->id) selected @endif value="{{ $localAtivo->id }}">{{ $localAtivo->descricao }}</option>
@@ -42,8 +42,13 @@
                                 <!-- <input readonly class="form-control" required value="{{ $l->local->descricao }}"> -->
 
                                 @else
-                                <input type="hidden" readonly class="form-control" required name="local_id[]" value="{{ $firstLocation->id }}">
-                                <input readonly class="form-control" required value="{{ $firstLocation->nome }}">
+                                <select class="form-select" name="local_id[]" required>
+                                    <option value="">Selecione</option>
+                                    @foreach(__getLocaisAtivoUsuario() as $localAtivo)
+                                    <option value="{{ $localAtivo->id }}">{{ $localAtivo->descricao }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="hidden" readonly class="form-control" name="local_anteior_id[]" value="">
                                 <input type="hidden" name="novo_estoque" value="1">
                                 @endif
                             </td>
@@ -79,6 +84,14 @@
             @endforeach
         </select>
     </div>
+    @else
+    @php
+    $localPadraoFormulario = __getLocalAtivo();
+    if(!$localPadraoFormulario && request()->empresa_id){
+        $localPadraoFormulario = __getLocalPadraoEmpresa(request()->empresa_id);
+    }
+    @endphp
+    <input type="hidden" name="local_id" value="{{ $localPadraoFormulario ? $localPadraoFormulario->id : '' }}">
     @endif
     @endif
 

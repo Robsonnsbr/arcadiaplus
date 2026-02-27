@@ -24,6 +24,7 @@ use App\Models\ConfigGeral;
 use App\Models\ProdutoUnico;
 use App\Models\Estoque;
 use App\Models\ProdutoLocalizacao;
+use App\Models\Localizacao;
 use App\Models\GaleriaProduto;
 use App\Models\ProdutoVariacao;
 use App\Models\VariacaoModelo;
@@ -69,6 +70,42 @@ class ProdutoController extends Controller
         $this->middleware('permission:produtos_edit', ['only' => ['edit', 'update', 'avaliacaoEdit', 'avaliacaoUpdate', 'avaliacaoReject']]);
         $this->middleware('permission:produtos_view', ['only' => ['show', 'index', 'avaliacaoIndex']]);
         $this->middleware('permission:produtos_delete', ['only' => ['destroy']]);
+    }
+
+    private function getLocaisProdutoForm(int $empresaId): array
+    {
+        $locaisProdutoForm = Localizacao::where('empresa_id', $empresaId)
+            ->where('status', 1)
+            ->orderByRaw("CASE 
+                WHEN BINARY TRIM(descricao) = 'PADRÃO' THEN 0
+                WHEN UPPER(TRIM(descricao)) = 'PADRAO' THEN 1
+                ELSE 2
+            END")
+            ->orderBy('id')
+            ->get();
+
+        if ($locaisProdutoForm->count() === 0) {
+            $locaisProdutoForm = Localizacao::where('empresa_id', $empresaId)
+                ->orderBy('id')
+                ->get();
+        }
+
+        $localPadrao = $locaisProdutoForm
+            ->first(function ($local) {
+                return trim((string)$local->descricao) === 'PADRÃO';
+            });
+
+        if (!$localPadrao) {
+            $localPadrao = __getLocalPadraoEmpresa($empresaId);
+        }
+
+        if (!$localPadrao && $locaisProdutoForm->count() > 0) {
+            $localPadrao = $locaisProdutoForm->first();
+        }
+
+        $localPadraoId = $localPadrao ? $localPadrao->id : null;
+
+        return [$locaisProdutoForm, $localPadraoId];
     }
 
     private function insertUnidadesMedida($empresa_id){
@@ -217,6 +254,7 @@ class ProdutoController extends Controller
     {
         $this->insertUnidadesMedida($request->empresa_id);
         $empresa = Empresa::findOrFail(request()->empresa_id);
+        [$locaisProdutoForm, $localPadraoId] = $this->getLocaisProdutoForm((int)$request->empresa_id);
 
         $listaCTSCSOSN = Produto::listaCSOSN();
         if ($empresa->tributacao == 'Regime Normal') {
@@ -294,13 +332,15 @@ class ProdutoController extends Controller
         return view('produtos.create',
             compact('listaCTSCSOSN', 'padroes', 'categorias', 'cardapio', 'marcas', 'delivery', 'variacoes',
                 'padraoTributacao', 'ecommerce', 'configMercadoLivre', 'mercadolivre', 'configGeral', 'nuvemshop',
-                'reserva', 'woocommerce', 'categoriasWoocommerce', 'unidades', 'ifood', 'categoriasProdutoIfood', 'vendizap'));
+                'reserva', 'woocommerce', 'categoriasWoocommerce', 'unidades', 'ifood', 'categoriasProdutoIfood', 'vendizap',
+                'locaisProdutoForm', 'localPadraoId'));
     }
 
     public function edit(Request $request, $id)
     {
         $item = $this->produtoComAvaliacao($id);
         $empresa = Empresa::findOrFail(request()->empresa_id);
+        [$locaisProdutoForm, $localPadraoId] = $this->getLocaisProdutoForm((int)$request->empresa_id);
 
         $listaCTSCSOSN = Produto::listaCSOSN();
         if ($empresa->tributacao == 'Regime Normal') {
@@ -349,7 +389,7 @@ class ProdutoController extends Controller
         return view('produtos.edit',
             compact('item', 'listaCTSCSOSN', 'padroes', 'categorias', 'cardapio', 'marcas', 'delivery', 'variacoes',
                 'ecommerce', 'mercadolivre', 'configMercadoLivre', 'categoriasWoocommerce', 'unidades', 'configGeral',
-                'categoriasProdutoIfood'));
+                'categoriasProdutoIfood', 'locaisProdutoForm', 'localPadraoId'));
     }
 
     public function store(Request $request)
@@ -459,6 +499,13 @@ class ProdutoController extends Controller
             }
 
             $locais = isset($request->locais) ? $request->locais : [];
+            $localIdSelecionado = $request->local_id;
+            if (!$localIdSelecionado && is_array($locais) && sizeof($locais) > 0) {
+                $localIdSelecionado = $locais[0];
+            }
+            $request->merge([
+                'local_id' => $localIdSelecionado
+            ]);
 
             $produto = DB::transaction(function () use ($request, $locais, $emAvaliacao) {
                 $produto = Produto::create($request->all());
@@ -1151,6 +1198,9 @@ private function __validate(Request $request)
         'valor_unitario' => 'required',
         'codigo_barras' => [new ValidaCodigoBarrasUnico($request->empresa_id)],
         'referencia_balanca' => [new ValidaReferenciaBalanca($request->empresa_id)],
+        'local_id' => 'nullable|required_without:locais|integer|exists:localizacaos,id',
+        'locais' => 'nullable|required_without:local_id|array|min:1',
+        'locais.*' => 'nullable|integer|exists:localizacaos,id',
     ];
 
     $messages = [
@@ -1171,8 +1221,41 @@ private function __validate(Request $request)
         'descricao.max' => 'Máximo de 255 caracteres',
         'descricao_es.max' => 'Máximo de 255 caracteres',
         'descricao_en.max' => 'Máximo de 255 caracteres',
+        'local_id.required_without' => 'Selecione o local de armazenamento',
+        'locais.required_without' => 'Selecione o local de armazenamento',
+        'locais.min' => 'Selecione ao menos um local de armazenamento',
     ];
     $this->validate($request, $rules, $messages);
+
+    $empresaId = (int)$request->empresa_id;
+    $localIds = collect($request->locais ?? []);
+    if ($request->local_id) {
+        $localIds->push($request->local_id);
+    }
+    $localIds = $localIds
+        ->filter(function ($id) {
+            return !empty($id);
+        })
+        ->map(function ($id) {
+            return (int)$id;
+        })
+        ->unique()
+        ->values();
+
+    if ($localIds->count() === 0) {
+        $validator = \Illuminate\Support\Facades\Validator::make([], []);
+        $validator->errors()->add('local_id', 'Selecione o local de armazenamento');
+        throw new \Illuminate\Validation\ValidationException($validator);
+    }
+
+    $totalValidos = Localizacao::where('empresa_id', $empresaId)
+        ->whereIn('id', $localIds->all())
+        ->count();
+    if ($totalValidos !== $localIds->count()) {
+        $validator = \Illuminate\Support\Facades\Validator::make([], []);
+        $validator->errors()->add('local_id', 'Local de armazenamento inválido para a empresa');
+        throw new \Illuminate\Validation\ValidationException($validator);
+    }
 }
 
 public function import()
@@ -1575,6 +1658,7 @@ public function duplicar(Request $request, $id)
 {
     $item = $this->produtoComAvaliacao($id);
     $empresa = Empresa::findOrFail(request()->empresa_id);
+    [$locaisProdutoForm, $localPadraoId] = $this->getLocaisProdutoForm((int)$request->empresa_id);
 
     $listaCTSCSOSN = Produto::listaCSOSN();
     if ($empresa->tributacao == 'Regime Normal') {
@@ -1614,7 +1698,8 @@ public function duplicar(Request $request, $id)
 
     return view('produtos.duplicar',
         compact('item', 'listaCTSCSOSN', 'padroes', 'categorias', 'cardapio', 'marcas', 'delivery', 'variacoes',
-            'ecommerce', 'configMercadoLivre', 'categoriasWoocommerce', 'unidades', 'configGeral', 'categoriasProdutoIfood'));
+            'ecommerce', 'configMercadoLivre', 'categoriasWoocommerce', 'unidades', 'configGeral', 'categoriasProdutoIfood',
+            'locaisProdutoForm', 'localPadraoId'));
 }
 
 private function __validaToken(){

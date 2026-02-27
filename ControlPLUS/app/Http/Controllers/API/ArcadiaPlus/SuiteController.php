@@ -14,6 +14,7 @@ use App\Models\Plano;
 use App\Models\PlanoEmpresa;
 use App\Models\Produto;
 use App\Models\User;
+use App\Utils\EmpresaUtil;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -201,6 +202,8 @@ class SuiteController extends Controller
                 'forma_pagamento' => 'PIX',
             ]);
         }
+
+        app(EmpresaUtil::class)->initLocation($empresa);
 
         return $this->listarEmpresas(new Request(['empresa_id' => $empresa->id]))->setStatusCode(201);
     }

@@ -8,6 +8,7 @@ use App\Models\AcaoLog;
 use App\Models\ApiLog;
 use App\Models\ApiConfig;
 use App\Models\ConfigGeral;
+use App\Models\Empresa;
 use App\Models\ConfiguracaoSuper;
 use App\Models\FinanceiroBoleto;
 use App\Models\ProdutoTributacaoLocal;
@@ -554,37 +555,256 @@ function __getLocaisAtivos()
         ->where('status', 1)->get();
 }
 
+function __getLocalPadraoEmpresa($empresa_id)
+{
+    if (!$empresa_id) {
+        return null;
+    }
+
+    $localPadrao = Localizacao::where('empresa_id', $empresa_id)
+        ->where('status', 1)
+        ->whereRaw('BINARY TRIM(descricao) = ?', ['PADRÃO'])
+        ->orderBy('id')
+        ->first();
+
+    if ($localPadrao) {
+        return $localPadrao;
+    }
+
+    $localPadraoInativo = Localizacao::where('empresa_id', $empresa_id)
+        ->whereRaw('BINARY TRIM(descricao) = ?', ['PADRÃO'])
+        ->orderBy('id')
+        ->first();
+
+    if ($localPadraoInativo) {
+        if ((int)$localPadraoInativo->status !== 1) {
+            $localPadraoInativo->status = 1;
+            $localPadraoInativo->save();
+        }
+        return $localPadraoInativo;
+    }
+
+    $localPadraoLegado = Localizacao::where('empresa_id', $empresa_id)
+        ->where('status', 1)
+        ->where(function ($query) {
+            $query->whereRaw('UPPER(TRIM(descricao)) = ?', ['PADRAO'])
+                ->orWhereRaw('UPPER(TRIM(descricao)) = ?', ['BL0001'])
+                ->orWhereRaw('UPPER(TRIM(descricao)) LIKE ?', ['BL000%'])
+                ->orWhereRaw('UPPER(TRIM(descricao)) LIKE ?', ['LOCAL DE ARMAZENAMENTO%']);
+        })
+        ->orderBy('id')
+        ->first();
+
+    if ($localPadraoLegado) {
+        $descricaoLegada = trim((string)$localPadraoLegado->descricao);
+        if ($descricaoLegada !== 'PADRÃO') {
+            try {
+                $localPadraoLegado->descricao = 'PADRÃO';
+                $localPadraoLegado->save();
+            } catch (\Throwable $e) {
+                $localPadraoExistente = Localizacao::where('empresa_id', $empresa_id)
+                    ->whereRaw('BINARY TRIM(descricao) = ?', ['PADRÃO'])
+                    ->orderBy('id')
+                    ->first();
+                if ($localPadraoExistente) {
+                    return $localPadraoExistente;
+                }
+            }
+        }
+        return $localPadraoLegado;
+    }
+
+    $localPadraoLegadoInativo = Localizacao::where('empresa_id', $empresa_id)
+        ->where(function ($query) {
+            $query->whereRaw('UPPER(TRIM(descricao)) = ?', ['PADRAO'])
+                ->orWhereRaw('UPPER(TRIM(descricao)) = ?', ['BL0001'])
+                ->orWhereRaw('UPPER(TRIM(descricao)) LIKE ?', ['BL000%'])
+                ->orWhereRaw('UPPER(TRIM(descricao)) LIKE ?', ['LOCAL DE ARMAZENAMENTO%']);
+        })
+        ->orderBy('id')
+        ->first();
+
+    if ($localPadraoLegadoInativo) {
+        if ((int)$localPadraoLegadoInativo->status !== 1) {
+            $localPadraoLegadoInativo->status = 1;
+        }
+        if (trim((string)$localPadraoLegadoInativo->descricao) !== 'PADRÃO') {
+            $localPadraoLegadoInativo->descricao = 'PADRÃO';
+        }
+        try {
+            $localPadraoLegadoInativo->save();
+        } catch (\Throwable $e) {
+            $localPadraoExistente = Localizacao::where('empresa_id', $empresa_id)
+                ->whereRaw('BINARY TRIM(descricao) = ?', ['PADRÃO'])
+                ->orderBy('id')
+                ->first();
+            if ($localPadraoExistente) {
+                return $localPadraoExistente;
+            }
+        }
+        return $localPadraoLegadoInativo;
+    }
+
+    $localAtivo = Localizacao::where('empresa_id', $empresa_id)
+        ->where('status', 1)
+        ->orderBy('id')
+        ->first();
+
+    $localQualquer = Localizacao::where('empresa_id', $empresa_id)
+        ->orderBy('id')
+        ->first();
+
+    $fallbackExistente = $localAtivo ?: $localQualquer;
+
+    $empresa = Empresa::find($empresa_id);
+    if (!$empresa) {
+        return $fallbackExistente;
+    }
+
+    try {
+        $localizacao = $empresa->toArray();
+        $localizacao['descricao'] = 'PADRÃO';
+        $localizacao['empresa_id'] = $empresa->id;
+        $localizacao['status'] = 1;
+        $localizacao['logo'] = $localizacao['logo'] ?? '';
+        $localizacao['cpf_cnpj'] = $localizacao['cpf_cnpj'] ?? str_pad((string)$empresa->id, 14, '0', STR_PAD_LEFT);
+        $localizacao['ambiente'] = $localizacao['ambiente'] ?? 2;
+        $localizacao['tributacao'] = match ($empresa->tributacao) {
+            'MEI' => 'MEI',
+            'Simples Nacional' => 'Simples Nacional',
+            'Simples Nacional, excesso sublimite de receita bruta' => 'Simples Nacional',
+            'Regime Normal' => 'Regime Normal',
+            default => 'Regime Normal',
+        };
+
+        return Localizacao::create($localizacao);
+    } catch (\Throwable $e) {
+        $localCriado = Localizacao::where('empresa_id', $empresa_id)
+            ->whereRaw('BINARY TRIM(descricao) = ?', ['PADRÃO'])
+            ->orderBy('id')
+            ->first();
+        if ($localCriado) {
+            return $localCriado;
+        }
+    }
+
+    try {
+        DB::table('localizacaos')->insert([
+            'empresa_id' => $empresa->id,
+            'descricao' => 'PADRÃO',
+            'status' => 1,
+            'nome' => $empresa->nome ?? null,
+            'nome_fantasia' => $empresa->nome_fantasia ?? null,
+            'cpf_cnpj' => $empresa->cpf_cnpj ?? str_pad((string)$empresa->id, 14, '0', STR_PAD_LEFT),
+            'aut_xml' => $empresa->aut_xml ?? null,
+            'ie' => $empresa->ie ?? null,
+            'email' => $empresa->email ?? null,
+            'celular' => $empresa->celular ?? null,
+            'cep' => $empresa->cep ?? null,
+            'rua' => $empresa->rua ?? null,
+            'numero' => $empresa->numero ?? null,
+            'bairro' => $empresa->bairro ?? null,
+            'complemento' => $empresa->complemento ?? null,
+            'cidade_id' => $empresa->cidade_id ?? null,
+            'csc' => $empresa->csc ?? null,
+            'csc_id' => $empresa->csc_id ?? null,
+            'ambiente' => $empresa->ambiente ?? 2,
+            'tributacao' => match ($empresa->tributacao) {
+                'MEI' => 'MEI',
+                'Simples Nacional' => 'Simples Nacional',
+                'Simples Nacional, excesso sublimite de receita bruta' => 'Simples Nacional',
+                'Regime Normal' => 'Regime Normal',
+                default => 'Regime Normal',
+            },
+            'logo' => $empresa->logo ?? '',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } catch (\Throwable $e) {
+    }
+
+    $localPadraoFinal = Localizacao::where('empresa_id', $empresa_id)
+        ->whereRaw('BINARY TRIM(descricao) = ?', ['PADRÃO'])
+        ->orderBy('id')
+        ->first();
+    if ($localPadraoFinal) {
+        return $localPadraoFinal;
+    }
+
+    return $fallbackExistente ?: Localizacao::where('empresa_id', $empresa_id)
+        ->orderBy('id')
+        ->first();
+}
+
 function __getLocalAtivo()
 {
-    if (!Auth::user()->empresa) {
+    if (!Auth::check() || !Auth::user()->empresa) {
         return 0;
     }
+
+    $usuario_id = Auth::user()->id;
     $empresa_id = Auth::user()->empresa->empresa_id;
-    return Localizacao::where('empresa_id', $empresa_id)
-        ->where('status', 1)->first();
+
+    $localUsuario = Localizacao::where('usuario_localizacaos.usuario_id', $usuario_id)
+        ->where('localizacaos.empresa_id', $empresa_id)
+        ->select('localizacaos.*')
+        ->join('usuario_localizacaos', 'usuario_localizacaos.localizacao_id', '=', 'localizacaos.id')
+        ->where('localizacaos.status', 1)
+        ->orderByRaw("CASE 
+            WHEN BINARY TRIM(localizacaos.descricao) = 'PADRÃO' THEN 0
+            WHEN UPPER(TRIM(localizacaos.descricao)) = 'PADRAO' THEN 1
+            ELSE 2
+        END")
+        ->orderBy('localizacaos.id')
+        ->first();
+
+    if ($localUsuario) {
+        return $localUsuario;
+    }
+
+    return __getLocalPadraoEmpresa($empresa_id);
 }
 
 function __getLocaisAtivoUsuario()
 {
     $usuario_id = Auth::user()->id;
-    return Localizacao::where('usuario_localizacaos.usuario_id', $usuario_id)
+    $locais = Localizacao::where('usuario_localizacaos.usuario_id', $usuario_id)
         ->select('localizacaos.*')
         ->join('usuario_localizacaos', 'usuario_localizacaos.localizacao_id', '=', 'localizacaos.id')
-        ->where('localizacaos.status', 1)->get();
+        ->where('localizacaos.status', 1)
+        ->orderByRaw("CASE 
+            WHEN BINARY TRIM(localizacaos.descricao) = 'PADRÃO' THEN 0
+            WHEN UPPER(TRIM(localizacaos.descricao)) = 'PADRAO' THEN 1
+            ELSE 2
+        END")
+        ->orderBy('localizacaos.id')
+        ->get();
+
+    if ($locais->count() > 0) {
+        return $locais;
+    }
+
+    if (Auth::user()->empresa) {
+        $localPadrao = __getLocalPadraoEmpresa(Auth::user()->empresa->empresa_id);
+        if ($localPadrao) {
+            return collect([$localPadrao]);
+        }
+    }
+
+    return collect();
 }
 
 function __objetoParaEmissao($empresa, $local_id)
 {
 
-    $primeiraLocalizacao = Localizacao::where('empresa_id', $empresa->id)
-        ->where('status', 1)->first();
+    $primeiraLocalizacao = __getLocalPadraoEmpresa($empresa->id);
 
     $count = Localizacao::where('empresa_id', $empresa->id)
         ->where('status', 1)->count();
     if ($count <= 1) return $empresa;
 
     $localizacao = Localizacao::findOrFail($local_id);
-    if ($primeiraLocalizacao == $localizacao) return $empresa;
+    if ($primeiraLocalizacao && $primeiraLocalizacao->id == $localizacao->id) return $empresa;
     return $localizacao;
 }
 
@@ -680,8 +900,10 @@ function __tributacaoProdutoLocalNcm($item, $local_id)
 
 function __primeiroLocal($local_id, $empresa_id)
 {
-    $local = Localizacao::where('empresa_id', $empresa_id)
-        ->where('status', 1)->first();
+    $local = __getLocalPadraoEmpresa($empresa_id);
+    if (!$local) {
+        return false;
+    }
     return $local_id == $local->id;
 }
 

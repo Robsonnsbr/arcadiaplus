@@ -35,24 +35,32 @@
         <div class="card">
             <div class="card-body">
                 <div class="row">
-                    @can('estoque_create')
                     <div class="col-md-2 col-12 mt-1">
-                        <a href="{{ route('estoque.create') }}" class="btn btn-success">
-                            <i class="ri-add-circle-fill"></i>
-                            Adicionar estoque
-                        </a>
+                        @can('estoque_create')
+                            <a href="{{ route('estoque.create') }}" class="btn btn-success">
+                                <i class="ri-add-circle-fill"></i>
+                                Adicionar estoque
+                            </a>
+                        @endcan
                     </div>
                     <div class="col-md-10 col-12 mt-1"  style="text-align: right;">
-                        <a href="{{ route('estoque.retirada') }}" class="btn btn-light">
-                            <i class="ri-inbox-archive-fill"></i>
-                            Retirada de Estoque
-                        </a>
-                        <a href="{{ route('apontamento.create') }}" class="btn btn-info">
-                            <i class="ri-settings-3-line"></i>
-                            Apontamento de Produção
-                        </a>
+                        @can('estoque_create')
+                            <a href="{{ route('estoque.retirada') }}" class="btn btn-light">
+                                <i class="ri-inbox-archive-fill"></i>
+                                Retirada de Estoque
+                            </a>
+                            <a href="{{ route('apontamento.create') }}" class="btn btn-info">
+                                <i class="ri-settings-3-line"></i>
+                                Apontamento de Produção
+                            </a>
+                        @endcan
+                        @can('localizacao_create')
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-cadastrar-local">
+                                <i class="ri-map-pin-add-line"></i>
+                                Cadastrar Local
+                            </button>
+                        @endcan
                     </div>
-                    @endcan
                 </div>
                 <hr class="mt-3">
                 <div class="col-lg-12">
@@ -101,4 +109,53 @@
         </div>
     </div>
 </div>
+
+@can('localizacao_create')
+<div class="modal fade" id="modal-cadastrar-local" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cadastrar Local</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form method="post" action="{{ route('estoque.localizacao.store') }}">
+                @csrf
+                <div class="modal-body">
+                    <label for="descricao_local_estoque" class="form-label">Nome do local</label>
+                    <input
+                        type="text"
+                        id="descricao_local_estoque"
+                        name="descricao"
+                        class="form-control @error('descricao') is-invalid @enderror"
+                        value="{{ old('descricao') }}"
+                        maxlength="150"
+                        required
+                    >
+                    @error('descricao')
+                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endcan
+@endsection
+
+@section('js')
+@if($errors->has('descricao') && auth()->user()->can('localizacao_create'))
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function () {
+        var modalEl = document.getElementById('modal-cadastrar-local');
+        if (modalEl && window.bootstrap) {
+            var modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    });
+</script>
+@endif
 @endsection

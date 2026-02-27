@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Artisan;
 
 class EmpresaUtil
 {
+    private const LOCAL_PADRAO_DESCRICAO = 'PADRÃO';
 
     public function defaultPermissions($empresa_id)
     {
@@ -121,25 +122,10 @@ class EmpresaUtil
 
     public function initLocation($empresa)
     {
+        $defaultJaExistia = $this->getDefaultLocationByDescricao($empresa->id) != null;
+        $localizacao = $this->ensureDefaultLocation($empresa);
 
-        $localizacao = Localizacao::where('empresa_id', $empresa->id)->first();
-        if (!$localizacao) {
-            $localizacao = $empresa->toArray();
-            $localizacao['descricao'] = 'BL0001';
-            $localizacao['empresa_id'] = $empresa->id;
-            $localizacao['logo'] = $localizacao['logo'] ?? '';
-            $localizacao['tributacao'] = match ($empresa->tributacao) {
-                'MEI' => 'MEI',
-                'Simples Nacional' => 'Simples Nacional',
-                'Simples Nacional, excesso sublimite de receita bruta' => 'Simples Nacional',
-                'Regime Normal' => 'Regime Normal',
-                default => 'Regime Normal',
-            };
-
-
-
-            $localizacao = Localizacao::create($localizacao);
-
+        if (!$defaultJaExistia) {
             foreach ($empresa->usuarios as $u) {
                 UsuarioLocalizacao::updateOrCreate([
                     'usuario_id' => $u->usuario_id,
@@ -148,8 +134,8 @@ class EmpresaUtil
             }
         }
 
-        $this->initProducts($empresa->id);
-        $this->initRegisters($empresa->id);
+        $this->initProducts($empresa->id, $localizacao->id);
+        $this->initRegisters($empresa->id, $localizacao->id);
     }
 
     public function initNaturezaTributacao($empresa)
@@ -170,10 +156,12 @@ class EmpresaUtil
         }
     }
 
-    private function initProducts($empresa_id)
+    private function initProducts($empresa_id, $localizacaoPadraoId = null)
     {
         $produtos = Produto::where('empresa_id', $empresa_id)->get();
-        $localizacao = Localizacao::where('empresa_id', $empresa_id)->first();
+        $localizacao = $localizacaoPadraoId
+            ? Localizacao::find($localizacaoPadraoId)
+            : $this->getDefaultLocation($empresa_id);
         if ($localizacao) {
             foreach ($produtos as $p) {
                 $produtoLocalizacao = ProdutoLocalizacao::where('produto_id', $p->id)->first();
@@ -187,9 +175,15 @@ class EmpresaUtil
         }
     }
 
-    private function initRegisters($empresa_id)
+    private function initRegisters($empresa_id, $localizacaoPadraoId = null)
     {
-        $localizacao = Localizacao::where('empresa_id', $empresa_id)->first();
+        $localizacao = $localizacaoPadraoId
+            ? Localizacao::find($localizacaoPadraoId)
+            : $this->getDefaultLocation($empresa_id);
+
+        if (!$localizacao) {
+            return;
+        }
 
         \App\Models\Nfe::where('empresa_id', $empresa_id)->where('local_id', null)
             ->update(['local_id' => $localizacao->id]);
@@ -214,11 +208,99 @@ class EmpresaUtil
     {
         if ($user->empresa && sizeof($user->locais) == 0) {
             $empresa_id = $user->empresa->empresa_id;
-            $localizacao = Localizacao::where('empresa_id', $empresa_id)->first();
+            $localizacao = $this->getDefaultLocation($empresa_id);
+            if (!$localizacao) {
+                return;
+            }
             UsuarioLocalizacao::updateOrCreate([
                 'usuario_id' => $user->id,
                 'localizacao_id' => $localizacao->id
             ]);
         }
+    }
+
+    private function ensureDefaultLocation($empresa)
+    {
+        $localizacao = $this->getDefaultLocationByDescricao($empresa->id);
+        if ($localizacao) {
+            if ((int)$localizacao->status !== 1) {
+                $localizacao->status = 1;
+                $localizacao->save();
+            }
+            return $localizacao;
+        }
+
+        $legacyDefault = $this->getLegacyDefaultLocation($empresa->id);
+
+        if ($legacyDefault) {
+            $legacyDefault->descricao = self::LOCAL_PADRAO_DESCRICAO;
+            $legacyDefault->status = 1;
+            $legacyDefault->save();
+            return $legacyDefault;
+        }
+
+        $localizacao = $empresa->toArray();
+        $localizacao['descricao'] = self::LOCAL_PADRAO_DESCRICAO;
+        $localizacao['empresa_id'] = $empresa->id;
+        $localizacao['status'] = 1;
+        $localizacao['logo'] = $localizacao['logo'] ?? '';
+        $localizacao['cpf_cnpj'] = $localizacao['cpf_cnpj'] ?? str_pad((string)$empresa->id, 14, '0', STR_PAD_LEFT);
+        $localizacao['ambiente'] = $localizacao['ambiente'] ?? 2;
+        $localizacao['tributacao'] = match ($empresa->tributacao) {
+            'MEI' => 'MEI',
+            'Simples Nacional' => 'Simples Nacional',
+            'Simples Nacional, excesso sublimite de receita bruta' => 'Simples Nacional',
+            'Regime Normal' => 'Regime Normal',
+            default => 'Regime Normal',
+        };
+
+        return Localizacao::create($localizacao);
+    }
+
+    private function getDefaultLocationByDescricao($empresa_id)
+    {
+        return Localizacao::where('empresa_id', $empresa_id)
+            ->whereRaw('BINARY TRIM(descricao) = ?', [self::LOCAL_PADRAO_DESCRICAO])
+            ->orderBy('id')
+            ->first();
+    }
+
+    private function getDefaultLocation($empresa_id)
+    {
+        $localizacao = $this->getDefaultLocationByDescricao($empresa_id);
+        if ($localizacao) {
+            return $localizacao;
+        }
+
+        $localizacaoLegada = $this->getLegacyDefaultLocation($empresa_id);
+        if ($localizacaoLegada) {
+            return $localizacaoLegada;
+        }
+
+        $localizacaoAtiva = Localizacao::where('empresa_id', $empresa_id)
+            ->where('status', 1)
+            ->orderBy('id')
+            ->first();
+
+        if ($localizacaoAtiva) {
+            return $localizacaoAtiva;
+        }
+
+        return Localizacao::where('empresa_id', $empresa_id)
+            ->orderBy('id')
+            ->first();
+    }
+
+    private function getLegacyDefaultLocation($empresa_id)
+    {
+        return Localizacao::where('empresa_id', $empresa_id)
+            ->where(function ($query) {
+                $query->whereRaw('UPPER(TRIM(descricao)) = ?', ['BL0001'])
+                    ->orWhereRaw('UPPER(TRIM(descricao)) = ?', ['PADRAO'])
+                    ->orWhereRaw('UPPER(TRIM(descricao)) LIKE ?', ['LOCAL DE ARMAZENAMENTO%'])
+                    ->orWhereRaw('UPPER(TRIM(descricao)) LIKE ?', ['BL000%']);
+            })
+            ->orderBy('id')
+            ->first();
     }
 }

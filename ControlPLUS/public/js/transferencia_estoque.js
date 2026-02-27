@@ -71,6 +71,26 @@ $(function(){
     });
 })
 
+function locaisTransferenciaIguais() {
+    let local_saida_id = $('#inp-local_saida_id').val();
+    let local_entrada_id = $('#inp-local_entrada_id').val();
+    return local_saida_id && local_entrada_id && local_saida_id === local_entrada_id;
+}
+
+$(document).on('change', '#inp-local_saida_id, #inp-local_entrada_id', function () {
+    if (locaisTransferenciaIguais()) {
+        swal("Atenção", "Local de saída e local de entrada devem ser diferentes.", "warning");
+        $(this).val('').trigger('change');
+    }
+});
+
+$(document).on('submit', 'form[action*="transferencia-estoque"]', function (e) {
+    if (locaisTransferenciaIguais()) {
+        e.preventDefault();
+        swal("Atenção", "Local de saída e local de entrada devem ser diferentes.", "warning");
+    }
+});
+
 $('.btn-add-tr-prod').on("click", function () {
     console.clear()
     var $table = $(this)

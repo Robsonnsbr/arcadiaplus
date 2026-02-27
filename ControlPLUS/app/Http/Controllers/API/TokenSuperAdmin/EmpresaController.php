@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Empresa;
 use App\Models\Cidade;
+use App\Utils\EmpresaUtil;
 
 class EmpresaController extends Controller
 {
@@ -50,6 +51,7 @@ class EmpresaController extends Controller
             ]);
 
             $item = Empresa::create($request->all());
+            app(EmpresaUtil::class)->initLocation($item);
             $item->setHidden(['arquivo', 'token', 'token_nfse', 'senha', 'info', 'empresa_selecionada', 'percentual_comissao', 
                 'tipo_contador', 'logo', 'natureza_id_pdv']);
             return response()->json($item, 200);

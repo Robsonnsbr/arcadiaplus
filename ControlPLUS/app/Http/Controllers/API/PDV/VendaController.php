@@ -30,6 +30,7 @@ use App\Models\ConfigGeral;
 use App\Models\MargemComissao;
 use Dompdf\Dompdf;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class VendaController extends Controller
 {
@@ -40,6 +41,84 @@ class VendaController extends Controller
     {
         $this->util = $util;
         $this->utilConta = $utilConta;
+    }
+
+    private function resolveLocalIdEmpresa($empresa_id, $local_id = null, $usuario_id = null)
+    {
+        if ($local_id) {
+            $localValido = Localizacao::where('id', $local_id)
+                ->where('empresa_id', $empresa_id)
+                ->where('status', 1)
+                ->first();
+            if ($localValido) {
+                return (int)$localValido->id;
+            }
+
+            return null;
+        }
+
+        if (Auth::check() && function_exists('__getLocalAtivo')) {
+            $localAtivo = __getLocalAtivo();
+            if ($localAtivo && isset($localAtivo->id) && (int)$localAtivo->empresa_id === (int)$empresa_id) {
+                $localValido = Localizacao::where('id', $localAtivo->id)
+                    ->where('empresa_id', $empresa_id)
+                    ->where('status', 1)
+                    ->first();
+                if ($localValido) {
+                    return (int)$localValido->id;
+                }
+            }
+        }
+
+        $localUsuario = null;
+        if ($usuario_id) {
+            $usuario = User::with('locais.localizacao')->find($usuario_id);
+            if ($usuario) {
+                $locaisAtivos = [];
+                foreach ($usuario->locais as $l) {
+                    if (!$l->localizacao) {
+                        continue;
+                    }
+                    if ((int)$l->localizacao->empresa_id !== (int)$empresa_id) {
+                        continue;
+                    }
+                    if ((int)$l->localizacao->status !== 1) {
+                        continue;
+                    }
+
+                    $locaisAtivos[] = (int)$l->localizacao_id;
+
+                    $descricao = trim((string)$l->localizacao->descricao);
+                    if ($descricao === 'PADRÃO' || strtoupper($descricao) === 'PADRAO') {
+                        $localUsuario = (int)$l->localizacao_id;
+                        break;
+                    }
+                }
+
+                if (!$localUsuario && sizeof($locaisAtivos) === 1) {
+                    $localUsuario = (int)$locaisAtivos[0];
+                }
+            }
+        }
+
+        if ($localUsuario) {
+            return $localUsuario;
+        }
+
+        if (function_exists('__getLocalPadraoEmpresa')) {
+            $localPadrao = __getLocalPadraoEmpresa($empresa_id);
+            if ($localPadrao && isset($localPadrao->id)) {
+                $localValido = Localizacao::where('id', $localPadrao->id)
+                    ->where('empresa_id', $empresa_id)
+                    ->where('status', 1)
+                    ->first();
+                if ($localValido) {
+                    return (int)$localValido->id;
+                }
+            }
+        }
+
+        return null;
     }
 
     public function store(Request $request){
@@ -54,13 +133,37 @@ class VendaController extends Controller
 
                 $natureza_id = $empresa->natureza_id_pdv;
 
+                $caixa = null;
                 if($request->caixa_id){
-                    $caixa = Caixa::find($request->caixa_id);
+                    $caixa = Caixa::where('id', $request->caixa_id)
+                        ->where('empresa_id', $request->empresa_id)
+                        ->first();
                 }
                 if($caixa == null){
-                    $caixa = Caixa::where('usuario_id', $request->usuario_id)->where('status', 1)->first();
+                    $caixa = Caixa::where('usuario_id', $request->usuario_id)
+                        ->where('empresa_id', $request->empresa_id)
+                        ->where('status', 1)
+                        ->first();
                 }
-                $empresa = __objetoParaEmissao($empresa, $caixa->local_id);
+                if($caixa == null){
+                    throw new \Exception("Caixa aberto não encontrado para o usuário.");
+                }
+
+                if($caixa->local_id){
+                    $local_id = $this->resolveLocalIdEmpresa($request->empresa_id, $caixa->local_id, $request->usuario_id);
+                    if(!$local_id){
+                        throw new \Exception("Local do caixa inválido para a empresa ativa.");
+                    }
+                }else{
+                    $local_id = $this->resolveLocalIdEmpresa($request->empresa_id, null, $request->usuario_id);
+                    if(!$local_id){
+                        throw new \Exception("Não foi possível identificar o local da venda.");
+                    }
+                    $caixa->local_id = $local_id;
+                    $caixa->save();
+                }
+
+                $empresa = __objetoParaEmissao($empresa, $local_id);
 
                 if ($empresa->ambiente == 2) {
                     $numero = $empresa->numero_ultima_nfce_homologacao+1;
@@ -105,7 +208,7 @@ class VendaController extends Controller
                     'valor_produtos' => $request->total_produtos,
                     'valor_frete' => 0,
                     'caixa_id' => $request->caixa_id ? $request->caixa_id : $caixa->id,
-                    'local_id' => $caixa->local_id,
+                    'local_id' => $local_id,
                     'tipo_pagamento' => sizeof($request->fatura) == 0 ? $request->tipo_pagamento : '99',
                     'dinheiro_recebido' => $request->valor_recebido,
                     'troco' => $request->troco ?? 0,
@@ -152,7 +255,7 @@ class VendaController extends Controller
                     $itemNfce = ItemNfce::create($dataItem);
 
                     if ($product->gerenciar_estoque) {
-                        $this->util->reduzEstoque($product->id, $item['quantidade'], null, $caixa->local_id);
+                        $this->util->reduzEstoque($product->id, $item['quantidade'], null, $local_id);
                     }
 
                     $tipo = 'reducao';
@@ -334,20 +437,17 @@ public function locaisUsuario(Request $request){
     return response()->json($locais, 200);
 }
 
-public function storeCaixa(Request $request){
+    public function storeCaixa(Request $request){
     try{
-        $local_id = null;
         $user = User::findOrFail($request->usuario_id);
-        if(!$request->local_id){
-
-            if(sizeof($user->locais) > 0){
-                $local_id = $user->locais[0]->localizacao_id;
-            }
-        }else{
-            $local_id = $request->local_id;
-        }
-
         $empresa_id = $user->empresa->empresa_id;
+        $local_id = $this->resolveLocalIdEmpresa($empresa_id, $request->local_id, $request->usuario_id);
+        if($request->filled('local_id') && !$local_id){
+            return response()->json("Local inválido para a empresa ativa.", 403);
+        }
+        if(!$local_id){
+            return response()->json("Não foi possível identificar o local do caixa.", 403);
+        }
         $data = [
             'usuario_id' => $request->usuario_id,
             'valor_abertura' => $request->valor ? __convert_value_bd($request->valor) : 0,

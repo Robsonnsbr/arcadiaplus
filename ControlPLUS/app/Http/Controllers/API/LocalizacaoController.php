@@ -10,8 +10,26 @@ class LocalizacaoController extends Controller
 {
     public function findNumberDoc(Request $request){
         $item = Localizacao::findOrFail($request->local_id);
-        $firstLocation = Localizacao::where('empresa_id', $item->empresa_id)->first();
-        if($item == $firstLocation){
+        $firstLocation = Localizacao::where('empresa_id', $item->empresa_id)
+            ->whereRaw('BINARY TRIM(descricao) = ?', ['PADRÃO'])
+            ->orderBy('id')
+            ->first();
+
+        if($firstLocation == null){
+            $firstLocation = Localizacao::where('empresa_id', $item->empresa_id)
+                ->whereRaw('UPPER(TRIM(descricao)) = ?', ['PADRAO'])
+                ->orderBy('id')
+                ->first();
+        }
+
+        if($firstLocation == null){
+            $firstLocation = Localizacao::where('empresa_id', $item->empresa_id)
+                ->where('status', 1)
+                ->orderBy('id')
+                ->first();
+        }
+
+        if($firstLocation && $item->id == $firstLocation->id){
             $item = $item->empresa;
         }
         $data = [

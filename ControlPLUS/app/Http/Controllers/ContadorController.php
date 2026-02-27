@@ -12,9 +12,17 @@ use App\Models\EscritorioContabil;
 use App\Models\Cidade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use App\Utils\EmpresaUtil;
 
 class ContadorController extends Controller
 {
+    protected $empresaUtil;
+
+    public function __construct(EmpresaUtil $empresaUtil)
+    {
+        $this->empresaUtil = $empresaUtil;
+    }
+
     public function index(Request $request)
     {
         $data = Empresa::when(!empty($request->nome), function ($q) use ($request) {
@@ -72,6 +80,8 @@ class ContadorController extends Controller
                         'usuario_id' => $usuario->id ?? null
                     ]);
                 }
+
+                $this->empresaUtil->initLocation($empresa);
                 return true;
             });
             session()->flash("flash_success", "Representante/Contador cadastrado!");

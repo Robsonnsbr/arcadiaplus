@@ -113,6 +113,8 @@ class ContadorEmpresaController extends Controller
                         'empresa_id' => $empresa->id,
                         'usuario_id' => $usuario->id ?? null
                     ]);
+
+                    $this->empresaUtil->initUserLocations($usuario);
                 }
 
                 ContadorEmpresa::create([

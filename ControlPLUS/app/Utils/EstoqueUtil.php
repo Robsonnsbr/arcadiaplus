@@ -5,7 +5,6 @@ namespace App\Utils;
 use Illuminate\Support\Str;
 use App\Models\Estoque;
 use App\Models\Produto;
-use App\Models\Localizacao;
 use App\Models\VendiZapConfig;
 use App\Models\ProdutoVariacao;
 use App\Models\EstoqueAtualProduto;
@@ -16,18 +15,25 @@ class EstoqueUtil
 {
     protected $urlVendiZap = "https://app.vendizap.com/api";
 
-    public function incrementaEstoque($produto_id, $quantidade, $produto_variacao_id, $local_id = null)
+    private function resolveLocalId($local_id = null)
     {
-        if(!$local_id){
-            $usuario_id = Auth::user()->id;
-            $local = Localizacao::where('usuario_localizacaos.usuario_id', $usuario_id)
-            ->select('localizacaos.*')
-            ->join('usuario_localizacaos', 'usuario_localizacaos.localizacao_id', '=', 'localizacaos.id')
-            ->first();
-            if($local){
-                $local_id = $local->id;
+        if ($local_id) {
+            return (int)$local_id;
+        }
+
+        if (Auth::check() && function_exists('__getLocalAtivo')) {
+            $localAtivoUsuario = __getLocalAtivo();
+            if ($localAtivoUsuario && isset($localAtivoUsuario->id)) {
+                return (int)$localAtivoUsuario->id;
             }
         }
+
+        throw new \Exception("Local de estoque não definido para a operação.");
+    }
+
+    public function incrementaEstoque($produto_id, $quantidade, $produto_variacao_id, $local_id = null)
+    {
+        $local_id = $this->resolveLocalId($local_id);
         $item = Estoque::where('produto_id', $produto_id)
         ->when($produto_variacao_id != null, function ($q) use ($produto_variacao_id) {
             return $q->where('produto_variacao_id', $produto_variacao_id);
@@ -72,16 +78,7 @@ class EstoqueUtil
 
     public function reduzEstoque($produto_id, $quantidade, $produto_variacao_id, $local_id = null)
     {
-        if(!$local_id){
-            $usuario_id = Auth::user()->id;
-            $local = Localizacao::where('usuario_localizacaos.usuario_id', $usuario_id)
-            ->select('localizacaos.*')
-            ->join('usuario_localizacaos', 'usuario_localizacaos.localizacao_id', '=', 'localizacaos.id')
-            ->first();
-            if($local){
-                $local_id = $local->id;
-            }
-        }
+        $local_id = $this->resolveLocalId($local_id);
         $item = Estoque::where('produto_id', $produto_id)
         ->when($produto_variacao_id != null, function ($q) use ($produto_variacao_id) {
             return $q->where('produto_variacao_id', $produto_variacao_id);

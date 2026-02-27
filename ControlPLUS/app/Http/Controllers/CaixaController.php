@@ -18,6 +18,7 @@ use App\Models\ItemServicoNfce;
 use App\Models\ItemContaEmpresa;
 use App\Models\FaturaNfe;
 use App\Models\FaturaNfce;
+use App\Models\Localizacao;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -320,12 +321,58 @@ class CaixaController extends Controller
     public function store(Request $request)
     {
         try {
+            $empresa_id = (int)$request->empresa_id;
+            $local_id = null;
+            if($request->filled('local_id')){
+                $local = Localizacao::where('id', $request->local_id)
+                    ->where('empresa_id', $empresa_id)
+                    ->where('status', 1)
+                    ->first();
+                if(!$local){
+                    session()->flash('flash_error', 'Local inválido para a empresa ativa.');
+                    return redirect()->back()->withInput();
+                }
+                $local_id = (int)$local->id;
+            }else{
+                if(function_exists('__getLocalAtivo')){
+                    $localAtivo = __getLocalAtivo();
+                    if($localAtivo && (int)$localAtivo->empresa_id === $empresa_id){
+                        $localValido = Localizacao::where('id', $localAtivo->id)
+                            ->where('empresa_id', $empresa_id)
+                            ->where('status', 1)
+                            ->first();
+                        if($localValido){
+                            $local_id = (int)$localValido->id;
+                        }
+                    }
+                }
+
+                if(!$local_id && function_exists('__getLocalPadraoEmpresa')){
+                    $localPadrao = __getLocalPadraoEmpresa($empresa_id);
+                    if($localPadrao){
+                        $localValido = Localizacao::where('id', $localPadrao->id)
+                            ->where('empresa_id', $empresa_id)
+                            ->where('status', 1)
+                            ->first();
+                        if($localValido){
+                            $local_id = (int)$localValido->id;
+                        }
+                    }
+                }
+            }
+
+            if(!$local_id){
+                session()->flash('flash_error', 'Não foi possível identificar o local do caixa.');
+                return redirect()->back()->withInput();
+            }
+
             $request->merge([
                 'usuario_id' => Auth::user()->id,
                 'valor_abertura' => __convert_value_bd($request->valor_abertura),
                 'observacao' => $request->observacao ?? '',
                 'status' => 1,
                 'valor_fechamento' => 0,
+                'local_id' => $local_id
             ]);
             $item = Caixa::create($request->all());
 
