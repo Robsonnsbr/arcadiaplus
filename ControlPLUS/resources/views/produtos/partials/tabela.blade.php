@@ -19,9 +19,6 @@
                         <th class="sticky-col first-col">Nome</th>
                         <th>Valor de venda</th>
                         <th>Valor de compra</th>
-                        @if(__countLocalAtivo() > 1)
-                        <th>Disponibilidade</th>
-                        @endif
                         <th>Categoria</th>
                         <th>Código de barras</th>
                         <th>NCM</th>
@@ -198,16 +195,6 @@
                         <td data-label="Valor de venda"><label style="width: 100px">{{ __moeda($item->valor_unitario) }}</label></td>
                         @endif
                         <td data-label="Valor de compra"><label style="width: 120px">{{ __moeda($item->valor_compra) }}</label></td>
-                        @if(__countLocalAtivo() > 1)
-                        <td data-label="Disponibilidade">
-                            <label style="width: 250px">
-                                @foreach($estoqueLocais as $estoque)
-                                    <strong>{{ $estoque->local->descricao }}</strong>
-                                    @if(!$loop->last) | @endif
-                                @endforeach
-                            </label>
-                        </td>
-                        @endif
                         <td data-label="Categoria">{{ $item->categoria ? $item->categoria->nome : '--' }}</td>
                         <td data-label="Código de barras">{{ $item->codigo_barras ?? '--' }}</td>
                         <td data-label="NCM">{{ $item->ncm }}</td>
@@ -304,7 +291,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="23" class="text-center">Nada encontrado</td>
+                        <td colspan="22" class="text-center">Nada encontrado</td>
                     </tr>
                     @endforelse
                 </tbody>
