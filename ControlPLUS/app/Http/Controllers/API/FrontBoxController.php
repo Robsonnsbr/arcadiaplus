@@ -89,6 +89,60 @@ class FrontBoxController extends Controller
         }
     }
 
+    private function isTipoPagamentoCredito($tipo): bool
+    {
+        $tipo = trim((string)$tipo);
+        return in_array($tipo, ['03', '30'], true);
+    }
+
+    private function requestTemPagamentoCredito(Request $request): bool
+    {
+        $tipos = [];
+        if (!is_null($request->tipo_pagamento)) {
+            $tipos[] = $request->tipo_pagamento;
+        }
+
+        if (is_array($request->tipo_pagamento_row)) {
+            $tipos = array_merge($tipos, $request->tipo_pagamento_row);
+        }
+
+        if (is_array($request->fatura)) {
+            foreach ($request->fatura as $fatura) {
+                if (is_array($fatura)) {
+                    $tipos[] = $fatura['tipo_pagamento'] ?? ($fatura['tipo'] ?? ($fatura['forma'] ?? null));
+                } elseif (is_object($fatura)) {
+                    $tipos[] = $fatura->tipo_pagamento ?? ($fatura->tipo ?? ($fatura->forma ?? null));
+                }
+            }
+        }
+
+        foreach ($tipos as $tipo) {
+            if ($this->isTipoPagamentoCredito($tipo)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function resolveDadosCartao(Request $request): array
+    {
+        return [
+            'bandeira' => trim((string)($request->bandeira_cartao ?? '')),
+            'codigo' => trim((string)($request->cAut_cartao ?? '')),
+            'cnpj' => trim((string)($request->cnpj_cartao ?? '')),
+        ];
+    }
+
+    private function validarBandeiraCartaoCredito(Request $request): array
+    {
+        $dadosCartao = $this->resolveDadosCartao($request);
+        if ($this->requestTemPagamentoCredito($request) && $dadosCartao['bandeira'] === '') {
+            throw new \Exception('Bandeira do cartão é obrigatória para pagamento em crédito.');
+        }
+        return $dadosCartao;
+    }
+
     public function faturaPadraoCliente(Request $request){
         try {
             $cliente = Cliente::findOrFail($request->cliente_id);
@@ -1004,6 +1058,12 @@ class FrontBoxController extends Controller
     public function store(Request $request)
     {
         try {
+            $dadosCartao = $this->validarBandeiraCartaoCredito($request);
+            $request->merge([
+                'bandeira_cartao' => $dadosCartao['bandeira'],
+                'cAut_cartao' => $dadosCartao['codigo'],
+                'cnpj_cartao' => $dadosCartao['cnpj'],
+            ]);
 
             $retornoCredito = $this->validaCreditoCliente($request);
             if($retornoCredito != 0){
@@ -1424,6 +1484,12 @@ return response()->json($nfce, 200);
 
 public function storePdv3(Request $request){
     try {
+        $dadosCartao = $this->validarBandeiraCartaoCredito($request);
+        $request->merge([
+            'bandeira_cartao' => $dadosCartao['bandeira'],
+            'cAut_cartao' => $dadosCartao['codigo'],
+            'cnpj_cartao' => $dadosCartao['cnpj'],
+        ]);
 
         $nfce = DB::transaction(function () use ($request) {
 
@@ -1644,6 +1710,12 @@ return response()->json($nfce, 200);
 
 public function updatePdv3(Request $request){
     try {
+        $dadosCartao = $this->validarBandeiraCartaoCredito($request);
+        $request->merge([
+            'bandeira_cartao' => $dadosCartao['bandeira'],
+            'cAut_cartao' => $dadosCartao['codigo'],
+            'cnpj_cartao' => $dadosCartao['cnpj'],
+        ]);
 
         $nfce = DB::transaction(function () use ($request) {
             $nfce = Nfce::findOrFail($request->venda_id);
@@ -1947,6 +2019,12 @@ public function suspender3(Request $request)
 public function storeComanda(Request $request)
 {
     try {
+        $dadosCartao = $this->validarBandeiraCartaoCredito($request);
+        $request->merge([
+            'bandeira_cartao' => $dadosCartao['bandeira'],
+            'cAut_cartao' => $dadosCartao['codigo'],
+            'cnpj_cartao' => $dadosCartao['cnpj'],
+        ]);
 
         $retornoCredito = $this->validaCreditoCliente($request);
         if($retornoCredito != 0){
@@ -2152,6 +2230,12 @@ return response()->json($nfce, 200);
 public function storeNfe(Request $request)
 {
     try {
+        $dadosCartao = $this->validarBandeiraCartaoCredito($request);
+        $request->merge([
+            'bandeira_cartao' => $dadosCartao['bandeira'],
+            'cAut_cartao' => $dadosCartao['codigo'],
+            'cnpj_cartao' => $dadosCartao['cnpj'],
+        ]);
 
         $retornoCredito = $this->validaCreditoCliente($request);
         if($retornoCredito != 0){
@@ -2384,6 +2468,12 @@ return response()->json($nfe, 200);
 
 public function update(Request $request, $id){
     try{
+        $dadosCartao = $this->validarBandeiraCartaoCredito($request);
+        $request->merge([
+            'bandeira_cartao' => $dadosCartao['bandeira'],
+            'cAut_cartao' => $dadosCartao['codigo'],
+            'cnpj_cartao' => $dadosCartao['cnpj'],
+        ]);
 
         $nfce = DB::transaction(function () use ($request, $id) {
             $item = Nfce::findOrFail($id);

@@ -21,6 +21,16 @@
                     <div class="col-md-6">
                         {!! Form::text('observacao', 'Observação (opcional)') !!}
                     </div>
+                    <div class="col-md-4">
+                        {!! Form::select('bandeira_cartao', 'Bandeira do cartão', ["" => "Selecione"] + App\Models\Nfce::bandeiras())
+                        ->attrs(['class' => 'form-select']) !!}
+                    </div>
+                    <div class="col-md-4">
+                        {!! Form::tel('cAut_cartao', 'Código autorização (opcional)')->attrs(['class' => '']) !!}
+                    </div>
+                    <div class="col-md-4">
+                        {!! Form::tel('cnpj_cartao', 'CNPJ (opcional)')->attrs(['class' => 'cnpj']) !!}
+                    </div>
 
                     <div class="col-12">
                         <hr>

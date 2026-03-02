@@ -41,6 +41,45 @@ function getAjaxErrorMessage(err) {
     return "Algo deu errado";
 }
 
+function showModal(selectorOrEl) {
+    const element =
+        typeof selectorOrEl === "string"
+            ? document.querySelector(selectorOrEl)
+            : selectorOrEl;
+    if (!element) return false;
+
+    if (window.bootstrap && window.bootstrap.Modal) {
+        try {
+            if (
+                typeof window.bootstrap.Modal.getOrCreateInstance ===
+                "function"
+            ) {
+                window.bootstrap.Modal.getOrCreateInstance(element).show();
+            } else {
+                new window.bootstrap.Modal(element).show();
+            }
+            return true;
+        } catch (e) {
+            console.warn(
+                "Falha ao abrir modal via bootstrap.Modal, tentando jQuery.",
+                e,
+            );
+        }
+    }
+
+    if (
+        window.jQuery &&
+        window.jQuery.fn &&
+        typeof window.jQuery.fn.modal === "function"
+    ) {
+        window.jQuery(element).modal("show");
+        return true;
+    }
+
+    console.error("Nenhuma API de modal disponível para abrir:", element);
+    return false;
+}
+
 $(".btn-clinte").click(() => {
     $("#cpf_nota").modal("hide");
     $("#finalizar_venda").modal("hide");
@@ -1860,9 +1899,9 @@ function modalAcrescimo() {
     });
 }
 
-$("#inp-tipo_pagamento").change(() => {
+$(document).on("change", "#inp-tipo_pagamento, .tp-pag", function () {
     $("#inp-valor_recebido").val("");
-    let tipo = $("#inp-tipo_pagamento").val();
+    let tipo = $(this).val();
     let cliente = $("#inp-cliente_id").val();
     if (tipo == TRADEIN_PAYMENT_CODE && !cliente) {
         swal(
@@ -1886,11 +1925,10 @@ $("#inp-tipo_pagamento").change(() => {
         // $(".div-vencimento").addClass('d-none');
     }
 
-    if (tipo == "03" || tipo == "04") {
-        if ($("#inp-abrir_modal_cartao").val() == 1) {
-            $("#cartao_credito").modal("show");
-            // $(".div-vencimento").addClass('d-none');
-        }
+    if (tipo == "03") {
+        showModal("#cartao_credito");
+    } else if (tipo == "04" && $("#inp-abrir_modal_cartao").val() == 1) {
+        showModal("#cartao_credito");
     }
 
     if (tipo == "99") {
@@ -2765,6 +2803,53 @@ function normalizeArray(value) {
     return Array.isArray(value) ? value : [value];
 }
 
+function isTipoPagamentoCredito(tipo) {
+    const valor = String(tipo || "").trim();
+    return valor === "03" || valor === "30";
+}
+
+function vendaTemPagamentoCredito(json) {
+    if (isTipoPagamentoCredito(json.tipo_pagamento)) {
+        return true;
+    }
+
+    const tiposRow = normalizeArray(json.tipo_pagamento_row);
+    for (let i = 0; i < tiposRow.length; i++) {
+        if (isTipoPagamentoCredito(tiposRow[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function validarDadosCartaoCredito(json) {
+    const bandeira = ($("select[name='bandeira_cartao']").val() || "").trim();
+    const cnpj = ($("input[name='cnpj_cartao']").val() || "").trim();
+    const codigo = ($("input[name='cAut_cartao']").val() || "").trim();
+
+    json.bandeira_cartao = bandeira;
+    json.cnpj_cartao = cnpj;
+    json.cAut_cartao = codigo;
+
+    if (!vendaTemPagamentoCredito(json)) {
+        return true;
+    }
+
+    if (!bandeira) {
+        toastr.warning("Selecione a bandeira do cartão para pagamento no crédito.");
+        if ($("#cartao_credito").length) {
+            showModal("#cartao_credito");
+            setTimeout(() => {
+                $("#cartao_credito select[name='bandeira_cartao']").focus();
+            }, 50);
+        }
+        return false;
+    }
+
+    return true;
+}
+
 $("#form-pdv").on("submit", function (e) {
     e.preventDefault();
     if (!validateCodigoUnicoRows()) {
@@ -2779,6 +2864,9 @@ $("#form-pdv").on("submit", function (e) {
     json.desconto = convertMoedaToFloat($("#valor_desconto").text());
     json.acrescimo = convertMoedaToFloat($("#valor_acrescimo").text());
     json.valor_frete = convertMoedaToFloat($(".valor-frete").text());
+    if (!validarDadosCartaoCredito(json)) {
+        return;
+    }
     // console.log(">>>>>>>> salvando ", json);
     // return;
     let documentoPdv = $("#documento_pdv").val();
@@ -2941,6 +3029,9 @@ $("#form-pdv-update").on("submit", function (e) {
     json.desconto = convertMoedaToFloat($("#valor_desconto").text());
     json.acrescimo = convertMoedaToFloat($("#valor_acrescimo").text());
     json.valor_frete = convertMoedaToFloat($(".valor-frete").text());
+    if (!validarDadosCartaoCredito(json)) {
+        return;
+    }
     // console.log(">>>>>>>> salvando ", json);
     const submitUpdate = () => {
         $.post(

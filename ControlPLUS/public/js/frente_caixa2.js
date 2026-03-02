@@ -1118,6 +1118,89 @@ $("body").on("click", ".btn-delete", function (e) {
 var emitirNfce = false
 var clienteCNPJ = false
 
+function normalizeArray(value) {
+	if (value === undefined || value === null) {
+		return [];
+	}
+	return Array.isArray(value) ? value : [value];
+}
+
+function showModalBs5(modalTarget) {
+	let element = typeof modalTarget === 'string'
+		? document.querySelector(modalTarget)
+		: modalTarget;
+
+	if (!element) {
+		return false;
+	}
+
+	if (window.bootstrap && window.bootstrap.Modal) {
+		try{
+			if(typeof window.bootstrap.Modal.getOrCreateInstance === 'function'){
+				window.bootstrap.Modal.getOrCreateInstance(element).show();
+			}else{
+				new window.bootstrap.Modal(element).show();
+			}
+			return true;
+		}catch(e){
+			console.warn("Falha ao abrir modal via bootstrap.Modal, tentando jQuery.", e);
+		}
+	}
+
+	if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.modal === 'function') {
+		window.jQuery(element).modal('show');
+		return true;
+	}
+
+	console.error("Nenhuma API de modal disponível para abrir:", element);
+	return false;
+}
+
+function isTipoPagamentoCredito(tipo) {
+	let valor = String(tipo || '').trim();
+	return valor === '03' || valor === '30';
+}
+
+function vendaTemPagamentoCredito(json) {
+	if (isTipoPagamentoCredito(json.tipo_pagamento)) {
+		return true;
+	}
+
+	let tiposRow = normalizeArray(json.tipo_pagamento_row);
+	for (let i = 0; i < tiposRow.length; i++) {
+		if (isTipoPagamentoCredito(tiposRow[i])) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function validarDadosCartaoCredito(json) {
+	let bandeira = ($("select[name='bandeira_cartao']").val() || '').trim();
+	let cnpj = ($("input[name='cnpj_cartao']").val() || '').trim();
+	let codigo = ($("input[name='cAut_cartao']").val() || '').trim();
+
+	json.bandeira_cartao = bandeira;
+	json.cnpj_cartao = cnpj;
+	json.cAut_cartao = codigo;
+
+	if (!vendaTemPagamentoCredito(json)) {
+		return true;
+	}
+
+	if (!bandeira) {
+		swal("Alerta", "Selecione a bandeira do cartão para pagamento no crédito.", "warning");
+		showModalBs5('#modal_finalizar_pdv2');
+		setTimeout(() => {
+			$("#modal_finalizar_pdv2 select[name='bandeira_cartao']").focus();
+		}, 50);
+		return false;
+	}
+
+	return true;
+}
+
 function finalizar(tipo){
 	let soma = 0
 
@@ -1218,6 +1301,9 @@ $("#form-pdv").on("submit", function (e) {
 	json.acrescimo = convertMoedaToFloat($('#inp-valor_acrescimo').val())
 	json.valor_frete = convertMoedaToFloat($('#inp-valor_frete').val())
 	json.valor_total = convertFloatToMoeda(json.valor_total)
+	if(!validarDadosCartaoCredito(json)){
+		return;
+	}
 
 	// console.log(">>>>>>>> salvando ", json);
 	// return
@@ -1392,6 +1478,9 @@ $("#form-pdv-update").on("submit", function (e) {
 	json.desconto = convertMoedaToFloat($('#valor_desconto').val())
 	json.acrescimo = convertMoedaToFloat($('#valor_acrescimo').val())
 	json.valor_frete = convertMoedaToFloat($('#inp-valor_frete').val())
+	if(!validarDadosCartaoCredito(json)){
+		return;
+	}
 	
 	// console.log(">>>>>>>> salvando ", json);
 	$.post(path_url + 'api/frenteCaixa/update/'+$('#venda_id').val(), json)
@@ -1515,4 +1604,3 @@ $("body").on("click", "#btn-suspender", function () {
 		}
 	});
 })
-

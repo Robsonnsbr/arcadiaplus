@@ -172,12 +172,13 @@ class Nfce extends Model
             '02' => 'Mastercard',
             '03' => 'American Express',
             '04' => 'Sorocred',
-            '05' => 'Diners Club',
+            '05' => 'Diners',
             '06' => 'Elo',
             '07' => 'Hipercard',
             '08' => 'Aura',
             '09' => 'Cabal',
-            // '99' => 'Outros'
+            '10' => 'Discover',
+            '99' => 'Outros',
         ];
     }
 

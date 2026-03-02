@@ -280,10 +280,76 @@ class VendaController extends Controller
         return null;
     }
 
+    private function isTipoPagamentoCredito($tipo): bool
+    {
+        $tipo = trim((string)$tipo);
+        return in_array($tipo, ['03', '30'], true);
+    }
+
+    private function requestTemPagamentoCredito(Request $request): bool
+    {
+        if ($this->isTipoPagamentoCredito($request->tipo_pagamento ?? null)) {
+            return true;
+        }
+
+        $faturas = $request->fatura ?? [];
+        if (!is_array($faturas)) {
+            return false;
+        }
+
+        foreach ($faturas as $fatura) {
+            $tipo = null;
+            if (is_array($fatura)) {
+                $tipo = $fatura['tipo'] ?? ($fatura['tipo_pagamento'] ?? ($fatura['forma'] ?? null));
+            } elseif (is_object($fatura)) {
+                $tipo = $fatura->tipo ?? ($fatura->tipo_pagamento ?? ($fatura->forma ?? null));
+            }
+
+            if ($this->isTipoPagamentoCredito($tipo)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function resolveDadosCartao(Request $request): array
+    {
+        $dados = $request->dados_cartao;
+        if (is_string($dados)) {
+            $decoded = json_decode($dados, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $dados = $decoded;
+            } else {
+                $dados = [];
+            }
+        }
+        if (!is_array($dados)) {
+            $dados = [];
+        }
+
+        return [
+            'bandeira' => trim((string)($request->bandeira_cartao ?? ($dados['bandeira'] ?? ''))),
+            'codigo' => trim((string)($request->cAut_cartao ?? ($dados['codigo'] ?? ''))),
+            'cnpj' => trim((string)($request->cnpj_cartao ?? ($dados['cnpj'] ?? ''))),
+        ];
+    }
+
+    private function validarBandeiraCartaoCredito(Request $request): array
+    {
+        $dadosCartao = $this->resolveDadosCartao($request);
+        if ($this->requestTemPagamentoCredito($request) && $dadosCartao['bandeira'] === '') {
+            throw new \Exception('Bandeira do cartão é obrigatória para pagamento em crédito.');
+        }
+
+        return $dadosCartao;
+    }
+
     public function store(Request $request){
         try{
+            $dadosCartao = $this->validarBandeiraCartaoCredito($request);
 
-            $nfce = DB::transaction(function () use ($request) {
+            $nfce = DB::transaction(function () use ($request, $dadosCartao) {
                 $empresa = Empresa::findOrFail($request->empresa_id);
                 $cliente = null;
                 if($request->cliente_id){
@@ -372,9 +438,9 @@ class VendaController extends Controller
                     'dinheiro_recebido' => $request->valor_recebido,
                     'troco' => $request->troco ?? 0,
                     'natureza_id' => $natureza_id,
-                    'bandeira_cartao' => isset($request->dados_cartao['bandeira']) ? $request->dados_cartao['bandeira'] : '',
-                    'cAut_cartao' => isset($request->dados_cartao['codigo']) ? $request->dados_cartao['codigo'] : '',
-                    'cnpj_cartao' => isset($request->dados_cartao['cnpj']) ? $request->dados_cartao['cnpj'] : '',
+                    'bandeira_cartao' => $dadosCartao['bandeira'],
+                    'cAut_cartao' => $dadosCartao['codigo'],
+                    'cnpj_cartao' => $dadosCartao['cnpj'],
                     'user_id' => $request->usuario_id,
                     'funcionario_id' => $request->funcionario_id
                 ];

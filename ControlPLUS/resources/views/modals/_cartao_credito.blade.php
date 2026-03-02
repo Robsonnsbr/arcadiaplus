@@ -1,4 +1,5 @@
-<div class="modal fade" id="cartao_credito" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+<div class="modal fade" id="cartao_credito" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="staticBackdropLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -8,8 +9,9 @@
             <div class="modal-body">
                 <div class="row">
                     <div class="col-md-12">
-                        {!! Form::select('bandeira_cartao', 'Bandeira', ["" => "Selecione"] + App\Models\Nfce::bandeiras())
-                        ->attrs(['class' => 'form-select']) !!}
+                        {!! Form::select('bandeira_cartao', 'Bandeira', ['' => 'Selecione'] + App\Models\Nfce::bandeiras())->attrs([
+                            'class' => 'form-select',
+                        ]) !!}
                     </div>
                     <div class="col-md-6 mt-3">
                         {!! Form::tel('cAut_cartao', 'Código autorização (opcional)')->attrs(['class' => '']) !!}

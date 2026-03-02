@@ -5,6 +5,37 @@ var tipoPagamento = null
 var cliente = null
 var emitirNfce = false
 
+function showModalBs5(modalTarget){
+	const element = typeof modalTarget === 'string'
+		? document.querySelector(modalTarget)
+		: modalTarget
+
+	if(!element){
+		return false
+	}
+
+	if(window.bootstrap && window.bootstrap.Modal){
+		try{
+			if(typeof window.bootstrap.Modal.getOrCreateInstance === 'function'){
+				window.bootstrap.Modal.getOrCreateInstance(element).show()
+			}else{
+				new window.bootstrap.Modal(element).show()
+			}
+			return true
+		}catch(e){
+			console.warn("Falha ao abrir modal via bootstrap.Modal, tentando jQuery.", e)
+		}
+	}
+
+	if(window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.modal === 'function'){
+		window.jQuery(element).modal('show')
+		return true
+	}
+
+	console.error("Nenhuma API de modal disponível para abrir:", element)
+	return false
+}
+
 $(".main").on("keydown", function(e) {
 	if (e.key === "Enter") {
 		e.preventDefault();
@@ -789,7 +820,17 @@ function openModalDinheiro(){
 	$('.modal-dinheiro').modal('show')
 }
 
-$('.btn-modal-finalizar').click(() => {
+$('.btn-modal-finalizar').click((e) => {
+	if (tipoPagamento === '03') {
+		const bandeira = ($('.modal-cartao select[name="bandeira_cartao"]').val() || '').trim()
+		if (!bandeira) {
+			e.preventDefault()
+			e.stopPropagation()
+			toastr.warning('Selecione a bandeira do cartão para pagamento no crédito.')
+			$('.modal-cartao select[name="bandeira_cartao"]').focus()
+			return
+		}
+	}
 	$('.modal-finalizar').modal('show')
 })
 
@@ -886,7 +927,7 @@ function openModalCartao(tipo){
 		return
 	}
 	tipoPagamento = tipo
-	$('.modal-cartao').modal('show')
+	showModalBs5('.modal-cartao')
 }
 
 function calculaTotal(){
@@ -1131,6 +1172,9 @@ function salvarVenda(suspender = 0){
 		acrescimo: convertMoedaToFloat($('.acrescimo').text()),
 		valor_frete: convertMoedaToFloat($('.valor_frete').text()),
 		observacao: $('.modal-observacao #inp-observacao').val(),
+		bandeira_cartao: $('.modal-cartao select[name="bandeira_cartao"]').val() || '',
+		cAut_cartao: $('.modal-cartao input[name="cAut_cartao"]').val() || '',
+		cnpj_cartao: $('.modal-cartao input[name="cnpj_cartao"]').val() || '',
 		troco: convertMoedaToFloat($('.valor-troco').text()),
 		valor_recebido: convertMoedaToFloat($('#inp-valor_recebido').val()),
 		lista_id: null,
@@ -1323,4 +1367,3 @@ function reiniciarVenda(){
 
 	});
 }
-

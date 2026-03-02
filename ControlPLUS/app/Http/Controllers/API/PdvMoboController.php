@@ -52,8 +52,61 @@ class PdvMoboController extends Controller
         }
     }
 
+    private function isTipoPagamentoCredito($tipo): bool
+    {
+        $tipo = trim((string)$tipo);
+        return in_array($tipo, ['03', '30'], true);
+    }
+
+    private function requestTemPagamentoCredito(Request $request): bool
+    {
+        $tipos = [];
+        if (!is_null($request->tipo_pagamento)) {
+            $tipos[] = $request->tipo_pagamento;
+        }
+
+        if (is_array($request->fatura)) {
+            foreach ($request->fatura as $fatura) {
+                if (is_array($fatura)) {
+                    $tipos[] = $fatura['forma'] ?? ($fatura['tipo_pagamento'] ?? ($fatura['tipo'] ?? null));
+                } elseif (is_object($fatura)) {
+                    $tipos[] = $fatura->forma ?? ($fatura->tipo_pagamento ?? ($fatura->tipo ?? null));
+                }
+            }
+        }
+
+        foreach ($tipos as $tipo) {
+            if ($this->isTipoPagamentoCredito($tipo)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function validarBandeiraCartaoCredito(Request $request): array
+    {
+        $dadosCartao = [
+            'bandeira' => trim((string)($request->bandeira_cartao ?? '')),
+            'codigo' => trim((string)($request->cAut_cartao ?? '')),
+            'cnpj' => trim((string)($request->cnpj_cartao ?? '')),
+        ];
+
+        if ($this->requestTemPagamentoCredito($request) && $dadosCartao['bandeira'] === '') {
+            throw new \Exception('Bandeira do cartão é obrigatória para pagamento em crédito.');
+        }
+
+        return $dadosCartao;
+    }
+
     public function store(Request $request){
         try {
+            $dadosCartao = $this->validarBandeiraCartaoCredito($request);
+            $request->merge([
+                'bandeira_cartao' => $dadosCartao['bandeira'],
+                'cAut_cartao' => $dadosCartao['codigo'],
+                'cnpj_cartao' => $dadosCartao['cnpj'],
+            ]);
 
             $venda = DB::transaction(function () use ($request) {
 

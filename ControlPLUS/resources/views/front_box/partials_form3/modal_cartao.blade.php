@@ -9,7 +9,7 @@
                 <div class="row">
                     <div class="col-md-12">
                         {!! Form::select('bandeira_cartao', 'Bandeira', ["" => "Selecione"] + App\Models\Nfce::bandeiras())
-                        ->attrs(['class' => 'form-select']) !!}
+                        ->attrs(['class' => 'form-select', 'required' => true]) !!}
                     </div>
                     <div class="col-md-6 mt-3">
                         {!! Form::tel('cAut_cartao', 'Código autorização (opcional)')->attrs(['class' => '']) !!}
