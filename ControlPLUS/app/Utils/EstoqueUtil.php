@@ -9,11 +9,18 @@ use App\Models\VendiZapConfig;
 use App\Models\ProdutoVariacao;
 use App\Models\EstoqueAtualProduto;
 use App\Models\MovimentacaoProduto;
+use App\Services\EstoqueStatusService;
 use Illuminate\Support\Facades\Auth;
 
 class EstoqueUtil
 {
     protected $urlVendiZap = "https://app.vendizap.com/api";
+    protected $estoqueStatusService;
+
+    public function __construct(EstoqueStatusService $estoqueStatusService)
+    {
+        $this->estoqueStatusService = $estoqueStatusService;
+    }
 
     private function resolveLocalId($local_id = null)
     {
@@ -31,15 +38,33 @@ class EstoqueUtil
         throw new \Exception("Local de estoque não definido para a operação.");
     }
 
+    private function validaReducaoNaoSerialDisponivel(Produto $produto, ?Estoque $item, $produto_variacao_id, int $local_id, int $quantidadeUnits): void
+    {
+        if ($produto->tipo_unico) {
+            return;
+        }
+
+        $saldoFisicoAtual = $item ? QuantidadeUtil::toUnits($item->quantidade) : 0;
+        $reservadoNaoAtivo = $this->estoqueStatusService->somaReservasNaoAtivoLocalUnits(
+            (int)$produto->empresa_id,
+            (int)$produto->id,
+            $produto_variacao_id,
+            $local_id
+        );
+        $saldoFisicoFinal = $saldoFisicoAtual - $quantidadeUnits;
+
+        if ($saldoFisicoFinal < $reservadoNaoAtivo) {
+            throw new \Exception('Operação inválida: saldo físico ficaria abaixo do reservado em status não-ATIVO.');
+        }
+    }
+
     public function incrementaEstoque($produto_id, $quantidade, $produto_variacao_id, $local_id = null)
     {
         $local_id = $this->resolveLocalId($local_id);
-        $item = Estoque::where('produto_id', $produto_id)
-        ->when($produto_variacao_id != null, function ($q) use ($produto_variacao_id) {
-            return $q->where('produto_variacao_id', $produto_variacao_id);
-        })
-        ->where('local_id', $local_id)
-        ->first();
+        $itemQuery = Estoque::where('produto_id', $produto_id)
+            ->where('local_id', $local_id);
+        $itemQuery = VariacaoQueryUtil::apply($itemQuery, $produto_variacao_id);
+        $item = $itemQuery->first();
 
         $produto = Produto::findOrFail($produto_id);
         if($produto->combo){
@@ -50,12 +75,14 @@ class EstoqueUtil
         }else{
 
             if ($item != null) {
-                $item->quantidade += (float)$quantidade;
+                $atualUnits = QuantidadeUtil::toUnits($item->quantidade);
+                $incUnits = QuantidadeUtil::toUnits($quantidade);
+                $item->quantidade = QuantidadeUtil::fromUnits($atualUnits + $incUnits);
                 $item->save();
             } else {
                 $item = Estoque::create([
                     'produto_id' => $produto_id,
-                    'quantidade' => $quantidade,
+                    'quantidade' => QuantidadeUtil::fromUnits(QuantidadeUtil::toUnits($quantidade)),
                     'produto_variacao_id' => $produto_variacao_id,
                     'local_id' => $local_id
                 ]);
@@ -79,29 +106,32 @@ class EstoqueUtil
     public function reduzEstoque($produto_id, $quantidade, $produto_variacao_id, $local_id = null)
     {
         $local_id = $this->resolveLocalId($local_id);
-        $item = Estoque::where('produto_id', $produto_id)
-        ->when($produto_variacao_id != null, function ($q) use ($produto_variacao_id) {
-            return $q->where('produto_variacao_id', $produto_variacao_id);
-        })
-        ->where('local_id', $local_id)
-        ->first();
+        $itemQuery = Estoque::where('produto_id', $produto_id)
+            ->where('local_id', $local_id);
+        $itemQuery = VariacaoQueryUtil::apply($itemQuery, $produto_variacao_id);
+        $item = $itemQuery->first();
+
+        $produto = $item ? $item->produto : Produto::findOrFail($produto_id);
 
         if ($item != null) {
-            $produto = $item->produto;
             if($produto->combo){
                 foreach($produto->itensDoCombo as $c){
                     $this->reduzEstoque($c->item_id, $c->quantidade * $quantidade, $produto_variacao_id, $local_id);
                 }
             }else{
-                $item->quantidade -= $quantidade;
+                $qtdUnits = QuantidadeUtil::toUnits($quantidade);
+                $this->validaReducaoNaoSerialDisponivel($produto, $item, $produto_variacao_id, $local_id, $qtdUnits);
+                $atualUnits = QuantidadeUtil::toUnits($item->quantidade);
+                $item->quantidade = QuantidadeUtil::fromUnits($atualUnits - $qtdUnits);
                 $item->save();
             }
         }else{
-            $produto = Produto::findOrFail($produto_id);
             if($produto->combo){
                 foreach($produto->itensDoCombo as $c){
                     $this->reduzEstoque($c->item_id, $c->quantidade * $quantidade, $produto_variacao_id, $local_id);
                 }
+            }else{
+                $this->validaReducaoNaoSerialDisponivel($produto, null, $produto_variacao_id, $local_id, QuantidadeUtil::toUnits($quantidade));
             }
         }        
 
@@ -125,10 +155,9 @@ class EstoqueUtil
 
     private function SetaEstoqueVendiZap($produto, $quantidade, $produto_variacao_id){
         try{
-            $estoque = Estoque::where('produto_id', $produto->id)
-            ->when($produto_variacao_id != null, function ($q) use ($produto_variacao_id) {
-                return $q->where('produto_variacao_id', $produto_variacao_id);
-            })->first();
+            $estoqueQuery = Estoque::where('produto_id', $produto->id);
+            $estoqueQuery = VariacaoQueryUtil::apply($estoqueQuery, $produto_variacao_id);
+            $estoque = $estoqueQuery->first();
             // dd($estoque);
             $qtdAtual = 0;
 

@@ -23,6 +23,7 @@ use App\Models\Localizacao;
 use App\Models\CategoriaAdicional;
 use Illuminate\Http\Request;
 use App\Utils\EstoqueUtil;
+use App\Utils\StatusKeyUtil;
 
 class ProdutoController extends Controller
 {
@@ -185,7 +186,9 @@ class ProdutoController extends Controller
 
         $data = ProdutoUnico::
         where('produtos.empresa_id', $request->empresa_id)
+        ->where('produto_unicos.tipo', 'entrada')
         ->where('produto_unicos.em_estoque', 1)
+        ->where('produto_unicos.status_key', StatusKeyUtil::DEFAULT_STATUS)
         ->where('produtos.status', 1)
         ->select('produto_unicos.*')
         ->join('produtos', 'produtos.id', '=', 'produto_unicos.produto_id')
@@ -194,6 +197,12 @@ class ProdutoController extends Controller
         })
         ->when($request->pesquisa, function ($q) use ($request) {
             return $q->where('produto_unicos.codigo', 'LIKE', "%$request->pesquisa%");
+        })
+        ->when($request->local_id, function ($q) use ($request) {
+            return $q->where(function ($sub) use ($request) {
+                return $sub->where('produto_unicos.local_id', $request->local_id)
+                    ->orWhereNull('produto_unicos.local_id');
+            });
         })
         ->get();
         return response()->json($data, 200);

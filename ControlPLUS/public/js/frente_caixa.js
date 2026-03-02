@@ -949,6 +949,7 @@ function initCodigoUnicoSelect($select) {
                     page: params.page || 1, // ✅ paginação
                     empresa_id: $("#empresa_id").val(),
                     produto_id: modalCodigoUnicoProdutoId,
+                    local_id: $("#local_id").val(),
                 };
             },
             processResults: function (response, params) {

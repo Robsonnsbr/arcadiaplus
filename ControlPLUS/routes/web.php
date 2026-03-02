@@ -708,6 +708,9 @@ Route::middleware(['verificaEmpresa', 'validaPlano', 'validaContrato'])->group(f
 
     Route::resource('estoque', 'EstoqueController');
     Route::post('estoque/localizacao-store', 'EstoqueController@storeLocalizacao')->name('estoque.localizacao.store');
+    Route::get('estoque/{id}/distribuicao', 'EstoqueController@distribuicao')->name('estoque.distribuicao');
+    Route::get('estoque/{id}/distribuicao-seriais', 'EstoqueController@distribuicaoSeriais')->name('estoque.distribuicao.seriais');
+    Route::post('estoque/{id}/distribuicao-movimentar', 'EstoqueController@distribuicaoMovimentar')->name('estoque.distribuicao.movimentar');
     Route::get('estoque-retirada', 'EstoqueController@retirada')->name('estoque.retirada');
     Route::post('estoque-retirada-store', 'EstoqueController@retiradaStore')->name('estoque-retirada.store');
     Route::delete('estoque-retirada-destroy/{id}', 'EstoqueController@retiradaDestroy')->name('estoque-retirada.destroy');

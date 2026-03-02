@@ -32,6 +32,20 @@
           @endif
         </h5>
 
+        @php
+          $casas = $item->produto->tipo_unico ? 0 : ($item->produto->unidadeDecimal() ? 3 : 0);
+          $disponivelAtivo = isset($item->disponivel_ativo_qtd) ? (float)$item->disponivel_ativo_qtd : 0;
+          $statusQtd = isset($item->status_operacional_qtd) ? (float)$item->status_operacional_qtd : 0;
+        @endphp
+        <div class="small text-primary mt-1">
+          Disponível (ATIVO): {{ number_format($disponivelAtivo, $casas, '.', '') }}
+        </div>
+        @if(!empty($mostrarColunaStatusFiltro))
+          <div class="small text-secondary">
+            {{ $statusOperacionalLabel ?? 'Status' }}: {{ number_format($statusQtd, $casas, '.', '') }}
+          </div>
+        @endif
+
         @if($item->produto->status)
         <span class="badge bg-success mt-1">Ativo</span>
         @else
@@ -39,13 +53,26 @@
         @endif
       </div>
 
-      <div class="card-footer bg-transparent border-0 text-center" style="margin-top: -20px;">
-        <form action="{{ route('estoque.destroy', $item->id) }}" method="post" id="form-{{$item->id}}">
-          @method('delete')
-          @csrf
-          @can('estoque_edit')
-          <a title="Editar estoque" href="{{ route('estoque.edit', [$item->id]) }}" class="btn btn-dark btn-sm">
-            <i class="ri-pencil-fill"></i>
+	      <div class="card-footer bg-transparent border-0 text-center" style="margin-top: -20px;">
+	        <form action="{{ route('estoque.destroy', $item->id) }}" method="post" id="form-{{$item->id}}">
+	          @method('delete')
+	          @csrf
+		          @can('estoque_view')
+                  @php
+                    $acaoDistribuicao = $item->produto->tipo_unico ? 'Gerenciar unidades' : 'Mover quantidade / status';
+                  @endphp
+		          <button
+		            type="button"
+		            class="btn btn-info btn-sm btn-distribuicao"
+		            data-estoque-id="{{ $item->id }}"
+	            title="{{ $acaoDistribuicao }}"
+		          >
+		            <i class="ri-list-check-2 me-1"></i>{{ $acaoDistribuicao }}
+		          </button>
+		          @endcan
+	          @can('estoque_edit')
+	          <a title="Editar estoque" href="{{ route('estoque.edit', [$item->id]) }}" class="btn btn-dark btn-sm">
+	            <i class="ri-pencil-fill"></i>
           </a>
           @endcan
           @can('produtos_edit')

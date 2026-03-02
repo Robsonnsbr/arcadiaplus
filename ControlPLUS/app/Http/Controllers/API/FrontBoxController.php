@@ -65,6 +65,7 @@ use App\Models\ProdutoUnico;
 use App\Models\TradeinCreditMovement;
 use Illuminate\Database\QueryException;
 use App\Utils\TradeinCreditUtil;
+use App\Utils\StatusKeyUtil;
 
 class FrontBoxController extends Controller
 {
@@ -807,7 +808,75 @@ class FrontBoxController extends Controller
         return isset($e->errorInfo[1]) && (int) $e->errorInfo[1] === 1062;
     }
 
-    private function processaCodigoUnicoSaida($produtoId, $quantidade, $jsonCodigos, $nfceId, ItemNfce $itemNfce)
+    private function resolveLocalEfetivoParaSerial(?int $localVendaId, ProdutoUnico $entrada): int
+    {
+        static $empresaProdutoCache = [];
+
+        $produtoId = (int)$entrada->produto_id;
+        if (!array_key_exists($produtoId, $empresaProdutoCache)) {
+            $empresaProdutoCache[$produtoId] = Produto::where('id', $produtoId)->value('empresa_id');
+        }
+        $empresaId = $empresaProdutoCache[$produtoId] ? (int)$empresaProdutoCache[$produtoId] : null;
+
+        $validaLocalEmpresa = function (?int $id) use ($empresaId): ?int {
+            if (!$id) {
+                return null;
+            }
+            $query = Localizacao::where('id', (int)$id);
+            if ($empresaId) {
+                $query->where('empresa_id', $empresaId);
+            }
+            $local = $query->first();
+            return $local ? (int)$local->id : null;
+        };
+
+        $localVendaValido = $validaLocalEmpresa($localVendaId ? (int)$localVendaId : null);
+        if ($localVendaId && !$localVendaValido) {
+            throw new \Exception('Local da venda inválido para a empresa do serial.');
+        }
+
+        $localSerial = $entrada->local_id ? (int)$entrada->local_id : null;
+        $localSerialValido = $validaLocalEmpresa($localSerial);
+        if ($localSerial && !$localSerialValido) {
+            throw new \Exception("O código {$entrada->codigo} está vinculado a local inválido para a empresa.");
+        }
+
+        if ($localVendaValido && $localSerialValido && $localVendaValido !== $localSerialValido) {
+            throw new \Exception("O código {$entrada->codigo} não pertence ao local ativo da venda.");
+        }
+
+        if ($localSerialValido) {
+            return $localVendaValido ?: $localSerialValido;
+        }
+
+        if ($localVendaValido) {
+            return $localVendaValido;
+        }
+
+        if (function_exists('__getLocalAtivo')) {
+            $localAtivo = __getLocalAtivo();
+            if ($localAtivo && isset($localAtivo->id)) {
+                $localAtivoValido = $validaLocalEmpresa((int)$localAtivo->id);
+                if ($localAtivoValido) {
+                    return $localAtivoValido;
+                }
+            }
+        }
+
+        if ($empresaId && function_exists('__getLocalPadraoEmpresa')) {
+            $localPadrao = __getLocalPadraoEmpresa($empresaId);
+            if ($localPadrao && isset($localPadrao->id)) {
+                $localPadraoValido = $validaLocalEmpresa((int)$localPadrao->id);
+                if ($localPadraoValido) {
+                    return $localPadraoValido;
+                }
+            }
+        }
+
+        throw new \Exception("Não foi possível determinar o local da operação para o código {$entrada->codigo}.");
+    }
+
+    private function processaCodigoUnicoSaida($produtoId, $quantidade, $jsonCodigos, $nfceId, ItemNfce $itemNfce, ?int $localId = null): int
     {
         if(!$jsonCodigos){
             throw new \Exception('Selecione os códigos únicos para o produto informado.');
@@ -828,10 +897,14 @@ class FrontBoxController extends Controller
         }
 
         $codigosTexto = [];
+        $localEfetivoOperacao = null;
         foreach($codigoSelecionados as $code){
             $entrada = null;
             if(isset($code['id']) && $code['id']){
-                $entrada = ProdutoUnico::find($code['id']);
+                $entrada = ProdutoUnico::where('id', $code['id'])
+                    ->where('produto_id', $produtoId)
+                    ->where('tipo', 'entrada')
+                    ->first();
             }
 
             if(!$entrada){
@@ -850,17 +923,36 @@ class FrontBoxController extends Controller
                 throw new \Exception("O código {$entrada->codigo} já foi utilizado em outra venda.");
             }
 
+            $statusKey = StatusKeyUtil::normalizeOrDefault($entrada->status_key);
+            if ($statusKey !== StatusKeyUtil::DEFAULT_STATUS) {
+                throw new \Exception("O código {$entrada->codigo} não está no status ATIVO para venda.");
+            }
+
+            $localEfetivoSerial = $this->resolveLocalEfetivoParaSerial($localId ? (int)$localId : null, $entrada);
+            if ($localEfetivoOperacao === null) {
+                $localEfetivoOperacao = $localEfetivoSerial;
+            } elseif ((int)$localEfetivoOperacao !== (int)$localEfetivoSerial) {
+                throw new \Exception('Selecione códigos únicos do mesmo local para concluir a venda.');
+            }
+
+            if (!$entrada->local_id) {
+                $entrada->local_id = (int)$localEfetivoSerial;
+            }
+
             $entrada->em_estoque = 0;
+            $entrada->status_key = $statusKey;
             $entrada->save();
 
             ProdutoUnico::create([
                 'nfe_id' => null,
                 'nfce_id' => $nfceId,
                 'produto_id' => $produtoId,
+                'local_id' => $entrada->local_id,
                 'codigo' => $entrada->codigo,
                 'observacao' => $code['observacao'] ?? '',
                 'tipo' => 'saida',
-                'em_estoque' => 0
+                'em_estoque' => 0,
+                'status_key' => $statusKey,
             ]);
 
             $codigosTexto[] = $entrada->codigo;
@@ -870,6 +962,12 @@ class FrontBoxController extends Controller
             $itemNfce->infAdProd = implode(', ', $codigosTexto);
             $itemNfce->save();
         }
+
+        if (!$localEfetivoOperacao) {
+            throw new \Exception('Não foi possível determinar o local efetivo para o consumo dos códigos únicos.');
+        }
+
+        return (int)$localEfetivoOperacao;
     }
 
     private function liberarCodigosUnicosNfce($nfceId)
@@ -993,10 +1091,33 @@ class FrontBoxController extends Controller
                             'variacao_id' => $variacao_id,
                         ]);
                         $codigoUnicoValue = $codigoInputs[$i] ?? null;
+                        $localMovimentoItem = $caixa->local_id ? (int)$caixa->local_id : null;
                         if($product->tipo_unico){
-                            $this->processaCodigoUnicoSaida($product->id, $request->quantidade[$i], $codigoUnicoValue, $nfce->id, $itemNfce);
+                            $localSerialConsumido = $this->processaCodigoUnicoSaida($product->id, $request->quantidade[$i], $codigoUnicoValue, $nfce->id, $itemNfce, $localMovimentoItem);
+                            if (!$localMovimentoItem && $localSerialConsumido) {
+                                $localMovimentoItem = (int)$localSerialConsumido;
+                                if (!$nfce->local_id) {
+                                    $nfce->local_id = $localMovimentoItem;
+                                    $nfce->save();
+                                }
+                                if ($caixa && !$caixa->local_id) {
+                                    $caixa->local_id = $localMovimentoItem;
+                                    $caixa->save();
+                                }
+                            }
                         }else if($codigoUnicoValue){
-                            $this->processaCodigoUnicoSaida($product->id, $request->quantidade[$i], $codigoUnicoValue, $nfce->id, $itemNfce);
+                            $localSerialConsumido = $this->processaCodigoUnicoSaida($product->id, $request->quantidade[$i], $codigoUnicoValue, $nfce->id, $itemNfce, $localMovimentoItem);
+                            if (!$localMovimentoItem && $localSerialConsumido) {
+                                $localMovimentoItem = (int)$localSerialConsumido;
+                                if (!$nfce->local_id) {
+                                    $nfce->local_id = $localMovimentoItem;
+                                    $nfce->save();
+                                }
+                                if ($caixa && !$caixa->local_id) {
+                                    $caixa->local_id = $localMovimentoItem;
+                                    $caixa->save();
+                                }
+                            }
                         }
 
                         if(isset($request->adicionais[$i])){
@@ -1013,7 +1134,7 @@ class FrontBoxController extends Controller
                         }
 
                         if ($product->gerenciar_estoque) {
-                            $this->util->reduzEstoque($product->id, __convert_value_bd($request->quantidade[$i]), $variacao_id, $caixa->local_id);
+                            $this->util->reduzEstoque($product->id, __convert_value_bd($request->quantidade[$i]), $variacao_id, $localMovimentoItem);
 
                             $tipo = 'reducao';
                             $codigo_transacao = $nfce->id;
@@ -2295,6 +2416,7 @@ public function update(Request $request, $id){
 
             $item->fill($request->all())->save();
             $this->liberarCodigosUnicosNfce($item->id);
+            $codigoInputs = $request->codigo_unico_ids ?? [];
 
             if($request->produto_id){
                 foreach($item->itens as $i){
@@ -2330,10 +2452,35 @@ public function update(Request $request, $id){
                         'variacao_id' => $variacao_id,
                     ]);
                     $codigoUnicoValue = $codigoInputs[$i] ?? null;
+                    $localMovimentoItem = $item->local_id
+                        ? (int)$item->local_id
+                        : ($caixa && $caixa->local_id ? (int)$caixa->local_id : null);
                     if($product->tipo_unico){
-                        $this->processaCodigoUnicoSaida($product->id, $request->quantidade[$i], $codigoUnicoValue, $item->id, $itemNfce);
+                        $localSerialConsumido = $this->processaCodigoUnicoSaida($product->id, $request->quantidade[$i], $codigoUnicoValue, $item->id, $itemNfce, $localMovimentoItem);
+                        if (!$localMovimentoItem && $localSerialConsumido) {
+                            $localMovimentoItem = (int)$localSerialConsumido;
+                            if (!$item->local_id) {
+                                $item->local_id = $localMovimentoItem;
+                                $item->save();
+                            }
+                            if ($caixa && !$caixa->local_id) {
+                                $caixa->local_id = $localMovimentoItem;
+                                $caixa->save();
+                            }
+                        }
                     }else if($codigoUnicoValue){
-                        $this->processaCodigoUnicoSaida($product->id, $request->quantidade[$i], $codigoUnicoValue, $item->id, $itemNfce);
+                        $localSerialConsumido = $this->processaCodigoUnicoSaida($product->id, $request->quantidade[$i], $codigoUnicoValue, $item->id, $itemNfce, $localMovimentoItem);
+                        if (!$localMovimentoItem && $localSerialConsumido) {
+                            $localMovimentoItem = (int)$localSerialConsumido;
+                            if (!$item->local_id) {
+                                $item->local_id = $localMovimentoItem;
+                                $item->save();
+                            }
+                            if ($caixa && !$caixa->local_id) {
+                                $caixa->local_id = $localMovimentoItem;
+                                $caixa->save();
+                            }
+                        }
                     }
 
                     if(isset($request->adicionais[$i])){
@@ -2349,7 +2496,7 @@ public function update(Request $request, $id){
                     }
 
                     if ($product->gerenciar_estoque) {
-                        $this->util->reduzEstoque($product->id, __convert_value_bd($request->quantidade[$i]), $variacao_id, $item->local_id);
+                        $this->util->reduzEstoque($product->id, __convert_value_bd($request->quantidade[$i]), $variacao_id, $localMovimentoItem);
                     }
 
                     $tipo = 'reducao';

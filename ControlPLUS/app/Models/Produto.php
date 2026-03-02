@@ -181,6 +181,7 @@ class Produto extends Model
 	public function produtoUnicosDisponiveis()
 	{
 		return $this->hasMany(ProdutoUnico::class, 'produto_id')
+			->where('tipo', 'entrada')
 			->where('em_estoque', 1)
 			->orderBy('codigo', 'asc');
 	}

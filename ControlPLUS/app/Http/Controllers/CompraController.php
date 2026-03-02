@@ -27,6 +27,7 @@ use App\Models\CategoriaProduto;
 use App\Models\Marca;
 use App\Models\UnidadeMedida;
 use App\Utils\EstoqueUtil;
+use App\Utils\StatusKeyUtil;
 use Illuminate\Support\Facades\DB;
 use App\Models\ProdutoLocalizacao;
 use App\Models\Localizacao;
@@ -1062,16 +1063,28 @@ public function setCodigoUnico($id)
 
 public function setarCodigoUnico(Request $request)
 {
+    $nfe = Nfe::findOrFail($request->nfe_id);
+    $localId = $nfe->local_id;
+
+    if (!$localId && function_exists('__getLocalPadraoEmpresa')) {
+        $localPadrao = __getLocalPadraoEmpresa((int)$nfe->empresa_id);
+        if ($localPadrao && isset($localPadrao->id)) {
+            $localId = (int)$localPadrao->id;
+        }
+    }
+
     for ($i = 0; $i < sizeof($request->produto_id); $i++) {
 
         ProdutoUnico::create([
             'nfe_id' => $request->nfe_id,
             'nfce_id' => null,
             'produto_id' => $request->produto_id[$i],
+            'local_id' => $localId,
             'codigo' => $request->codigo[$i],
             'observacao' => $request->observacao[$i] ?? '',
             'tipo' => 'entrada',
-            'em_estoque' => 1
+            'em_estoque' => 1,
+            'status_key' => StatusKeyUtil::DEFAULT_STATUS,
         ]);
     }
     session()->flash('flash_success', 'Dados definidos com sucesso!');

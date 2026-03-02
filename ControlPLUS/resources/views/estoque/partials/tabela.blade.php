@@ -7,6 +7,10 @@
                 <th>Produto</th>
                 <th>Categoria</th>
                 <th>Quantidade</th>
+                <th>Disponível (ATIVO)</th>
+                @if(!empty($mostrarColunaStatusFiltro))
+                <th>{{ $statusOperacionalLabel ?? 'Status' }}</th>
+                @endif
                 <th>Valor de venda</th>
                 <th>Unidade</th>
                 <th>Códigos de série</th>
@@ -32,6 +36,19 @@
                     {{ number_format($item->quantidade, 3, '.', '') }}
                     @endif
                 </td>
+                @php
+                    $casas = $item->produto->tipo_unico ? 0 : ($item->produto->unidadeDecimal() ? 3 : 0);
+                    $disponivelAtivo = isset($item->disponivel_ativo_qtd) ? (float)$item->disponivel_ativo_qtd : 0;
+                    $statusQtd = isset($item->status_operacional_qtd) ? (float)$item->status_operacional_qtd : 0;
+                @endphp
+                <td data-label="Disponível (ATIVO)">
+                    {{ number_format($disponivelAtivo, $casas, '.', '') }}
+                </td>
+                @if(!empty($mostrarColunaStatusFiltro))
+                <td data-label="{{ $statusOperacionalLabel ?? 'Status' }}">
+                    {{ number_format($statusQtd, $casas, '.', '') }}
+                </td>
+                @endif
                 <td data-label="Variação">
                     @if($item->produtoVariacao)
                     {{ __moeda($item->produtoVariacao->valor) }}
@@ -79,9 +96,22 @@
                 <td data-label="Local">{{ $item->local ? $item->local->descricao : '--' }}</td>
                 @endif
                 <td>
-                    <form style="width: 200px;" action="{{ route('estoque.destroy', $item->id) }}" method="post" id="form-{{$item->id}}">
+                    <form style="width: 240px;" action="{{ route('estoque.destroy', $item->id) }}" method="post" id="form-{{$item->id}}">
                         @method('delete')
                         @csrf
+                        @can('estoque_view')
+                        @php
+                            $acaoDistribuicao = $item->produto->tipo_unico ? 'Gerenciar unidades' : 'Mover quantidade / status';
+                        @endphp
+                        <button
+                            type="button"
+                            class="btn btn-info btn-sm btn-distribuicao"
+                            data-estoque-id="{{ $item->id }}"
+                            title="{{ $acaoDistribuicao }}"
+                        >
+                            <i class="ri-list-check-2 me-1"></i>{{ $acaoDistribuicao }}
+                        </button>
+                        @endcan
                         @can('estoque_edit')
                         <a title="Editar estoque" href="{{ route('estoque.edit', [$item->id]) }}" class="btn btn-dark btn-sm">
                             <i class="ri-pencil-fill"></i>
@@ -105,7 +135,11 @@
             </tr>
             @empty
             <tr>
-                <td colspan="{{ __countLocalAtivo() > 1 ? 10 : 9 }}" class="text-center">Nada encontrado</td>
+                @php
+                    $colspanBase = __countLocalAtivo() > 1 ? 11 : 10;
+                    $colspan = $colspanBase + (!empty($mostrarColunaStatusFiltro) ? 1 : 0);
+                @endphp
+                <td colspan="{{ $colspan }}" class="text-center">Nada encontrado</td>
             </tr>
             @endforelse
         </tbody>

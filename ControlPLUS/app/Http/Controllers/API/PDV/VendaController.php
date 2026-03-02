@@ -21,9 +21,13 @@ use App\Models\Caixa;
 use App\Models\User;
 use App\Models\OrdemServico;
 use App\Models\Localizacao;
+use App\Models\ProdutoUnico;
 use Illuminate\Support\Facades\DB;
+use App\Services\EstoqueStatusService;
 use App\Utils\EstoqueUtil;
 use App\Utils\ContaEmpresaUtil;
+use App\Utils\QuantidadeUtil;
+use App\Utils\StatusKeyUtil;
 use App\Models\ComissaoVenda;
 use App\Models\Funcionario;
 use App\Models\ConfigGeral;
@@ -36,11 +40,108 @@ class VendaController extends Controller
 {
     protected $util;
     protected $utilConta;
+    protected $estoqueStatusService;
 
-    public function __construct(EstoqueUtil $util, ContaEmpresaUtil $utilConta)
+    public function __construct(
+        EstoqueUtil $util,
+        ContaEmpresaUtil $utilConta,
+        EstoqueStatusService $estoqueStatusService
+    )
     {
         $this->util = $util;
         $this->utilConta = $utilConta;
+        $this->estoqueStatusService = $estoqueStatusService;
+    }
+
+    private function resolveVariacaoIdItem(array $item)
+    {
+        if (array_key_exists('produto_variacao_id', $item) && $item['produto_variacao_id'] !== null && $item['produto_variacao_id'] !== '') {
+            return (int)$item['produto_variacao_id'];
+        }
+        if (array_key_exists('variacao_id', $item) && $item['variacao_id'] !== null && $item['variacao_id'] !== '') {
+            return (int)$item['variacao_id'];
+        }
+        return null;
+    }
+
+    private function validarSerialAtivoQuandoInformado(array $item, Produto $product, int $local_id): void
+    {
+        $produtoUnicoId = $item['produto_unico_id'] ?? null;
+        $codigoUnico = $item['codigo_unico'] ?? ($item['serial'] ?? null);
+
+        if (!$produtoUnicoId && !$codigoUnico) {
+            return;
+        }
+
+        $qtdUnits = QuantidadeUtil::toUnits($item['quantidade'] ?? 0);
+        if ($qtdUnits !== QuantidadeUtil::FACTOR) {
+            throw new \Exception("Produto serializado {$product->nome} deve ser vendido com quantidade 1 por código.");
+        }
+
+        $query = ProdutoUnico::where('produto_id', $product->id)
+            ->where('tipo', 'entrada')
+            ->where('em_estoque', 1);
+
+        if ($produtoUnicoId) {
+            $query->where('id', (int)$produtoUnicoId);
+        } else {
+            $query->where('codigo', (string)$codigoUnico);
+        }
+
+        $serial = $query->lockForUpdate()->first();
+        if (!$serial) {
+            throw new \Exception("Código serial informado para {$product->nome} não está disponível em estoque.");
+        }
+
+        $statusAtual = StatusKeyUtil::normalizeOrDefault($serial->status_key);
+        if ($statusAtual !== StatusKeyUtil::DEFAULT_STATUS) {
+            throw new \Exception("Produto serializado {$product->nome} não está disponível para venda (status {$statusAtual}).");
+        }
+
+        if ($serial->local_id && (int)$serial->local_id !== (int)$local_id) {
+            throw new \Exception("Código serial informado para {$product->nome} pertence a outro local de estoque.");
+        }
+    }
+
+    private function validarItemEstoqueAtivoParaVenda(array $item, Produto $product, int $empresa_id, int $local_id): void
+    {
+        if (!$product->gerenciar_estoque) {
+            return;
+        }
+
+        if ((bool)$product->tipo_unico) {
+            $this->validarSerialAtivoQuandoInformado($item, $product, $local_id);
+            return;
+        }
+
+        $qtdUnits = QuantidadeUtil::toUnits($item['quantidade'] ?? 0);
+        if ($qtdUnits <= 0) {
+            throw new \Exception("Quantidade inválida para o produto {$product->nome}.");
+        }
+
+        $produtoVariacaoId = $this->resolveVariacaoIdItem($item);
+        $ativoDisponivel = $this->estoqueStatusService->ativoDisponivelUnits(
+            $empresa_id,
+            (int)$product->id,
+            $produtoVariacaoId,
+            $local_id
+        );
+
+        if ($qtdUnits > $ativoDisponivel) {
+            $statuses = $this->estoqueStatusService->reservasNaoAtivoLabels(
+                $empresa_id,
+                (int)$product->id,
+                $produtoVariacaoId,
+                $local_id
+            );
+            $sufixo = sizeof($statuses) > 0
+                ? (' Reservado em: ' . implode(', ', $statuses) . '.')
+                : '';
+            throw new \Exception(
+                "Produto {$product->nome} sem estoque disponível (ATIVO). Disponível: "
+                . QuantidadeUtil::fromUnits($ativoDisponivel) . ".{$sufixo}"
+            );
+        }
     }
 
     private function resolveLocalIdEmpresa($empresa_id, $local_id = null, $usuario_id = null)
@@ -232,6 +333,10 @@ class VendaController extends Controller
 
                 foreach($request->itens as $item){
                     $product = Produto::findOrFail($item['produto_id']);
+                    $produtoVariacaoId = $this->resolveVariacaoIdItem($item);
+                    if ($product->gerenciar_estoque) {
+                        $this->validarItemEstoqueAtivoParaVenda($item, $product, (int)$request->empresa_id, (int)$local_id);
+                    }
                     $dataItem = [
                         'nfce_id' => $nfce->id,
                         'produto_id' => $product->id,
@@ -255,14 +360,14 @@ class VendaController extends Controller
                     $itemNfce = ItemNfce::create($dataItem);
 
                     if ($product->gerenciar_estoque) {
-                        $this->util->reduzEstoque($product->id, $item['quantidade'], null, $local_id);
+                        $this->util->reduzEstoque($product->id, $item['quantidade'], $produtoVariacaoId, $local_id);
                     }
 
                     $tipo = 'reducao';
                     $codigo_transacao = $nfce->id;
                     $tipo_transacao = 'venda_nfce';
 
-                    $this->util->movimentacaoProduto($product->id, $item['quantidade'], $tipo, $codigo_transacao, $tipo_transacao, $request->usuario_id);
+                    $this->util->movimentacaoProduto($product->id, $item['quantidade'], $tipo, $codigo_transacao, $tipo_transacao, $request->usuario_id, $produtoVariacaoId);
 
                 }
 
