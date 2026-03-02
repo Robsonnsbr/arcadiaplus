@@ -54,10 +54,16 @@
                                 Apontamento de Produção
                             </a>
                         @endcan
-                        @can('localizacao_create')
+                        @canany(['localizacao_create', 'localizacao_delete'])
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-cadastrar-local">
                                 <i class="ri-map-pin-add-line"></i>
                                 Cadastrar Local
+                            </button>
+                        @endcanany
+                        @can('estoque_edit')
+                            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#modal-cadastrar-status">
+                                <i class="ri-price-tag-3-line"></i>
+                                Cadastrar Status
                             </button>
                         @endcan
                     </div>
@@ -65,13 +71,7 @@
                 <hr class="mt-3">
                 <div class="col-lg-12">
                     @php
-                        $statusOperacionalOptions = $statusOperacionalOptions ?? [
-                            'TODOS' => 'Todos',
-                            'ATIVO' => 'Disponíveis para venda (ATIVO)',
-                            'ASSISTENCIA' => 'Assistência',
-                            'DEFEITO' => 'Defeito',
-                            'EMPRESTADO' => 'Emprestado',
-                        ];
+                        $statusOperacionalOptions = $statusOperacionalOptions ?? ['TODOS' => 'Todos'];
                         $statusOperacionalSelecionado = $statusOperacionalSelecionado ?? 'TODOS';
                     @endphp
                     {!!Form::open()->fill(request()->all())
@@ -130,7 +130,7 @@
     </div>
 </div>
 
-@can('localizacao_create')
+@canany(['localizacao_create', 'localizacao_delete'])
 <div class="modal fade" id="modal-cadastrar-local" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -138,28 +138,161 @@
                 <h5 class="modal-title">Cadastrar Local</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <form method="post" action="{{ route('estoque.localizacao.store') }}">
-                @csrf
-                <div class="modal-body">
-                    <label for="descricao_local_estoque" class="form-label">Nome do local</label>
+            <div class="modal-body">
+                @can('localizacao_create')
+                    <form id="form-cadastrar-local-estoque" method="post" action="{{ route('estoque.localizacao.store') }}">
+                        @csrf
+                        <label for="descricao_local_estoque" class="form-label">Nome do local</label>
+                        <input
+                            type="text"
+                            id="descricao_local_estoque"
+                            name="descricao"
+                            class="form-control @error('descricao') is-invalid @enderror"
+                            value="{{ old('descricao') }}"
+                            maxlength="150"
+                            required
+                        >
+                        @error('descricao')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </form>
+                @endcan
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Local</th>
+                                <th>Tipo</th>
+                                <th class="text-end">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse(($locaisCadastros ?? []) as $localItem)
+                                <tr>
+                                    <td>{{ $localItem['descricao'] }}</td>
+                                    <td>
+                                        @if(!empty($localItem['is_system']))
+                                            <span class="badge bg-secondary">Base</span>
+                                        @else
+                                            <span class="badge bg-info">Custom</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-end">
+                                        @can('localizacao_delete')
+                                            @if(!empty($localItem['can_delete']))
+                                                <form method="post" action="{{ route('localizacao.destroy', $localItem['id']) }}" class="d-inline">
+                                                    @csrf
+                                                    @method('delete')
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Excluir local">
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </button>
+                                                </form>
+                                            @elseif(!empty($localItem['in_use']))
+                                                <span class="text-muted small">Em uso</span>
+                                            @else
+                                                <span class="text-muted small">Protegido</span>
+                                            @endif
+                                        @else
+                                            <span class="text-muted small">Sem permissão</span>
+                                        @endcan
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">Sem locais cadastrados.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                @can('localizacao_create')
+                <button type="submit" form="form-cadastrar-local-estoque" class="btn btn-primary">Salvar</button>
+                @endcan
+            </div>
+        </div>
+    </div>
+</div>
+@endcanany
+
+@can('estoque_edit')
+<div class="modal fade" id="modal-cadastrar-status" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cadastrar Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-cadastrar-status" method="post" action="{{ route('estoque.status.store') }}">
+                    @csrf
+                    <label for="nome_status_estoque" class="form-label">Nome do status</label>
                     <input
                         type="text"
-                        id="descricao_local_estoque"
-                        name="descricao"
-                        class="form-control @error('descricao') is-invalid @enderror"
-                        value="{{ old('descricao') }}"
-                        maxlength="150"
+                        id="nome_status_estoque"
+                        name="nome_status"
+                        class="form-control @error('nome_status') is-invalid @enderror"
+                        value="{{ old('nome_status') }}"
+                        maxlength="80"
                         required
                     >
-                    @error('descricao')
+                    @error('nome_status')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
+                </form>
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Status</th>
+                                <th>Tipo</th>
+                                <th class="text-end">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse(($statusCadastros ?? []) as $statusItem)
+                                <tr>
+                                    <td><code>{{ $statusItem['status_key'] }}</code></td>
+                                    <td>
+                                        @if(!empty($statusItem['is_system']))
+                                            <span class="badge bg-secondary">Base</span>
+                                        @else
+                                            <span class="badge bg-info">Custom</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-end">
+                                        @if(!empty($statusItem['can_delete']))
+                                            <form method="post" action="{{ route('estoque.status.destroy', $statusItem['id']) }}" class="d-inline">
+                                                @csrf
+                                                @method('delete')
+                                                <button type="submit" class="btn btn-sm btn-danger" title="Excluir status">
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </button>
+                                            </form>
+                                        @elseif(!empty($statusItem['in_use']))
+                                            <span class="text-muted small">Em uso</span>
+                                        @else
+                                            <span class="text-muted small">Protegido</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">Sem status cadastrados.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar</button>
-                </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" form="form-cadastrar-status" class="btn btn-primary">Salvar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -318,6 +451,15 @@
         const shouldOpenLocalModal = @json($errors->has('descricao') && auth()->user()->can('localizacao_create'));
         if (shouldOpenLocalModal) {
             const modalEl = document.getElementById('modal-cadastrar-local');
+            if (modalEl && window.bootstrap) {
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            }
+        }
+
+        const shouldOpenStatusModal = @json($errors->has('nome_status') && auth()->user()->can('estoque_edit'));
+        if (shouldOpenStatusModal) {
+            const modalEl = document.getElementById('modal-cadastrar-status');
             if (modalEl && window.bootstrap) {
                 const modal = new bootstrap.Modal(modalEl);
                 modal.show();

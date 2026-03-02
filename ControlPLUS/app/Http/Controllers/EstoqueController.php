@@ -11,6 +11,7 @@ use App\Models\ProdutoLocalizacao;
 use App\Models\Localizacao;
 use App\Models\ProdutoUnico;
 use App\Models\EstoqueStatusSaldo;
+use App\Models\EstoqueStatusCadastro;
 use App\Models\ConfigGeral;
 use App\Models\UsuarioLocalizacao;
 use App\Models\Empresa;
@@ -37,6 +38,7 @@ class EstoqueController extends Controller
         $this->middleware('permission:estoque_view', ['only' => ['show', 'index']]);
         $this->middleware('permission:estoque_delete', ['only' => ['destroy']]);
         $this->middleware('permission:localizacao_create', ['only' => ['storeLocalizacao']]);
+        $this->middleware('permission:estoque_edit', ['only' => ['storeStatus', 'destroyStatus']]);
         $this->middleware('permission:estoque_view', ['only' => ['distribuicao']]);
         $this->middleware('permission:estoque_view', ['only' => ['distribuicaoSeriais']]);
         $this->middleware('permission:estoque_edit', ['only' => ['distribuicaoMovimentar']]);
@@ -109,6 +111,49 @@ class EstoqueController extends Controller
             'DEFEITO',
             'EMPRESTADO',
         ];
+    }
+
+    private function ensureStatusBaseEmpresa(int $empresa_id): void
+    {
+        foreach ($this->statusBaseOptions() as $statusBase) {
+            $status = $this->normalizaStatusKey($statusBase, true);
+            $row = EstoqueStatusCadastro::firstOrCreate(
+                [
+                    'empresa_id' => $empresa_id,
+                    'status_key' => $status,
+                ],
+                [
+                    'descricao' => $status,
+                    'is_system' => true,
+                    'ativo' => true
+                ]
+            );
+
+            if (!(bool)$row->is_system || !(bool)$row->ativo) {
+                $row->is_system = true;
+                $row->ativo = true;
+                $row->save();
+            }
+        }
+    }
+
+    private function statusCatalogEmpresa(int $empresa_id)
+    {
+        $this->ensureStatusBaseEmpresa($empresa_id);
+
+        return EstoqueStatusCadastro::where('empresa_id', $empresa_id)
+            ->where('ativo', 1)
+            ->orderByRaw(
+                "CASE
+                    WHEN status_key = 'ATIVO' THEN 0
+                    WHEN status_key = 'ASSISTENCIA' THEN 1
+                    WHEN status_key = 'DEFEITO' THEN 2
+                    WHEN status_key = 'EMPRESTADO' THEN 3
+                    ELSE 4
+                END"
+            )
+            ->orderBy('descricao')
+            ->get();
     }
 
     private function formatStatusLabel(string $status): string
@@ -201,9 +246,16 @@ class EstoqueController extends Controller
             ->get();
     }
 
-    private function statusOptions(array $statuses = []): array
+    private function statusOptions(array $statuses = [], ?int $empresa_id = null): array
     {
+        $catalogRows = collect();
+        if ($empresa_id) {
+            $catalogRows = $this->statusCatalogEmpresa($empresa_id);
+        }
+        $catalogMap = $catalogRows->pluck('descricao', 'status_key');
+
         $allStatuses = collect($this->statusBaseOptions())
+            ->merge($catalogMap->keys()->all())
             ->merge($statuses)
             ->map(function ($status) {
                 return $this->normalizaStatusKey($status);
@@ -213,14 +265,186 @@ class EstoqueController extends Controller
             ->values();
 
         return $allStatuses
-            ->map(function ($status) {
+            ->map(function ($status) use ($catalogMap) {
                 return [
                     'value' => $status,
-                    'label' => $this->formatStatusLabel($status),
+                    'label' => $catalogMap[$status] ?? $this->formatStatusLabel($status),
                 ];
             })
             ->values()
             ->all();
+    }
+
+    private function statusOperacionalOptions(int $empresa_id): array
+    {
+        $options = ['TODOS' => 'Todos'];
+        foreach ($this->statusOptions([], $empresa_id) as $status) {
+            if ($status['value'] === 'ATIVO') {
+                $options[$status['value']] = 'Disponíveis para venda (ATIVO)';
+            } else {
+                $options[$status['value']] = $status['label'];
+            }
+        }
+        return $options;
+    }
+
+    private function statusGerenciaveis(int $empresa_id): array
+    {
+        $rows = $this->statusCatalogEmpresa($empresa_id);
+
+        $statusEmUsoSaldos = EstoqueStatusSaldo::where('empresa_id', $empresa_id)
+            ->whereNotNull('status_key')
+            ->pluck('status_key')
+            ->map(function ($status) {
+                return StatusKeyUtil::normalize($status);
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $statusEmUsoSeriais = DB::table('produto_unicos')
+            ->join('produtos', 'produtos.id', '=', 'produto_unicos.produto_id')
+            ->where('produtos.empresa_id', $empresa_id)
+            ->whereNotNull('produto_unicos.status_key')
+            ->pluck('produto_unicos.status_key')
+            ->map(function ($status) {
+                return StatusKeyUtil::normalize($status);
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $statusEmUso = collect($statusEmUsoSaldos)
+            ->merge($statusEmUsoSeriais)
+            ->unique()
+            ->values()
+            ->all();
+
+        return $rows->map(function ($row) use ($statusEmUso) {
+            $statusKey = $this->normalizaStatusKey($row->status_key) ?? '';
+            $isBase = in_array($statusKey, $this->statusBaseOptions(), true);
+            $inUse = in_array($statusKey, $statusEmUso, true);
+            return [
+                'id' => (int)$row->id,
+                'status_key' => $statusKey,
+                'label' => $row->descricao ?: $this->formatStatusLabel($statusKey),
+                'is_system' => (bool)$row->is_system || $isBase,
+                'in_use' => $inUse,
+                'can_delete' => !((bool)$row->is_system || $isBase || $inUse),
+            ];
+        })->values()->all();
+    }
+
+    private function localGerenciaveis(int $empresa_id): array
+    {
+        $locais = Localizacao::where('empresa_id', $empresa_id)
+            ->orderByRaw(
+                "CASE
+                    WHEN BINARY TRIM(descricao) = 'PADRÃO' THEN 0
+                    WHEN UPPER(TRIM(descricao)) = 'PADRAO' THEN 1
+                    ELSE 2
+                END"
+            )
+            ->orderBy('descricao')
+            ->get();
+
+        return $locais->map(function ($local) {
+            $descricao = trim((string)$local->descricao);
+            $descricaoAscii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $descricao);
+            $descricaoUpper = strtoupper((string)($descricaoAscii !== false ? $descricaoAscii : $descricao));
+            $isSystem = ($descricaoUpper === 'PADRAO');
+
+            $inUse = Estoque::where('local_id', $local->id)->exists()
+                || ProdutoUnico::where('local_id', $local->id)->exists();
+
+            return [
+                'id' => (int)$local->id,
+                'descricao' => $local->descricao,
+                'is_system' => $isSystem,
+                'in_use' => $inUse,
+                'can_delete' => !$isSystem && !$inUse,
+            ];
+        })->values()->all();
+    }
+
+    public function storeStatus(Request $request)
+    {
+        $empresa_id = $this->getEmpresaIdAtual($request);
+        if (!$empresa_id) {
+            session()->flash('flash_error', 'Empresa ativa não identificada.');
+            return redirect()->route('estoque.index');
+        }
+
+        $request->validate([
+            'nome_status' => 'required|string|max:80',
+        ], [
+            'nome_status.required' => 'Informe o nome do status.',
+        ]);
+
+        $statusKey = $this->normalizaStatusKey($request->nome_status, true);
+        if (!$statusKey || strlen($statusKey) > StatusKeyUtil::MAX_LENGTH) {
+            session()->flash('flash_error', 'Status inválido.');
+            return redirect()->route('estoque.index');
+        }
+
+        $this->ensureStatusBaseEmpresa($empresa_id);
+
+        $exists = EstoqueStatusCadastro::where('empresa_id', $empresa_id)
+            ->where('status_key', $statusKey)
+            ->exists();
+        if ($exists) {
+            session()->flash('flash_warning', 'Já existe um status com esse nome.');
+            return redirect()->route('estoque.index');
+        }
+
+        EstoqueStatusCadastro::create([
+            'empresa_id' => $empresa_id,
+            'status_key' => $statusKey,
+            'descricao' => $statusKey,
+            'is_system' => false,
+            'ativo' => true,
+        ]);
+
+        session()->flash('flash_success', 'Status cadastrado com sucesso!');
+        return redirect()->route('estoque.index');
+    }
+
+    public function destroyStatus($id)
+    {
+        $empresa_id = $this->getEmpresaIdAtual(request());
+        if (!$empresa_id) {
+            session()->flash('flash_error', 'Empresa ativa não identificada.');
+            return redirect()->route('estoque.index');
+        }
+        $row = EstoqueStatusCadastro::where('id', $id)
+            ->where('empresa_id', $empresa_id)
+            ->firstOrFail();
+
+        $statusKey = $this->normalizaStatusKey($row->status_key, true);
+        $isBase = in_array($statusKey, $this->statusBaseOptions(), true);
+        if ($isBase || (bool)$row->is_system) {
+            session()->flash('flash_warning', 'Status base do sistema não pode ser excluído.');
+            return redirect()->route('estoque.index');
+        }
+
+        $inUseSaldo = EstoqueStatusSaldo::where('empresa_id', $empresa_id)
+            ->where('status_key', $statusKey)
+            ->exists();
+        $inUseSerial = DB::table('produto_unicos')
+            ->join('produtos', 'produtos.id', '=', 'produto_unicos.produto_id')
+            ->where('produtos.empresa_id', $empresa_id)
+            ->where('produto_unicos.status_key', $statusKey)
+            ->exists();
+        if ($inUseSaldo || $inUseSerial) {
+            session()->flash('flash_warning', 'Status em uso não pode ser excluído.');
+            return redirect()->route('estoque.index');
+        }
+
+        $row->delete();
+        session()->flash('flash_success', 'Status removido com sucesso!');
+        return redirect()->route('estoque.index');
     }
 
     private function somaNaoAtivosPorLocal(int $empresa_id, int $produto_id, $produto_variacao_id, int $local_id): int
@@ -337,7 +561,7 @@ class EstoqueController extends Controller
 
         $localIds = collect($localIds)->unique()->values();
         $locais = $this->locaisDisponiveisParaOperacao($empresa_id, $localIds->all())->keyBy('id');
-        $statusOptions = $this->statusOptions($statusesEncontrados);
+        $statusOptions = $this->statusOptions($statusesEncontrados, $empresa_id);
         $statusValues = collect($statusOptions)->pluck('value')->all();
 
         $linhas = [];
@@ -420,7 +644,7 @@ class EstoqueController extends Controller
             ->values();
 
         $locais = $this->locaisDisponiveisParaOperacao($empresa_id, $localIds->all())->keyBy('id');
-        $statusOptions = $this->statusOptions($statusRows->pluck('status_key')->all());
+        $statusOptions = $this->statusOptions($statusRows->pluck('status_key')->all(), $empresa_id);
         $statusValues = collect($statusOptions)->pluck('value')->all();
 
         $linhas = [];
@@ -856,19 +1080,14 @@ class EstoqueController extends Controller
 
     public function index(Request $request){
 
+        $empresa_id = (int)$request->empresa_id;
         $locais = __getLocaisAtivoUsuario();
         $locais = $locais->pluck(['id']);
 
         $local_id = $request->local_id;
         $categoria_id = $request->categoria_id;
 
-        $statusOperacionalOptions = [
-            'TODOS' => 'Todos',
-            'ATIVO' => 'Disponíveis para venda (ATIVO)',
-            'ASSISTENCIA' => 'Assistência',
-            'DEFEITO' => 'Defeito',
-            'EMPRESTADO' => 'Emprestado',
-        ];
+        $statusOperacionalOptions = $this->statusOperacionalOptions($empresa_id);
         $statusOperacionalSelecionadoRaw = trim((string)$request->status_operacional);
         if ($statusOperacionalSelecionadoRaw === '') {
             $statusOperacionalSelecionado = 'TODOS';
@@ -909,7 +1128,7 @@ class EstoqueController extends Controller
         END as disponivel_ativo_qtd")
         ->join('produtos', 'produtos.id', '=', 'estoques.produto_id')
         ->join('localizacaos', 'localizacaos.id', '=', 'estoques.local_id')
-        ->where('produtos.empresa_id', request()->empresa_id)
+        ->where('produtos.empresa_id', $empresa_id)
         ->when(!empty($request->produto), function ($q) use ($request) {
             return $q->where('produtos.nome', 'LIKE', "%$request->produto%");
         })
@@ -971,6 +1190,8 @@ class EstoqueController extends Controller
 
         $mostrarColunaStatusFiltro = $statusOperacionalSelecionado !== 'TODOS' && $statusOperacionalSelecionado !== 'ATIVO';
         $statusOperacionalLabel = $statusOperacionalOptions[$statusOperacionalSelecionado];
+        $statusCadastros = $this->statusGerenciaveis($empresa_id);
+        $locaisCadastros = $this->localGerenciaveis($empresa_id);
 
         return view('estoque.index', compact(
             'data',
@@ -979,7 +1200,9 @@ class EstoqueController extends Controller
             'statusOperacionalOptions',
             'statusOperacionalSelecionado',
             'statusOperacionalLabel',
-            'mostrarColunaStatusFiltro'
+            'mostrarColunaStatusFiltro',
+            'statusCadastros',
+            'locaisCadastros'
         ));
     }
 

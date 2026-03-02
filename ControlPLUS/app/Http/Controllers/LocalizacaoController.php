@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Localizacao;
+use App\Models\Estoque;
+use App\Models\ProdutoUnico;
 use Illuminate\Support\Facades\DB;
 use App\Models\UsuarioLocalizacao;
 use App\Models\Empresa;
@@ -168,8 +170,23 @@ class LocalizacaoController extends Controller
     {
 
         $item = Localizacao::findOrFail($id);
+        __validaObjetoEmpresa($item);
 
         try {
+            $descricao = trim((string)$item->descricao);
+            $descricaoAscii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $descricao);
+            $descricaoUpper = strtoupper((string)($descricaoAscii !== false ? $descricaoAscii : $descricao));
+            if ($descricaoUpper === 'PADRAO') {
+                session()->flash("flash_warning", "Local PADRÃO não pode ser excluído.");
+                return redirect()->back();
+            }
+
+            $temEstoqueVinculado = Estoque::where('local_id', $item->id)->exists();
+            $temSerialVinculado = ProdutoUnico::where('local_id', $item->id)->exists();
+            if ($temEstoqueVinculado || $temSerialVinculado) {
+                session()->flash("flash_warning", "Local em uso no estoque não pode ser excluído.");
+                return redirect()->back();
+            }
 
             $item->usuarioLocalizacao()->delete();
             $item->delete();
