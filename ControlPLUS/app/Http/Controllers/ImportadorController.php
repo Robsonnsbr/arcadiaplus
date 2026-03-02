@@ -29,6 +29,7 @@ use App\Models\ItemListaPreco;
 
 use App\Models\ContaReceber;
 use App\Models\ContaPagar;
+use App\Utils\EstoqueUtil;
 
 class ImportadorController extends Controller
 {
@@ -241,14 +242,22 @@ class ImportadorController extends Controller
                         'localizacao_id' => $localizacaoPadrao->id
                     ]);
                     if($r[7]){
-
-                        $objeto = [
-                            'produto_id' => $produto->id,
-                            'quantidade' => $r[7],
-                            'produto_variacao_id' => null,
-                            'local_id' => $localizacaoPadrao->id
-                        ];
-                        Estoque::updateOrCreate($objeto);
+                        $quantidadeImportada = __convert_value_bd($r[7]);
+                        $estoque = Estoque::where('produto_id', $produto->id)
+                            ->where('produto_variacao_id', null)
+                            ->where('local_id', $localizacaoPadrao->id)
+                            ->first();
+                        $utilEstoque = app(EstoqueUtil::class);
+                        if ($estoque) {
+                            $delta = (float)$quantidadeImportada - (float)$estoque->quantidade;
+                            if ($delta > 0) {
+                                $utilEstoque->incrementaEstoque($produto->id, $delta, null, $localizacaoPadrao->id);
+                            } else if ($delta < 0) {
+                                $utilEstoque->reduzEstoque($produto->id, abs($delta), null, $localizacaoPadrao->id);
+                            }
+                        } else {
+                            $utilEstoque->incrementaEstoque($produto->id, $quantidadeImportada, null, $localizacaoPadrao->id);
+                        }
                     }
 
                 }

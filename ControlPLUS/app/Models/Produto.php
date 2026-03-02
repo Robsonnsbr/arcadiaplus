@@ -183,6 +183,11 @@ class Produto extends Model
 		return $this->hasMany(ProdutoUnico::class, 'produto_id')
 			->where('tipo', 'entrada')
 			->where('em_estoque', 1)
+			->where(function ($q) {
+				$q->whereNull('status_key')
+					->orWhere('status_key', '')
+					->orWhere('status_key', 'ATIVO');
+			})
 			->orderBy('codigo', 'asc');
 	}
 

@@ -30,6 +30,7 @@ use Illuminate\Http\Request;
 use NFePHP\DA\NFe\CupomNaoFiscal;
 use App\Utils\EstoqueUtil;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Models\ComissaoVenda;
 use App\Models\ItemNfce;
 use Dompdf\Dompdf;
@@ -631,35 +632,54 @@ class FrontBoxController extends Controller
         $item = Nfce::findOrFail($id);
         __validaObjetoEmpresa($item);
         try {
-            $descricaoLog = "#$item->numero_sequencial - R$ " . __moeda($item->total);
-            foreach ($item->itens as $i) {
-                if ($i->produto && $i->produto->gerenciar_estoque) {
-                    $this->util->incrementaEstoque($i->produto_id, $i->quantidade, $i->variacao_id, $item->local_id);
+            DB::transaction(function () use ($item) {
+                foreach ($item->itens as $i) {
+                    if ($i->produto && $i->produto->gerenciar_estoque) {
+                        $this->util->incrementaEstoque($i->produto_id, $i->quantidade, $i->variacao_id, $item->local_id);
+                    }
+
+                    $i->adicionais()->delete();
+                    $i->pizzas()->delete();
                 }
 
-                $i->adicionais()->delete();
-                $i->pizzas()->delete();
-            }
+                $codigosSaida = ProdutoUnico::where('nfce_id', $item->id)
+                    ->where('tipo', 'saida')
+                    ->get();
+                foreach ($codigosSaida as $saida) {
+                    $entrada = ProdutoUnico::where('produto_id', $saida->produto_id)
+                        ->where('codigo', $saida->codigo)
+                        ->where('tipo', 'entrada')
+                        ->first();
+                    if ($entrada) {
+                        $entrada->em_estoque = 1;
+                        $entrada->save();
+                    }
+                }
+                ProdutoUnico::where('nfce_id', $item->id)
+                    ->where('tipo', 'saida')
+                    ->delete();
 
-            $comissao = ComissaoVenda::where('empresa_id', $item->empresa_id)
-            ->where('nfce_id', $item->id)->first();
-            if($comissao){
-                $comissao->delete();
-            }
+                $comissao = ComissaoVenda::where('empresa_id', $item->empresa_id)
+                    ->where('nfce_id', $item->id)
+                    ->first();
+                if($comissao){
+                    $comissao->delete();
+                }
 
-            $garantia = Garantia::where('empresa_id', $item->empresa_id)
-            ->where('nfce_id', $item->id)->first();
+                $garantia = Garantia::where('empresa_id', $item->empresa_id)
+                    ->where('nfce_id', $item->id)
+                    ->first();
+                if($garantia){
+                    $garantia->delete();
+                }
 
-            if($garantia){
-                $garantia->delete();
-            }
+                $item->itens()->delete();
+                $item->fatura()->delete();
+                $item->contaReceber()->delete();
+                $item->delete();
+            });
 
-            $item->itens()->delete();
-            $item->fatura()->delete();
-            $item->contaReceber()->delete();
-            $item->delete();
-
-
+            $descricaoLog = "#$item->numero_sequencial - R$ " . __moeda($item->total);
             __createLog(request()->empresa_id, 'PDV', 'excluir', $descricaoLog);
 
             session()->flash("flash_success", "Venda removida!");

@@ -222,10 +222,13 @@ class InventarioController extends Controller
         $item = Inventario::findOrFail($id);
         foreach($item->itens as $key => $i){
             if($i->produto->estoque){
-
                 $estoque = $i->produto->estoque;
-                $estoque->quantidade = $i->quantidade;
-                $estoque->save();
+                $delta = (float)$i->quantidade - (float)$estoque->quantidade;
+                if ($delta > 0) {
+                    $this->util->incrementaEstoque($i->produto_id, $delta, $estoque->produto_variacao_id, $estoque->local_id);
+                } else if ($delta < 0) {
+                    $this->util->reduzEstoque($i->produto_id, abs($delta), $estoque->produto_variacao_id, $estoque->local_id);
+                }
             }else{
                 $this->util->incrementaEstoque($i->produto_id, $i->quantidade, null);
             }
@@ -357,8 +360,12 @@ class InventarioController extends Controller
                 $produto = $i->produto;
                 if($produto->estoque){
                     $estoque = $produto->estoque;
-                    $estoque->quantidade = $i->quantidade;
-                    $estoque->save();
+                    $delta = (float)$i->quantidade - (float)$estoque->quantidade;
+                    if ($delta > 0) {
+                        $this->util->incrementaEstoque($i->produto_id, $delta, $estoque->produto_variacao_id, $estoque->local_id);
+                    } else if ($delta < 0) {
+                        $this->util->reduzEstoque($i->produto_id, abs($delta), $estoque->produto_variacao_id, $estoque->local_id);
+                    }
                 }else{
                     $this->util->incrementaEstoque($i->produto_id, $i->quantidade, null);
                 }

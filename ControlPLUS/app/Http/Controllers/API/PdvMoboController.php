@@ -45,6 +45,13 @@ class PdvMoboController extends Controller
         $this->filaEnvioUtil = $filaEnvioUtil;
     }
 
+    private function bloquearProdutoSerialEmFluxoLegado(Produto $product): void
+    {
+        if ((bool)$product->tipo_unico) {
+            throw new \Exception("Fluxo não suporta produto serializado; use o PDV/FrontBox principal.");
+        }
+    }
+
     public function store(Request $request){
         try {
 
@@ -122,6 +129,7 @@ class PdvMoboController extends Controller
                 foreach($request->itens as $i){
                     $i = (object)$i;
                     $product = Produto::findOrFail($i->id);
+                    $this->bloquearProdutoSerialEmFluxoLegado($product);
                     $product = __tributacaoProdutoLocalVenda($product, $caixa->local_id);
                     $variacao_id = null;
                     $itemNfce = ItemNfce::create([

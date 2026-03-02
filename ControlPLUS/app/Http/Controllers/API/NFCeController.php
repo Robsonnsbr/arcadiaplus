@@ -46,6 +46,13 @@ class NFCeController extends Controller
         }
     }
 
+    private function bloquearProdutoSerialEmFluxoLegado(Produto $product): void
+    {
+        if ((bool)$product->tipo_unico) {
+            throw new \Exception("Fluxo não suporta produto serializado; use o PDV/FrontBox principal.");
+        }
+    }
+
     public function emitir(Request $request)
     {
 
@@ -557,6 +564,7 @@ class NFCeController extends Controller
 
             for ($i = 0; $i < sizeof($item->itens); $i++) {
                 $product = Produto::findOrFail($item->itens[$i]->produto_id);
+                $this->bloquearProdutoSerialEmFluxoLegado($product);
                 ItemNfce::create([
                     'nfce_id' => $nfce->id,
                     'produto_id' => (int)$product->id,
@@ -694,6 +702,7 @@ public function gerarVenda(Request $request)
 
         for ($i = 0; $i < sizeof($item->itens); $i++) {
             $product = Produto::findOrFail($item->itens[$i]->produto_id);
+            $this->bloquearProdutoSerialEmFluxoLegado($product);
             ItemNfce::create([
                 'nfce_id' => $nfce->id,
                 'produto_id' => (int)$product->id,

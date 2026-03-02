@@ -120,6 +120,11 @@ class TransferenciaEstoqueController extends Controller
                     return redirect()->back()->withInput();
                 }
 
+                if ((bool)$produto->tipo_unico) {
+                    session()->flash("flash_error", "{$produto->nome} é serializado. Use 'Gerenciar unidades' no estoque para mover seriais.");
+                    return redirect()->back()->withInput();
+                }
+
                 $qtd = __convert_value_bd($request->quantidade[$i]);
                 if($qtd <= 0){
                     session()->flash("flash_error", "Quantidade inválida para {$produto->nome}.");

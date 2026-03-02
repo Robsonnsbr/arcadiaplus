@@ -82,6 +82,13 @@ class FrontBoxController extends Controller
         $this->tradeinCreditUtil = $tradeinCreditUtil;
     }
 
+    private function bloquearProdutoSerialEmFluxoLegado(Produto $product): void
+    {
+        if ((bool)$product->tipo_unico) {
+            throw new \Exception("Fluxo não suporta produto serializado; use o PDV/FrontBox principal.");
+        }
+    }
+
     public function faturaPadraoCliente(Request $request){
         try {
             $cliente = Cliente::findOrFail($request->cliente_id);
@@ -1488,6 +1495,7 @@ public function storePdv3(Request $request){
             foreach($request->itens as $i){
                 $i = (object)$i;
                 $product = Produto::findOrFail($i->produto_id);
+                $this->bloquearProdutoSerialEmFluxoLegado($product);
                 $product = __tributacaoProdutoLocalVenda($product, $caixa->local_id);
                 $variacao_id = null;
                 $itemNfce = ItemNfce::create([
@@ -1701,6 +1709,7 @@ public function updatePdv3(Request $request){
             foreach($request->itens as $i){
                 $i = (object)$i;
                 $product = Produto::findOrFail($i->produto_id);
+                $this->bloquearProdutoSerialEmFluxoLegado($product);
                 $product = __tributacaoProdutoLocalVenda($product, $caixa->local_id);
                 $variacao_id = null;
                 $itemNfce = ItemNfce::create([
@@ -2196,6 +2205,7 @@ public function storeNfe(Request $request)
             if($request->produto_id){
                 for ($i = 0; $i < sizeof($request->produto_id); $i++) {
                     $product = Produto::findOrFail($request->produto_id[$i]);
+                    $this->bloquearProdutoSerialEmFluxoLegado($product);
                     $product = __tributacaoProdutoLocalVenda($product, $caixa->local_id);
                     $variacao_id = isset($request->variacao_id[$i]) ? $request->variacao_id[$i] : null;
                     $cfop = $product->cfop_estadual;

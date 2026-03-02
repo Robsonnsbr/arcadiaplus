@@ -70,7 +70,7 @@ class VendaController extends Controller
         $codigoUnico = $item['codigo_unico'] ?? ($item['serial'] ?? null);
 
         if (!$produtoUnicoId && !$codigoUnico) {
-            return;
+            throw new \Exception("Produto {$product->nome} exige código único/serial para venda.");
         }
 
         $qtdUnits = QuantidadeUtil::toUnits($item['quantidade'] ?? 0);
@@ -103,14 +103,72 @@ class VendaController extends Controller
         }
     }
 
+    private function consumirSerialVenda(array $item, Produto $product, int $local_id, int $nfceId): void
+    {
+        $produtoUnicoId = $item['produto_unico_id'] ?? null;
+        $codigoUnico = $item['codigo_unico'] ?? ($item['serial'] ?? null);
+
+        if (!$produtoUnicoId && !$codigoUnico) {
+            throw new \Exception("Produto {$product->nome} exige código único/serial para venda.");
+        }
+
+        $qtdUnits = QuantidadeUtil::toUnits($item['quantidade'] ?? 0);
+        if ($qtdUnits !== QuantidadeUtil::FACTOR) {
+            throw new \Exception("Produto serializado {$product->nome} deve ser vendido com quantidade 1 por código.");
+        }
+
+        $query = ProdutoUnico::where('produto_id', $product->id)
+            ->where('tipo', 'entrada')
+            ->where('em_estoque', 1);
+
+        if ($produtoUnicoId) {
+            $query->where('id', (int)$produtoUnicoId);
+        } else {
+            $query->where('codigo', (string)$codigoUnico);
+        }
+
+        $serial = $query->lockForUpdate()->first();
+        if (!$serial) {
+            throw new \Exception("Código serial informado para {$product->nome} não está disponível em estoque.");
+        }
+
+        $statusAtual = StatusKeyUtil::normalizeOrDefault($serial->status_key);
+        if ($statusAtual !== StatusKeyUtil::DEFAULT_STATUS) {
+            throw new \Exception("Produto serializado {$product->nome} não está disponível para venda (status {$statusAtual}).");
+        }
+
+        if ($serial->local_id && (int)$serial->local_id !== (int)$local_id) {
+            throw new \Exception("Código serial informado para {$product->nome} pertence a outro local de estoque.");
+        }
+
+        if (!$serial->local_id) {
+            $serial->local_id = $local_id;
+        }
+        $serial->em_estoque = 0;
+        $serial->status_key = $statusAtual;
+        $serial->save();
+
+        ProdutoUnico::create([
+            'nfe_id' => null,
+            'nfce_id' => $nfceId,
+            'produto_id' => (int)$product->id,
+            'local_id' => (int)$serial->local_id,
+            'codigo' => $serial->codigo,
+            'observacao' => '',
+            'tipo' => 'saida',
+            'em_estoque' => 0,
+            'status_key' => $statusAtual,
+        ]);
+    }
+
     private function validarItemEstoqueAtivoParaVenda(array $item, Produto $product, int $empresa_id, int $local_id): void
     {
-        if (!$product->gerenciar_estoque) {
+        if ((bool)$product->tipo_unico) {
+            $this->validarSerialAtivoQuandoInformado($item, $product, $local_id);
             return;
         }
 
-        if ((bool)$product->tipo_unico) {
-            $this->validarSerialAtivoQuandoInformado($item, $product, $local_id);
+        if (!$product->gerenciar_estoque) {
             return;
         }
 
@@ -333,8 +391,11 @@ class VendaController extends Controller
 
                 foreach($request->itens as $item){
                     $product = Produto::findOrFail($item['produto_id']);
+                    if ((int)$product->empresa_id !== (int)$request->empresa_id) {
+                        throw new \Exception("Produto {$product->nome} não pertence à empresa ativa.");
+                    }
                     $produtoVariacaoId = $this->resolveVariacaoIdItem($item);
-                    if ($product->gerenciar_estoque) {
+                    if ($product->gerenciar_estoque || (bool)$product->tipo_unico) {
                         $this->validarItemEstoqueAtivoParaVenda($item, $product, (int)$request->empresa_id, (int)$local_id);
                     }
                     $dataItem = [
@@ -360,6 +421,9 @@ class VendaController extends Controller
                     $itemNfce = ItemNfce::create($dataItem);
 
                     if ($product->gerenciar_estoque) {
+                        if ((bool)$product->tipo_unico) {
+                            $this->consumirSerialVenda($item, $product, (int)$local_id, (int)$nfce->id);
+                        }
                         $this->util->reduzEstoque($product->id, $item['quantidade'], $produtoVariacaoId, $local_id);
                     }
 

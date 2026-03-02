@@ -13,7 +13,6 @@
                 @endif
                 <th>Valor de venda</th>
                 <th>Unidade</th>
-                <th>Códigos de série</th>
                 @if(__countLocalAtivo() > 1)
                 <th>Local</th>
                 @endif
@@ -57,41 +56,6 @@
                     @endif
                 </td>
                 <td data-label="Unidade">{{ $item->produto->unidade }}</td>
-                <td data-label="Códigos de série">
-                    @php
-                        $seriaisDisponiveis = $item->produto && $item->produto->relationLoaded('produtoUnicosDisponiveis')
-                            ? $item->produto->produtoUnicosDisponiveis
-                            : collect();
-                    @endphp
-
-                    @if($seriaisDisponiveis->isNotEmpty())
-                        <div class="dropdown">
-                            <button
-                                class="btn btn-outline-secondary btn-sm dropdown-toggle"
-                                type="button"
-                                data-bs-toggle="dropdown"
-                                data-bs-auto-close="outside"
-                                aria-expanded="false"
-                            >
-                                Ver códigos ({{ $seriaisDisponiveis->count() }})
-                            </button>
-
-                            <div class="dropdown-menu p-2 shadow" style="min-width: 260px; max-width: 360px;">
-                                <div style="max-height: 220px; overflow-y: auto;">
-                                    <ul class="list-unstyled mb-0">
-                                        @foreach($seriaisDisponiveis as $serial)
-                                            <li class="small py-1 border-bottom">
-                                                <code>{{ $serial->codigo }}</code>
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    @else
-                        <span class="text-muted small">Sem códigos de série</span>
-                    @endif
-                </td>
                 @if(__countLocalAtivo() > 1)
                 <td data-label="Local">{{ $item->local ? $item->local->descricao : '--' }}</td>
                 @endif
@@ -108,8 +72,9 @@
                             class="btn btn-info btn-sm btn-distribuicao"
                             data-estoque-id="{{ $item->id }}"
                             title="{{ $acaoDistribuicao }}"
+                            aria-label="{{ $acaoDistribuicao }}"
                         >
-                            <i class="ri-list-check-2 me-1"></i>{{ $acaoDistribuicao }}
+                            <i class="ri-list-check-2"></i>
                         </button>
                         @endcan
                         @can('estoque_edit')
@@ -136,7 +101,7 @@
             @empty
             <tr>
                 @php
-                    $colspanBase = __countLocalAtivo() > 1 ? 11 : 10;
+                    $colspanBase = __countLocalAtivo() > 1 ? 10 : 9;
                     $colspan = $colspanBase + (!empty($mostrarColunaStatusFiltro) ? 1 : 0);
                 @endphp
                 <td colspan="{{ $colspan }}" class="text-center">Nada encontrado</td>

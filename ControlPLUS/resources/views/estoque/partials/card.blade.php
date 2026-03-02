@@ -66,8 +66,9 @@
 		            class="btn btn-info btn-sm btn-distribuicao"
 		            data-estoque-id="{{ $item->id }}"
 	            title="{{ $acaoDistribuicao }}"
+                    aria-label="{{ $acaoDistribuicao }}"
 		          >
-		            <i class="ri-list-check-2 me-1"></i>{{ $acaoDistribuicao }}
+		            <i class="ri-list-check-2"></i>
 		          </button>
 		          @endcan
 	          @can('estoque_edit')

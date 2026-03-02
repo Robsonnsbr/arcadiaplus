@@ -901,9 +901,6 @@ class EstoqueController extends Controller
             'local',
             'produtoVariacao',
             'produto.categoria',
-            'produto.produtoUnicosDisponiveis' => function ($q) {
-                $q->select('id', 'produto_id', 'codigo', 'em_estoque');
-            },
         ])
         ->select('estoques.*', 'produtos.nome as produto_nome', 'localizacaos.nome as localizacao_nome')
         ->selectRaw("CASE WHEN produtos.tipo_unico = 1

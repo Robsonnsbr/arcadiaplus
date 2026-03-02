@@ -2825,16 +2825,21 @@ public function alterarCampo(Request $request)
 
     if($campo == 'quantidade_estoque'){
         $estoque = $produto->estoque;
+        $valorAjuste = __convert_value_bd($valor);
         if($estoque == null){
-            $this->utilEstoque->incrementaEstoque($produto->id, $valor, null);
+            $this->utilEstoque->incrementaEstoque($produto->id, $valorAjuste, null);
             $transacao = Estoque::where('produto_id', $produto->id)->orderBy('id', 'desc')->first();
             $tipo = 'incremento';
             $codigo_transacao = $transacao->id;
             $tipo_transacao = 'alteracao_estoque';
-            $this->utilEstoque->movimentacaoProduto($produto->id, $valor, $tipo, $codigo_transacao, $tipo_transacao, \Auth::user()->id, null);
+            $this->utilEstoque->movimentacaoProduto($produto->id, $valorAjuste, $tipo, $codigo_transacao, $tipo_transacao, \Auth::user()->id, null);
         }else{
-            $estoque->quantidade = $valor;
-            $estoque->save();
+            $delta = (float)$valorAjuste - (float)$estoque->quantidade;
+            if ($delta > 0) {
+                $this->utilEstoque->incrementaEstoque($produto->id, $delta, $estoque->produto_variacao_id, $estoque->local_id);
+            } else if ($delta < 0) {
+                $this->utilEstoque->reduzEstoque($produto->id, abs($delta), $estoque->produto_variacao_id, $estoque->local_id);
+            }
         }
     }
 
