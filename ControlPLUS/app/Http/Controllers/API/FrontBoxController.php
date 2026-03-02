@@ -543,6 +543,9 @@ class FrontBoxController extends Controller
             $valor_integral_row = $request->valor_integral_row;
             $quantidade = $request->quantidade;
             $obs_row = $request->obs_row;
+            $bandeira_cartao_row = $request->bandeira_cartao_row;
+            $cAut_cartao_row = $request->cAut_cartao_row;
+            $cnpj_cartao_row = $request->cnpj_cartao_row;
 
             $tipo = Nfce::getTipoPagamento($tipo_pagamento_row);
             return view('front_box.partials.row_pagamento_multiplo', compact(
@@ -551,7 +554,10 @@ class FrontBoxController extends Controller
                 'quantidade',
                 'tipo',
                 'obs_row',
-                'tipo_pagamento_row'
+                'tipo_pagamento_row',
+                'bandeira_cartao_row',
+                'cAut_cartao_row',
+                'cnpj_cartao_row'
             ));
         } catch (\Exception $e) {
             return response()->json($e->getMessage(), 401);

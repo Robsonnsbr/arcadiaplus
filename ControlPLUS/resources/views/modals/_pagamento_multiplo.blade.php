@@ -28,6 +28,17 @@
                         <button type="button" style="margin-left: 15px" class="btn btn-info btn-add-payment"><i class="ri-add-line"></i></button>
                     </div>
                 </div>
+                <div class="row mt-2 row-cartao-credito-multiplo d-none">
+                    <div class="col-md-4">
+                        {!! Form::select('bandeira_cartao_row_input', 'Bandeira do cartão', ['' => 'Selecione'] + App\Models\Nfce::bandeiras())->attrs(['class' => 'form-select']) !!}
+                    </div>
+                    <div class="col-md-4">
+                        {!! Form::tel('cAut_cartao_row_input', 'Código autorização (opcional)')->attrs(['class' => '']) !!}
+                    </div>
+                    <div class="col-md-4">
+                        {!! Form::tel('cnpj_cartao_row_input', 'CNPJ (opcional)')->attrs(['class' => 'cnpj']) !!}
+                    </div>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-striped table-centered mb-0 mt-2 table-payment">
                         <thead>
@@ -50,6 +61,12 @@
 
                                     <input readonly type="hidden" name="tipo_pagamento_row[]" class="form-control"
                                     value="{{ $fatura->tipo_pagamento }}">
+                                    <input readonly type="hidden" name="bandeira_cartao_row[]" class="form-control"
+                                    value="{{ in_array($fatura->tipo_pagamento, ['03', '30']) ? ($item->bandeira_cartao ?? '') : '' }}">
+                                    <input readonly type="hidden" name="cAut_cartao_row[]" class="form-control"
+                                    value="{{ in_array($fatura->tipo_pagamento, ['03', '30']) ? ($item->cAut_cartao ?? '') : '' }}">
+                                    <input readonly type="hidden" name="cnpj_cartao_row[]" class="form-control"
+                                    value="{{ in_array($fatura->tipo_pagamento, ['03', '30']) ? ($item->cnpj_cartao ?? '') : '' }}">
                                 </td>
                                 <td>
                                     <input readonly type="date" name="data_vencimento_row[]" class="form-control data_multiplo" value="{{ $fatura->data_vencimento }}">
@@ -96,7 +113,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-success btn-modal-multiplo" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-success btn-modal-multiplo">
                     <i class="ri-checkbox-circle-line"></i>
                     Salvar
                 </button>

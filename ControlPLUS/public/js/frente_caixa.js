@@ -1960,6 +1960,13 @@ $(document).on("change", "#inp-tipo_pagamento, .tp-pag", function () {
 $("#inp-tipo_pagamento_row").change(() => {
     let cliente = $("#inp-cliente_id").val();
     let tipo = $("#inp-tipo_pagamento_row").val();
+    const isCredito = isTipoPagamentoCredito(tipo);
+    $(".row-cartao-credito-multiplo").toggleClass("d-none", !isCredito);
+    if (!isCredito) {
+        $("#inp-bandeira_cartao_row_input").val("");
+        $("#inp-cAut_cartao_row_input").val("");
+        $("#inp-cnpj_cartao_row_input").val("");
+    }
     if (tipo == TRADEIN_PAYMENT_CODE && !cliente) {
         swal(
             "Alerta",
@@ -2259,6 +2266,9 @@ $(".btn-add-payment").click(() => {
     let vencimento = $("#inp-data_vencimento_row").val();
     let valor_integral_row = $("#inp-valor_row").val();
     let obs_row = $("#inp-observacao_row").val();
+    let bandeira_cartao_row = $("#inp-bandeira_cartao_row_input").val() || "";
+    let cAut_cartao_row = $("#inp-cAut_cartao_row_input").val() || "";
+    let cnpj_cartao_row = $("#inp-cnpj_cartao_row_input").val() || "";
 
     validateButtonSave();
 
@@ -2300,18 +2310,37 @@ $(".btn-add-payment").click(() => {
     //         );
     // }
 
+    if (isTipoPagamentoCredito(tipo_pagamento_row) && !String(bandeira_cartao_row).trim()) {
+        swal(
+            "Atenção",
+            "Selecione a bandeira do cartão para pagamento no crédito.",
+            "warning",
+        );
+        $("#inp-bandeira_cartao_row_input").focus();
+        return;
+    }
+
     if (vencimento && valor_integral_row && tipo_pagamento_row) {
         let dataRequest = {
             data_vencimento_row: vencimento,
             valor_integral_row: valor_integral_row,
             obs_row: obs_row,
             tipo_pagamento_row: tipo_pagamento_row,
+            bandeira_cartao_row: bandeira_cartao_row,
+            cAut_cartao_row: cAut_cartao_row,
+            cnpj_cartao_row: cnpj_cartao_row,
         };
 
         $.get(path_url + "api/frenteCaixa/linhaParcelaVenda", dataRequest)
             .done((e) => {
                 $(".table-payment tbody").append(e);
                 calcTotalPayment();
+                $("#inp-bandeira_cartao_row_input").val("");
+                $("#inp-cAut_cartao_row_input").val("");
+                $("#inp-cnpj_cartao_row_input").val("");
+                $("#inp-observacao_row").val("");
+                $("#inp-valor_row").val("");
+                $("#inp-tipo_pagamento_row").val("").change();
             })
             .fail((e) => {
                 console.log(e);
@@ -2823,20 +2852,116 @@ function vendaTemPagamentoCredito(json) {
     return false;
 }
 
-function validarDadosCartaoCredito(json) {
-    const bandeira = ($("select[name='bandeira_cartao']").val() || "").trim();
-    const cnpj = ($("input[name='cnpj_cartao']").val() || "").trim();
-    const codigo = ($("input[name='cAut_cartao']").val() || "").trim();
+function hasLinhaCreditoSemBandeira(json) {
+    const tiposRow = normalizeArray(json.tipo_pagamento_row);
+    const bandeirasRow = normalizeArray(json.bandeira_cartao_row);
 
-    json.bandeira_cartao = bandeira;
-    json.cnpj_cartao = cnpj;
-    json.cAut_cartao = codigo;
+    for (let i = 0; i < tiposRow.length; i++) {
+        if (isTipoPagamentoCredito(tiposRow[i])) {
+            const bandeiraLinha = (bandeirasRow[i] || "").trim();
+            if (!bandeiraLinha) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+function applyFallbackCardDataToCreditoRows(json, fallback) {
+    const tiposRow = normalizeArray(json.tipo_pagamento_row);
+    const bandeirasRow = normalizeArray(json.bandeira_cartao_row);
+    const cAutRow = normalizeArray(json.cAut_cartao_row);
+    const cnpjRow = normalizeArray(json.cnpj_cartao_row);
+
+    for (let i = 0; i < tiposRow.length; i++) {
+        if (!isTipoPagamentoCredito(tiposRow[i])) {
+            continue;
+        }
+
+        if (!(bandeirasRow[i] || "").trim()) {
+            bandeirasRow[i] = fallback.bandeira || "";
+        }
+        if (!(cAutRow[i] || "").trim()) {
+            cAutRow[i] = fallback.codigo || "";
+        }
+        if (!(cnpjRow[i] || "").trim()) {
+            cnpjRow[i] = fallback.cnpj || "";
+        }
+    }
+
+    if (bandeirasRow.length > 0) {
+        json.bandeira_cartao_row = bandeirasRow;
+    }
+    if (cAutRow.length > 0) {
+        json.cAut_cartao_row = cAutRow;
+    }
+    if (cnpjRow.length > 0) {
+        json.cnpj_cartao_row = cnpjRow;
+    }
+}
+
+function resolveBandeiraCreditoFromRows(json) {
+    const tiposRow = normalizeArray(json.tipo_pagamento_row);
+    const bandeirasRow = normalizeArray(json.bandeira_cartao_row);
+    const cAutRow = normalizeArray(json.cAut_cartao_row);
+    const cnpjRow = normalizeArray(json.cnpj_cartao_row);
+
+    for (let i = 0; i < tiposRow.length; i++) {
+        if (!isTipoPagamentoCredito(tiposRow[i])) {
+            continue;
+        }
+
+        const bandeira = (bandeirasRow[i] || "").trim();
+        if (bandeira) {
+            return {
+                bandeira: bandeira,
+                codigo: (cAutRow[i] || "").trim(),
+                cnpj: (cnpjRow[i] || "").trim(),
+            };
+        }
+    }
+
+    return { bandeira: "", codigo: "", cnpj: "" };
+}
+
+function validarDadosCartaoCredito(json) {
+    const dadosModal = {
+        bandeira: ($("select[name='bandeira_cartao']").val() || "").trim(),
+        cnpj: ($("input[name='cnpj_cartao']").val() || "").trim(),
+        codigo: ($("input[name='cAut_cartao']").val() || "").trim(),
+    };
+    const dadosLinhas = resolveBandeiraCreditoFromRows(json);
+
+    json.bandeira_cartao = dadosModal.bandeira || dadosLinhas.bandeira;
+    json.cnpj_cartao = dadosModal.cnpj || dadosLinhas.cnpj;
+    json.cAut_cartao = dadosModal.codigo || dadosLinhas.codigo;
 
     if (!vendaTemPagamentoCredito(json)) {
         return true;
     }
 
-    if (!bandeira) {
+    if (hasLinhaCreditoSemBandeira(json)) {
+        if (json.bandeira_cartao) {
+            applyFallbackCardDataToCreditoRows(json, {
+                bandeira: json.bandeira_cartao,
+                codigo: json.cAut_cartao,
+                cnpj: json.cnpj_cartao,
+            });
+            return true;
+        }
+
+        toastr.warning(
+            "Existe pagamento em crédito sem bandeira no pagamento múltiplo.",
+        );
+        showModal("#pagamento_multiplo");
+        setTimeout(() => {
+            $("#inp-bandeira_cartao_row_input").focus();
+        }, 50);
+        return false;
+    }
+
+    if (!json.bandeira_cartao) {
         toastr.warning("Selecione a bandeira do cartão para pagamento no crédito.");
         if ($("#cartao_credito").length) {
             showModal("#cartao_credito");
@@ -2849,6 +2974,49 @@ function validarDadosCartaoCredito(json) {
 
     return true;
 }
+
+$(document).on("click", ".btn-modal-multiplo", function (e) {
+    const linhasTipo = $("input[name='tipo_pagamento_row[]']");
+    const linhasBandeira = $("input[name='bandeira_cartao_row[]']");
+    for (let i = 0; i < linhasTipo.length; i++) {
+        const tipo = ($(linhasTipo[i]).val() || "").trim();
+        if (!isTipoPagamentoCredito(tipo)) {
+            continue;
+        }
+
+        const bandeira = ($(linhasBandeira[i]).val() || "").trim();
+        if (!bandeira) {
+            e.preventDefault();
+            e.stopPropagation();
+            toastr.warning(
+                "Selecione a bandeira do cartão para pagamento no crédito.",
+            );
+            showModal("#pagamento_multiplo");
+            setTimeout(() => {
+                $("#inp-bandeira_cartao_row_input").focus();
+            }, 50);
+            return false;
+        }
+    }
+
+    if ($("#pagamento_multiplo").length) {
+        if (
+            window.bootstrap &&
+            window.bootstrap.Modal &&
+            typeof window.bootstrap.Modal.getOrCreateInstance === "function"
+        ) {
+            window.bootstrap.Modal.getOrCreateInstance(
+                document.getElementById("pagamento_multiplo"),
+            ).hide();
+        } else if (window.bootstrap && window.bootstrap.Modal) {
+            new window.bootstrap.Modal(
+                document.getElementById("pagamento_multiplo"),
+            ).hide();
+        } else if (window.jQuery && window.jQuery.fn && window.jQuery.fn.modal) {
+            window.jQuery("#pagamento_multiplo").modal("hide");
+        }
+    }
+});
 
 $("#form-pdv").on("submit", function (e) {
     e.preventDefault();

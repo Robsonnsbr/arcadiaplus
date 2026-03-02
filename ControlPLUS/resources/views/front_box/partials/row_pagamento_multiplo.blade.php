@@ -4,6 +4,12 @@
         value="{{ $tipo }}">
         <input readonly type="hidden" name="tipo_pagamento_row[]" class="form-control"
         value="{{ $tipo_pagamento_row }}">
+        <input readonly type="hidden" name="bandeira_cartao_row[]" class="form-control"
+        value="{{ $bandeira_cartao_row ?? '' }}">
+        <input readonly type="hidden" name="cAut_cartao_row[]" class="form-control"
+        value="{{ $cAut_cartao_row ?? '' }}">
+        <input readonly type="hidden" name="cnpj_cartao_row[]" class="form-control"
+        value="{{ $cnpj_cartao_row ?? '' }}">
     </td>
 	<td>
 		<input readonly type="date" name="data_vencimento_row[]" class="form-control data_multiplo"
