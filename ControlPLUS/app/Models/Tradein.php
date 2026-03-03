@@ -38,6 +38,8 @@ class Tradein extends Model
         'avaliado_em',
         'status_aceite_cliente',
         'aceite_em',
+        'term_generated_at',
+        'avaliacao_snapshot',
     ];
 
     protected $casts = [
@@ -50,5 +52,7 @@ class Tradein extends Model
         'valor_avaliado' => 'float',
         'avaliado_em' => 'datetime',
         'aceite_em' => 'datetime',
+        'term_generated_at' => 'datetime',
+        'avaliacao_snapshot' => 'array',
     ];
 }

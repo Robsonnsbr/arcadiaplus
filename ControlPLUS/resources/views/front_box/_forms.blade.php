@@ -674,6 +674,7 @@
 @include('modals._frete')
 @include('modals._tradein_status')
 @include('modals._tradein_create')
+@include('modals._tradein_form')
 
 @include('modals._observacao_pdv')
 @include('modals._adicionais_pdv')
@@ -689,6 +690,7 @@
     @endif
 </script>
 <script src="/js/frente_caixa.js" type=""></script>
+<script src="/js/tradein_checklist_tecnico.js" type=""></script>
 <script src="/js/comanda_pdv.js"></script>
 
 <script type="text/javascript" src="/js/mousetrap.js"></script>

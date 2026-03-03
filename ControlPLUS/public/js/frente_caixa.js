@@ -2489,6 +2489,7 @@ function selecionaLista() {
 
 let TRADEIN_POLL_TIMER = null;
 let TRADEIN_ALLOW_CLOSE = false;
+let TRADEIN_OPEN_EVALUATION_ID = null;
 const TRADEIN_PAYMENT_CODE = "98";
 const tradeinStatusLabels = {
     submitted: "Submetido",
@@ -2541,20 +2542,101 @@ function updateTradeinModal(data) {
     $("#tradein_aceite_text").text(decisionLabel);
 
     const completed = data.status === "completed";
+    const evaluationSaved = data.evaluation_saved === true;
     const termGenerated = data.term_generated === true || !!data.term_generated_at;
     const decisionPending = !decisionKey || decisionKey === "pending";
     $("#btn-tradein-termo")
-        .prop("disabled", !completed)
-        .toggleClass("disabled", !completed);
+        .prop("disabled", !evaluationSaved)
+        .toggleClass("disabled", !evaluationSaved);
     const canDecide = completed && termGenerated && decisionPending;
     $("#btn-tradein-accept").prop("disabled", !canDecide);
     $("#btn-tradein-reject").prop("disabled", !canDecide);
 
-    if (completed) {
+    if (evaluationSaved) {
         const tradeinId = $("#tradein_status_id").val();
         const termoUrl = path_url + "trade-in/" + tradeinId + "/termo.pdf";
         $("#btn-tradein-termo").attr("href", termoUrl);
+    } else {
+        $("#btn-tradein-termo").attr("href", "#");
     }
+}
+
+function clearTradeinModalErrors() {
+    const $errors = $("#tradein-modal-errors");
+    if (!$errors.length) {
+        return;
+    }
+    $errors.addClass("d-none").empty();
+}
+
+function renderTradeinModalErrors(errors, fallbackMessage) {
+    const $errors = $("#tradein-modal-errors");
+    if (!$errors.length) {
+        swal("Erro", fallbackMessage || "Não foi possível salvar a avaliação.", "error");
+        return;
+    }
+
+    const messages = [];
+    if (errors && typeof errors === "object") {
+        Object.keys(errors).forEach((key) => {
+            const value = errors[key];
+            if (Array.isArray(value) && value.length) {
+                messages.push(value[0]);
+            } else if (value) {
+                messages.push(value);
+            }
+        });
+    }
+
+    if (!messages.length && fallbackMessage) {
+        messages.push(fallbackMessage);
+    }
+
+    if (!messages.length) {
+        messages.push("Não foi possível salvar a avaliação.");
+    }
+
+    const html = messages.map((message) => "<div>" + message + "</div>").join("");
+    $errors.removeClass("d-none").html(html);
+}
+
+function loadTradeinEvaluationForm(tradeinId) {
+    const $container = $("#tradein_form_container");
+    if (!$container.length) {
+        return $.Deferred().reject().promise();
+    }
+
+    clearTradeinModalErrors();
+    $container.html('<div class="text-center py-4 text-muted">Carregando avaliação...</div>');
+    const vendaId = ($("#venda_id").val() || "").trim();
+    const consultor = ($(".funcionario_selecionado").first().text() || "").trim();
+    return $.get(path_url + "trade-in/" + tradeinId + "/modal", {
+        empresa_id: $("#empresa_id").val(),
+        numero_venda: vendaId,
+        consultor: consultor && consultor !== "--" ? consultor : "",
+    })
+        .done((html) => {
+            $container.html(html);
+            clearTradeinModalErrors();
+            if (typeof window.syncChecklistTecnicoControls === "function") {
+                window.syncChecklistTecnicoControls($container.get(0));
+            }
+        })
+        .fail((err) => {
+            console.log(err);
+            $container.html(
+                '<div class="alert alert-danger mb-0">Não foi possível carregar a avaliação.</div>',
+            );
+        });
+}
+
+function openTradeinEvaluationModal(tradeinId) {
+    if (!tradeinId) {
+        return;
+    }
+    loadTradeinEvaluationForm(tradeinId).always(() => {
+        showModal("#modal_tradein_form");
+    });
 }
 
 function fetchTradeinStatus(tradeinId) {
@@ -2581,8 +2663,9 @@ function fetchTradeinStatus(tradeinId) {
 
 function openTradeinStatusModal(tradeinId) {
     TRADEIN_ALLOW_CLOSE = false;
+    TRADEIN_OPEN_EVALUATION_ID = null;
     $("#tradein_status_id").val(tradeinId);
-    $("#modal_tradein_status").modal("show");
+    showModal("#modal_tradein_status");
     fetchTradeinStatus(tradeinId);
     if (!TRADEIN_POLL_TIMER) {
         TRADEIN_POLL_TIMER = setInterval(() => {
@@ -2642,6 +2725,96 @@ $("#btn-create-tradein").click(() => {
         .fail((err) => {
             console.log(err);
             swal("Erro", "Não foi possível criar o trade-in.", "error");
+        });
+});
+
+$(document).on("click", "#btn-tradein-evaluate", () => {
+    const tradeinId = $("#tradein_status_id").val();
+    if (!tradeinId) {
+        swal("Alerta", "Trade-in não encontrado para avaliação.", "warning");
+        return;
+    }
+    TRADEIN_OPEN_EVALUATION_ID = tradeinId;
+    TRADEIN_ALLOW_CLOSE = true;
+    $("#modal_tradein_status").modal("hide");
+});
+
+$(document).on(
+    "click",
+    ".btn-tradein-generate-document.disabled, .btn-tradein-generate-pdv.disabled",
+    function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    toastr.warning("Salve a avaliação antes de gerar o termo.");
+    },
+);
+
+$(document).on("keydown", "#tradein-modal-form input", function (e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+});
+
+$(document).on("click", "#btn-save-tradein-avaliacao", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const $form = $("#tradein-modal-form");
+    const actionUrl = $form.data("action") || $form.attr("action");
+    if (!actionUrl) {
+        toastr.error("Não foi possível identificar o endpoint da avaliação.");
+        return;
+    }
+
+    if (typeof window.getTradeinEvaluationValidation === "function") {
+        const validation = window.getTradeinEvaluationValidation($form.get(0));
+        if (!validation.ok) {
+            renderTradeinModalErrors(validation.errors, "Preencha todos os campos obrigatórios.");
+            return;
+        }
+    }
+
+    const $submit = $(this);
+    clearTradeinModalErrors();
+    $submit.prop("disabled", true);
+
+    $.ajax({
+        url: actionUrl,
+        type: "POST",
+        data: $form.find(":input[name]").serialize(),
+        headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            Accept: "application/json",
+        },
+    })
+        .done((res) => {
+            toastr.success(res.message || "Avaliação atualizada.");
+            $("#modal_tradein_form").modal("hide");
+            const tradeinId = res.tradein_id || $("#tradein_status_id").val();
+            if (tradeinId) {
+                setTimeout(() => {
+                    openTradeinStatusModal(tradeinId);
+                }, 150);
+            }
+        })
+        .fail((err) => {
+            console.log(err);
+            if (err.status === 422 && err.responseJSON) {
+                renderTradeinModalErrors(
+                    err.responseJSON.errors,
+                    err.responseJSON.message,
+                );
+                return;
+            }
+            renderTradeinModalErrors(null, getAjaxErrorMessage(err));
+        })
+        .always(() => {
+            if (typeof window.updateTradeinEvaluationState === "function") {
+                window.updateTradeinEvaluationState($form.get(0));
+            } else {
+                $submit.prop("disabled", false);
+            }
         });
 });
 
@@ -2705,6 +2878,12 @@ $("#modal_tradein_status").on("hidden.bs.modal", function () {
     if (TRADEIN_POLL_TIMER) {
         clearInterval(TRADEIN_POLL_TIMER);
         TRADEIN_POLL_TIMER = null;
+    }
+    if (TRADEIN_OPEN_EVALUATION_ID) {
+        const tradeinId = TRADEIN_OPEN_EVALUATION_ID;
+        TRADEIN_OPEN_EVALUATION_ID = null;
+        TRADEIN_ALLOW_CLOSE = false;
+        openTradeinEvaluationModal(tradeinId);
     }
 });
 

@@ -18,7 +18,10 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <a class="btn btn-outline-secondary" id="btn-tradein-termo" href="#" target="_blank" disabled>Gerar termo</a>
+                @canany(['tradein_edit', 'pdv_edit'])
+                <button type="button" class="btn btn-primary" id="btn-tradein-evaluate">Avaliar trade-in</button>
+                @endcanany
+                <a class="btn btn-outline-secondary btn-tradein-generate-document" id="btn-tradein-termo" href="#" target="_blank" disabled>Gerar termo</a>
                 <button type="button" class="btn btn-success" id="btn-tradein-accept" disabled>Cliente aceitou</button>
                 <button type="button" class="btn btn-danger" id="btn-tradein-reject" disabled>Cliente recusou</button>
                 <button type="button" class="btn btn-outline-danger" id="btn-tradein-cancel">Cancelar trade-in</button>
