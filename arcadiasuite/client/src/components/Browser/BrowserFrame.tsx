@@ -141,7 +141,8 @@ function CompactNavigationBar() {
           </div>
           <span className="hidden md:inline">Retail</span>
         </div>
-        <div 
+        {/* Comentado até aplicar a integracao completa */}
+        {/* <div 
           className="flex items-center gap-1 hover:bg-muted px-2 py-1.5 rounded cursor-pointer transition-colors flex-shrink-0"
           onClick={() => navigateTo("/plus", "Plus")}
           data-testid="bookmark-plus"
@@ -150,7 +151,7 @@ function CompactNavigationBar() {
             <Layers className="w-2.5 h-2.5 text-white" />
           </div>
           <span className="hidden md:inline">Plus</span>
-        </div>
+        </div> */}
         <div 
           className="flex items-center gap-1 hover:bg-muted px-2 py-1.5 rounded cursor-pointer transition-colors flex-shrink-0"
           onClick={() => navigateTo("/fisco", "Fisco")}

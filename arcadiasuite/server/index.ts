@@ -270,7 +270,7 @@ function startShellService(name: string, scriptPath: string, port: number) {
   return shellProcess;
 }
 
-startShellService("metabase", path.join(process.cwd(), "metabase/start-metabase.sh"), 8088);
+// startShellService("metabase", path.join(process.cwd(), "metabase/start-metabase.sh"), 8088);
 
 const app = express();
 const httpServer = createServer(app);
