@@ -55,6 +55,14 @@ class ContaReceberController extends Controller
 
         $data = ContaReceber::where('empresa_id', request()->empresa_id)
         ->select('conta_recebers.*')
+        ->with([
+            'cliente',
+            'categoria',
+            'localizacao',
+            'nfce.funcionario',
+            'nfe.funcionario',
+            'ordemServico'
+        ])
         ->when(!empty($cliente_id), function ($query) use ($cliente_id) {
             return $query->where('conta_recebers.cliente_id', $cliente_id);
         })

@@ -11,6 +11,7 @@ use App\Models\Produto;
 use App\Models\Cliente;
 use App\Models\Empresa;
 use App\Models\Caixa;
+use App\Models\ContaReceber;
 use Illuminate\Support\Facades\DB;
 use App\Utils\EstoqueUtil;
 
@@ -174,11 +175,26 @@ class VendaPdvController extends Controller
                 }
 
                 foreach($request->fatura as $key => $f){
+                    $dataVencimento = isset($f['vencimento']) ? $f['vencimento'] : date('Y-m-d');
+                    $valorParcela = __convert_value_bd($f['valor']);
                     FaturaNfce::create([
                         'nfce_id' => $nfce->id,
                         'tipo_pagamento' => $f['tipo_pagamento'],
-                        'data_vencimento' => !isset($f['vencimento']) ? $f['vencimento'] : date('Y-m-d'),
-                        'valor' => __convert_value_bd($f['valor'])
+                        'data_vencimento' => $dataVencimento,
+                        'valor' => $valorParcela
+                    ]);
+
+                    ContaReceber::gerarDeFaturaNfce([
+                        'empresa_id' => $request->empresa_id,
+                        'nfce_id' => $nfce->id,
+                        'cliente_id' => $request->cliente_id,
+                        'valor_integral' => $valorParcela,
+                        'tipo_pagamento' => $f['tipo_pagamento'],
+                        'data_vencimento' => $dataVencimento,
+                        'local_id' => $caixa->local_id,
+                        'caixa_id' => $caixa->id,
+                        'descricao' => 'Venda PDV #' . $nfce->id . ' Parcela ' . ($key + 1) . ' de ' . sizeof($request->fatura),
+                        'referencia' => 'Pedido PDV ' . $nfce->id . ' ' . ($key + 1) . '/' . sizeof($request->fatura),
                     ]);
                 }
 
@@ -251,6 +267,7 @@ public function update(Request $request){
                 }
 
                 $item->fatura()->delete();
+                ContaReceber::where('nfce_id', $item->id)->delete();
             }
 
             foreach($request->itens as $key => $i){
@@ -298,11 +315,26 @@ public function update(Request $request){
 
 
             foreach($request->fatura as $key => $f){
+                $dataVencimento = isset($f['vencimento']) ? $f['vencimento'] : date('Y-m-d');
+                $valorParcela = __convert_value_bd($f['valor']);
                 FaturaNfce::create([
                     'nfce_id' => $item->id,
                     'tipo_pagamento' => $f['tipo_pagamento'],
-                    'data_vencimento' => !isset($f['vencimento']) ? $f['vencimento'] : date('Y-m-d'),
-                    'valor' => __convert_value_bd($f['valor'])
+                    'data_vencimento' => $dataVencimento,
+                    'valor' => $valorParcela
+                ]);
+
+                ContaReceber::gerarDeFaturaNfce([
+                    'empresa_id' => $request->empresa_id,
+                    'nfce_id' => $item->id,
+                    'cliente_id' => $request->cliente_id,
+                    'valor_integral' => $valorParcela,
+                    'tipo_pagamento' => $f['tipo_pagamento'],
+                    'data_vencimento' => $dataVencimento,
+                    'local_id' => $item->local_id,
+                    'caixa_id' => $item->caixa_id,
+                    'descricao' => 'Venda PDV #' . $item->id . ' Parcela ' . ($key + 1) . ' de ' . sizeof($request->fatura),
+                    'referencia' => 'Pedido PDV ' . $item->id . ' ' . ($key + 1) . '/' . sizeof($request->fatura),
                 ]);
             }
 

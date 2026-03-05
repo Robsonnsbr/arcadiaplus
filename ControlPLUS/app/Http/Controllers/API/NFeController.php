@@ -796,14 +796,18 @@ class NFeController extends Controller
             for ($i = 0; $i < sizeof($request->fatura); $i++) {
                 $objeto = (object)$request->fatura[$i];
                 if ($request->conta_receber == 1) {
-                    ContaReceber::create([
+                    $vencimento = $objeto->vencimento ?: date('Y-m-d');
+                    ContaReceber::gerarDeFaturaNfe([
                         'empresa_id' => $request->empresa_id,
                         'nfe_id' => $nfe->id,
                         'cliente_id' => $item->cliente_id,
                         'valor_integral' => __convert_value_bd($objeto->valor),
                         'tipo_pagamento' => $objeto->tipo,
-                        'data_vencimento' => $objeto->vencimento,
-                        'local_id' => $caixa->local_id
+                        'data_vencimento' => $vencimento,
+                        'local_id' => $caixa->local_id,
+                        'caixa_id' => $caixa->id,
+                        'descricao' => 'Venda NFe #' . $nfe->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->fatura),
+                        'referencia' => 'NFe ' . $nfe->numero_sequencial . ' ' . ($i + 1) . '/' . sizeof($request->fatura),
                     ]);
                 }
             }

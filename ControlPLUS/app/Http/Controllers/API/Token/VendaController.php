@@ -13,6 +13,7 @@ use App\Models\Cliente;
 use App\Models\Empresa;
 use App\Models\Caixa;
 use App\Models\ContaPagar;
+use App\Models\ContaReceber;
 use App\Models\ComissaoVenda;
 use Illuminate\Support\Facades\DB;
 
@@ -164,11 +165,26 @@ class VendaController extends Controller
                 }
 
                 foreach($request->fatura as $key => $f){
+                    $dataVencimento = isset($f['vencimento']) ? $f['vencimento'] : date('Y-m-d');
+                    $valorParcela = __convert_value_bd($f['valor']);
                     FaturaNfe::create([
                         'nfe_id' => $nfe->id,
                         'tipo_pagamento' => $f['tipo_pagamento'],
-                        'data_vencimento' => !isset($f['vencimento']) ? $f['vencimento'] : date('Y-m-d'),
-                        'valor' => __convert_value_bd($f['valor'])
+                        'data_vencimento' => $dataVencimento,
+                        'valor' => $valorParcela
+                    ]);
+
+                    ContaReceber::gerarDeFaturaNfe([
+                        'empresa_id' => $request->empresa_id,
+                        'nfe_id' => $nfe->id,
+                        'cliente_id' => $request->cliente_id,
+                        'valor_integral' => $valorParcela,
+                        'tipo_pagamento' => $f['tipo_pagamento'],
+                        'data_vencimento' => $dataVencimento,
+                        'local_id' => $caixa->local_id,
+                        'caixa_id' => $caixa->id,
+                        'descricao' => 'Pedido #' . $nfe->numero_sequencial . ' Parcela ' . ($key + 1) . ' de ' . sizeof($request->fatura),
+                        'referencia' => 'Pedido ' . $nfe->numero_sequencial . ' ' . ($key + 1) . '/' . sizeof($request->fatura),
                     ]);
                 }
 
@@ -314,6 +330,7 @@ public function update(Request $request){
                 }
 
                 $item->fatura()->delete();
+                ContaReceber::where('nfe_id', $item->id)->delete();
             }
 
             foreach($request->itens as $key => $i){
@@ -361,11 +378,26 @@ public function update(Request $request){
 
 
             foreach($request->fatura as $key => $f){
+                $dataVencimento = isset($f['vencimento']) ? $f['vencimento'] : date('Y-m-d');
+                $valorParcela = __convert_value_bd($f['valor']);
                 FaturaNfe::create([
                     'nfe_id' => $item->id,
                     'tipo_pagamento' => $f['tipo_pagamento'],
-                    'data_vencimento' => !isset($f['vencimento']) ? $f['vencimento'] : date('Y-m-d'),
-                    'valor' => __convert_value_bd($f['valor'])
+                    'data_vencimento' => $dataVencimento,
+                    'valor' => $valorParcela
+                ]);
+
+                ContaReceber::gerarDeFaturaNfe([
+                    'empresa_id' => $request->empresa_id,
+                    'nfe_id' => $item->id,
+                    'cliente_id' => $request->cliente_id,
+                    'valor_integral' => $valorParcela,
+                    'tipo_pagamento' => $f['tipo_pagamento'],
+                    'data_vencimento' => $dataVencimento,
+                    'local_id' => $item->local_id,
+                    'caixa_id' => $item->caixa_id,
+                    'descricao' => 'Pedido #' . $item->numero_sequencial . ' Parcela ' . ($key + 1) . ' de ' . sizeof($request->fatura),
+                    'referencia' => 'Pedido ' . $item->numero_sequencial . ' ' . ($key + 1) . '/' . sizeof($request->fatura),
                 ]);
             }
 
@@ -409,6 +441,7 @@ public function delete(Request $request){
         }
         $item->itens()->delete();
         $item->fatura()->delete();
+        ContaReceber::where('nfe_id', $item->id)->delete();
         ContaPagar::where('nfe_id', $item->id)->delete();
 
         $comissao = ComissaoVenda::where('empresa_id', $item->empresa_id)

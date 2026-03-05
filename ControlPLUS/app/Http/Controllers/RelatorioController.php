@@ -668,6 +668,7 @@ class RelatorioController extends Controller
         ->when($cliente_id, function ($query) use ($cliente_id) {
             return $query->where('cliente_id', $cliente_id);
         })
+        ->with(['cliente', 'localizacao', 'funcionario'])
         ->get();
 
         $vendasCaixa = Nfce::where('empresa_id', $request->empresa_id)
@@ -695,6 +696,7 @@ class RelatorioController extends Controller
         ->when($cliente_id, function ($query) use ($cliente_id) {
             return $query->where('cliente_id', $cliente_id);
         })
+        ->with(['cliente', 'localizacao', 'funcionario'])
         ->get();
 
         // echo (sizeof($vendas)+sizeof($vendasCaixa));
@@ -730,6 +732,7 @@ class RelatorioController extends Controller
                 'tipo' => 'Pedido',
                 'total' => $v->total,
                 'cliente' => $v->cliente ? $v->cliente->info : '--',
+                'vendedor' => $v->funcionario ? $v->funcionario->nome : '--',
                 'localizacao' => $v->localizacao
                 // 'itens' => $v->itens
             ];
@@ -743,6 +746,7 @@ class RelatorioController extends Controller
                 'tipo' => 'PDV',
                 'total' => $v->total,
                 'cliente' => $v->cliente ? $v->cliente->info : '--',
+                'vendedor' => $v->funcionario ? $v->funcionario->nome : '--',
                 'localizacao' => $v->localizacao
                 // 'itens' => $v->itens
             ];

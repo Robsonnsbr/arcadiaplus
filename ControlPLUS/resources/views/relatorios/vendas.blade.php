@@ -6,6 +6,7 @@
         <tr>
             <th>#</th>
             <th>Cliente</th>
+            <th>Vendedor</th>
             <th>Data</th>
             <th>Tipo</th>
             <th>Valor</th>
@@ -23,6 +24,9 @@
             </td>
             <td>
                 {{ $item['cliente'] }}
+            </td>
+            <td>
+                {{ $item['vendedor'] ?? '--' }}
             </td>
             <td>
                 {{ __data_pt($item['data']) }}

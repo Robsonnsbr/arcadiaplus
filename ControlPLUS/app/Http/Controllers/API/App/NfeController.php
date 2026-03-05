@@ -171,25 +171,26 @@ class NfeController extends Controller
                 }
 
                 foreach($request->fatura as $key => $fatura){
+                    $vencimento = $fatura['vencimento'] ?? date('Y-m-d');
                     FaturaNfe::create([
                         'nfe_id' => $nfe->id,
                         'tipo_pagamento' => $fatura['tipo_pagamento'],
-                        'data_vencimento' => $fatura['vencimento'],
+                        'data_vencimento' => $vencimento,
                         'valor' => $item['valor']
                     ]);
 
-                    if(strtotime($fatura['vencimento']) > strtotime(date('Y-m-d'))){
-                        ContaReceber::create([
-                            'empresa_id' => $nfe->empresa_id,
-                            'nfe_id' => $nfe->id,
-                            'cliente_id' => $request->cliente,
-                            'valor_integral' => $item['valor'],
-                            'tipo_pagamento' => $fatura['tipo_pagamento'],
-                            'data_vencimento' => $fatura['vencimento'],
-                            'local_id' => $caixa->local_id,
-                            'descricao' => "Parcela " . $key+1 . " de " . sizeof($request->fatura)
-                        ]);
-                    }
+                    ContaReceber::gerarDeFaturaNfe([
+                        'empresa_id' => $nfe->empresa_id,
+                        'nfe_id' => $nfe->id,
+                        'cliente_id' => $request->cliente,
+                        'valor_integral' => $item['valor'],
+                        'tipo_pagamento' => $fatura['tipo_pagamento'],
+                        'data_vencimento' => $vencimento,
+                        'local_id' => $caixa->local_id,
+                        'caixa_id' => $caixa->id,
+                        'descricao' => 'Parcela ' . ($key + 1) . ' de ' . sizeof($request->fatura),
+                        'referencia' => 'Pedido ' . $nfe->numero_sequencial . ' ' . ($key + 1) . '/' . sizeof($request->fatura),
+                    ]);
                 }
 
 
@@ -305,25 +306,26 @@ public function update(Request $request){
             }
 
             foreach($request->fatura as $key => $fatura){
+                $vencimento = $fatura['vencimento'] ?? date('Y-m-d');
                 FaturaNfe::create([
                     'nfe_id' => $nfe->id,
                     'tipo_pagamento' => $fatura['tipo_pagamento'],
-                    'data_vencimento' => $fatura['vencimento'],
+                    'data_vencimento' => $vencimento,
                     'valor' => $item['valor']
                 ]);
 
-                if(strtotime($fatura['vencimento']) > strtotime(date('Y-m-d'))){
-                    ContaReceber::create([
-                        'empresa_id' => $nfe->empresa_id,
-                        'nfe_id' => $nfe->id,
-                        'cliente_id' => $request->cliente,
-                        'valor_integral' => $item['valor'],
-                        'tipo_pagamento' => $fatura['tipo_pagamento'],
-                        'data_vencimento' => $fatura['vencimento'],
-                        'local_id' => $caixa->local_id,
-                        'descricao' => "Parcela " . $key+1 . " de " . sizeof($request->fatura)
-                    ]);
-                }
+                ContaReceber::gerarDeFaturaNfe([
+                    'empresa_id' => $nfe->empresa_id,
+                    'nfe_id' => $nfe->id,
+                    'cliente_id' => $request->cliente,
+                    'valor_integral' => $item['valor'],
+                    'tipo_pagamento' => $fatura['tipo_pagamento'],
+                    'data_vencimento' => $vencimento,
+                    'local_id' => $caixa->local_id,
+                    'caixa_id' => $caixa->id,
+                    'descricao' => 'Parcela ' . ($key + 1) . ' de ' . sizeof($request->fatura),
+                    'referencia' => 'Pedido ' . $nfe->numero_sequencial . ' ' . ($key + 1) . '/' . sizeof($request->fatura),
+                ]);
             }
 
             $comissao = ComissaoVenda::where('empresa_id', $nfe->empresa_id)

@@ -610,16 +610,19 @@ class NFCeController extends Controller
             for ($i = 0; $i < sizeof($request->fatura); $i++) {
                 $objeto = (object)$request->fatura[$i];
 
-                $dataAtual = date('Y-m-d');
-                if ($request->conta_receber == 1 && strtotime($dataAtual) >= strtotime($objeto->vencimento)) {
-                    ContaReceber::create([
+                if ($request->conta_receber == 1) {
+                    $vencimento = $objeto->vencimento ?: date('Y-m-d');
+                    ContaReceber::gerarDeFaturaNfce([
                         'empresa_id' => $request->empresa_id,
                         'nfce_id' => $nfce->id,
                         'cliente_id' => $item->cliente_id,
                         'valor_integral' => __convert_value_bd($objeto->valor),
                         'tipo_pagamento' => $objeto->tipo,
-                        'data_vencimento' => $objeto->vencimento,
+                        'data_vencimento' => $vencimento,
                         'local_id' => $caixa->local_id,
+                        'caixa_id' => $caixa->id,
+                        'descricao' => 'Venda NFCe #' . $nfce->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->fatura),
+                        'referencia' => 'NFCe ' . $nfce->numero_sequencial . ' ' . ($i + 1) . '/' . sizeof($request->fatura),
                     ]);
                 }
             }
@@ -745,16 +748,19 @@ public function gerarVenda(Request $request)
                 'valor' => __convert_value_bd($objeto->valor)
             ]);
 
-            $dataAtual = date('Y-m-d');
-            if ($request->conta_receber == 1 && strtotime($dataAtual) >= strtotime($objeto->vencimento)) {
-                ContaReceber::create([
+            if ($request->conta_receber == 1) {
+                $vencimento = $objeto->vencimento ?: date('Y-m-d');
+                ContaReceber::gerarDeFaturaNfce([
                     'empresa_id' => $item->empresa_id,
                     'nfce_id' => $nfce->id,
                     'cliente_id' => $item->cliente_id,
                     'valor_integral' => __convert_value_bd($objeto->valor),
                     'tipo_pagamento' => $objeto->tipo,
-                    'data_vencimento' => $objeto->vencimento,
-                    'local_id' => $caixa->local_id
+                    'data_vencimento' => $vencimento,
+                    'local_id' => $caixa->local_id,
+                    'caixa_id' => $caixa->id,
+                    'descricao' => 'Venda NFCe #' . $nfce->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->fatura),
+                    'referencia' => 'NFCe ' . $nfce->numero_sequencial . ' ' . ($i + 1) . '/' . sizeof($request->fatura),
                 ]);
             }
         }

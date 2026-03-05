@@ -178,35 +178,31 @@ class FrontboxController extends Controller
 
                 if(sizeof($request->fatura) > 0){
                     foreach($request->fatura as $i => $fatura){
+                        $vencimento = $fatura['vencimento'] ?: date('Y-m-d');
+                        $valorParcela = __convert_value_bd($fatura['valor']);
                         FaturaNfce::create([
                             'nfce_id' => $nfce->id,
                             'tipo_pagamento' => $fatura['tipo_pagamento'],
-                            'data_vencimento' => $fatura['vencimento'],
-                            'valor' => $fatura['valor']
+                            'data_vencimento' => $vencimento,
+                            'valor' => $valorParcela
                         ]);
 
-                        $vencimento = $fatura['vencimento'];
-                        $dataAtual = date('Y-m-d');
-
-                        if(strtotime($vencimento) > strtotime($dataAtual)){
-                            ContaReceber::create([
-                                'nfe_id' => null,
-                                'nfce_id' => $nfce->id,
-                                'cliente_id' => $request->cliente,
-                                'data_vencimento' => $fatura['vencimento'],
-                                'data_recebimento' => $fatura['vencimento'],
-                                'valor_integral' => $fatura['valor'],
-                                'valor_recebido' => 0,
-                                'status' => 0,
-                                'referencia' => "Parcela $i+1 da venda código $nfce->id",
-                                'empresa_id' => $request->empresa_id,
-                                'juros' => 0,
-                                'multa' => 0,
-                                'observacao' => '',
-                                'tipo_pagamento' => $fatura['tipo_pagamento'],
-                                'local_id' => $caixa->local_id
-                            ]);
-                        }
+                        ContaReceber::gerarDeFaturaNfce([
+                            'empresa_id' => $request->empresa_id,
+                            'nfce_id' => $nfce->id,
+                            'cliente_id' => $request->cliente,
+                            'data_vencimento' => $vencimento,
+                            'data_recebimento' => $vencimento,
+                            'valor_integral' => $valorParcela,
+                            'valor_recebido' => 0,
+                            'status' => 0,
+                            'descricao' => 'Venda Comanda #' . $nfce->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->fatura),
+                            'referencia' => 'Comanda ' . $nfce->numero_sequencial . ' ' . ($i + 1) . '/' . sizeof($request->fatura),
+                            'observacao' => '',
+                            'tipo_pagamento' => $fatura['tipo_pagamento'],
+                            'local_id' => $caixa->local_id,
+                            'caixa_id' => $caixa->id,
+                        ]);
                     }
                 }else{
                     FaturaNfce::create([
@@ -214,6 +210,21 @@ class FrontboxController extends Controller
                         'tipo_pagamento' => $request->tipo_pagamento,
                         'data_vencimento' => date('Y-m-d'),
                         'valor' => $nfce->total
+                    ]);
+                    ContaReceber::gerarDeFaturaNfce([
+                        'empresa_id' => $request->empresa_id,
+                        'nfce_id' => $nfce->id,
+                        'cliente_id' => $request->cliente,
+                        'data_vencimento' => date('Y-m-d'),
+                        'data_recebimento' => date('Y-m-d'),
+                        'valor_integral' => $nfce->total,
+                        'valor_recebido' => 0,
+                        'status' => 0,
+                        'descricao' => 'Venda Comanda #' . $nfce->numero_sequencial,
+                        'referencia' => 'Comanda ' . $nfce->numero_sequencial . ' 1/1',
+                        'tipo_pagamento' => $request->tipo_pagamento,
+                        'local_id' => $caixa->local_id,
+                        'caixa_id' => $caixa->id,
                     ]);
                 }
 

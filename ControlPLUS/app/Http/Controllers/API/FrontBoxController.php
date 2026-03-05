@@ -1260,56 +1260,46 @@ class FrontBoxController extends Controller
                     }
                 }
 
-            if ($request->tipo_pagamento == '06') {
-                ContaReceber::create([
-                    'nfe_id' => null,
+            if ($request->tipo_pagamento == '06' && empty($request->tipo_pagamento_row)) {
+                $dataVencimento = date('Y-m-d', strtotime('+30 days'));
+                ContaReceber::gerarDeFaturaNfce([
+                    'empresa_id' => $request->empresa_id,
                     'nfce_id' => $nfce->id,
-                        'data_vencimento' => date('Y-m-d', strtotime('+30 days')),
-                        'data_recebimento' => date('Y-m-d', strtotime('+30 days')),
-                        'descricao' => 'Venda PDV ' . $nfce->numero_sequencial,
-                        'valor_integral' => __convert_value_bd($request->valor_total),
-                        'valor_recebido' => 0,
-                        'descricao' => 'Venda PDV #' . $nfce->numero_sequencial,
-                        'status' => 0,
-                        'empresa_id' => $request->empresa_id,
-                        'cliente_id' => $request->cliente_id,
-                        'tipo_pagamento' => $request->tipo_pagamento,
-                        'observacao' => $request->observacao,
-                        'local_id' => $caixa->local_id,
-                        'caixa_id' => $caixa->id,
-                        'referencia' => "Pedido PDV " . $nfce->numero_sequencial
-                    ]);
-                }
+                    'cliente_id' => $request->cliente_id,
+                    'data_vencimento' => $dataVencimento,
+                    'data_recebimento' => $dataVencimento,
+                    'valor_integral' => __convert_value_bd($request->valor_total),
+                    'valor_recebido' => 0,
+                    'status' => 0,
+                    'descricao' => 'Venda PDV #' . $nfce->numero_sequencial,
+                    'tipo_pagamento' => $request->tipo_pagamento,
+                    'observacao' => $request->observacao,
+                    'local_id' => $caixa->local_id,
+                    'caixa_id' => $caixa->id,
+                    'referencia' => "Pedido PDV {$nfce->numero_sequencial} 1/" . max(1, sizeof($request->tipo_pagamento_row ?? []))
+                ]);
+            }
 
                 if ($request->tipo_pagamento_row) {
                     for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
                         // if ($request->tipo_pagamento_row[$i] == '06') {
-                        $vencimento = $request->data_vencimento_row[$i];
-                        $dataAtual = date('Y-m-d');
-                        if($request->tipo_pagamento_row[$i] == TradeinCreditMovement::PAYMENT_CODE){
-                            continue;
-                        }
-                        if(strtotime($vencimento) > strtotime($dataAtual)){
-                            ContaReceber::create([
-                                'nfe_id' => null,
-                                'nfce_id' => $nfce->id,
-                                'cliente_id' => $request->cliente_id,
-                                'data_vencimento' => $request->data_vencimento_row[$i],
-                                'data_recebimento' => $request->data_vencimento_row[$i],
-                                'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
-                                'valor_recebido' => 0,
-                                'status' => 0,
-                                'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . " Parcela " . $i+1 . " de " . sizeof($request->tipo_pagamento_row),
-                                'empresa_id' => $request->empresa_id,
-                                'juros' => 0,
-                                'multa' => 0,
-                                'observacao' => $request->obs_row[$i] ?? '',
-                                'tipo_pagamento' => $request->tipo_pagamento_row[$i],
-                                'local_id' => $caixa->local_id,
-                                'caixa_id' => $caixa->id,
-                                'referencia' => "Pedido PDV " . $nfce->numero_sequencial
-                            ]);
-                        }
+                        $vencimento = $request->data_vencimento_row[$i] ?: date('Y-m-d');
+                        ContaReceber::gerarDeFaturaNfce([
+                            'empresa_id' => $request->empresa_id,
+                            'nfce_id' => $nfce->id,
+                            'cliente_id' => $request->cliente_id,
+                            'data_vencimento' => $vencimento,
+                            'data_recebimento' => $vencimento,
+                            'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
+                            'valor_recebido' => 0,
+                            'status' => 0,
+                            'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->tipo_pagamento_row),
+                            'observacao' => $request->obs_row[$i] ?? '',
+                            'tipo_pagamento' => $request->tipo_pagamento_row[$i],
+                            'local_id' => $caixa->local_id,
+                            'caixa_id' => $caixa->id,
+                            'referencia' => "Pedido PDV {$nfce->numero_sequencial} " . ($i + 1) . "/" . sizeof($request->tipo_pagamento_row)
+                        ]);
                         // }
                     }
                     for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
@@ -1328,6 +1318,23 @@ class FrontBoxController extends Controller
                         'tipo_pagamento' => $request->tipo_pagamento,
                         'data_vencimento' => date('Y-m-d'),
                         'valor' => __convert_value_bd($request->valor_total)
+                    ]);
+
+                    ContaReceber::gerarDeFaturaNfce([
+                        'empresa_id' => $request->empresa_id,
+                        'nfce_id' => $nfce->id,
+                        'cliente_id' => $request->cliente_id,
+                        'data_vencimento' => date('Y-m-d'),
+                        'data_recebimento' => date('Y-m-d'),
+                        'valor_integral' => __convert_value_bd($request->valor_total),
+                        'valor_recebido' => 0,
+                        'status' => 0,
+                        'descricao' => 'Venda PDV #' . $nfce->numero_sequencial,
+                        'tipo_pagamento' => $request->tipo_pagamento,
+                        'observacao' => $request->observacao,
+                        'local_id' => $caixa->local_id,
+                        'caixa_id' => $caixa->id,
+                        'referencia' => "Pedido PDV {$nfce->numero_sequencial} 1/1",
                     ]);
                 }
 
@@ -1615,36 +1622,28 @@ public function storePdv3(Request $request){
             if ($request->fatura && $request->fatura[0]['valor'] > 0) {
                 foreach($request->fatura as $key => $f){
                     $f = (object)$f;
-
-                    $dataAtual = date('Y-m-d');
-                    $vencimento = $f->data;
-                    if($f->data && strtotime($vencimento) > strtotime($dataAtual)){
-
-                        ContaReceber::create([
-                            'nfe_id' => null,
-                            'nfce_id' => $nfce->id,
-                            'cliente_id' => $request->cliente_id,
-                            'data_vencimento' => $vencimento,
-                            'data_recebimento' => $vencimento,
-                            'valor_integral' => __convert_value_bd($f->valor),
-                            'valor_recebido' => 0,
-                            'status' => 0,
-                            // 'descricao' => "Parcela $i+1 da venda código $nfce->id",
-                            'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . " Parcela " . ($key+1) . " de " . sizeof($request->fatura),
-                            'empresa_id' => $request->empresa_id,
-                            'juros' => 0,
-                            'multa' => 0,
-                            'observacao' => $request->obs_row[$i] ?? '',
-                            'tipo_pagamento' => $f->tipo_pagamento,
-                            'local_id' => $caixa->local_id,
-                            'referencia' => "Pedido PDV " . $nfce->numero_sequencial
-                        ]);
-                    }
+                    $vencimento = $f->data ?: date('Y-m-d');
+                    ContaReceber::gerarDeFaturaNfce([
+                        'empresa_id' => $request->empresa_id,
+                        'nfce_id' => $nfce->id,
+                        'cliente_id' => $request->cliente_id,
+                        'data_vencimento' => $vencimento,
+                        'data_recebimento' => $vencimento,
+                        'valor_integral' => __convert_value_bd($f->valor),
+                        'valor_recebido' => 0,
+                        'status' => 0,
+                        'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . ' Parcela ' . ($key + 1) . ' de ' . sizeof($request->fatura),
+                        'observacao' => $request->obs_row[$key] ?? '',
+                        'tipo_pagamento' => $f->tipo_pagamento,
+                        'local_id' => $caixa->local_id,
+                        'caixa_id' => $caixa->id,
+                        'referencia' => "Pedido PDV {$nfce->numero_sequencial} " . ($key + 1) . "/" . sizeof($request->fatura)
+                    ]);
 
                     FaturaNfce::create([
                         'nfce_id' => $nfce->id,
                         'tipo_pagamento' => $f->tipo_pagamento,
-                        'data_vencimento' => $f->data ? $f->data : date('Y-m-d'),
+                        'data_vencimento' => $vencimento,
                         'valor' => __convert_value_bd($f->valor)
                     ]);
                 }
@@ -1656,6 +1655,21 @@ public function storePdv3(Request $request){
                     'tipo_pagamento' => $nfce->tipo_pagamento,
                     'data_vencimento' => date('Y-m-d'),
                     'valor' => $nfce->total
+                ]);
+                ContaReceber::gerarDeFaturaNfce([
+                    'empresa_id' => $request->empresa_id,
+                    'nfce_id' => $nfce->id,
+                    'cliente_id' => $request->cliente_id,
+                    'data_vencimento' => date('Y-m-d'),
+                    'data_recebimento' => date('Y-m-d'),
+                    'valor_integral' => $nfce->total,
+                    'valor_recebido' => 0,
+                    'status' => 0,
+                    'descricao' => 'Venda PDV #' . $nfce->numero_sequencial,
+                    'tipo_pagamento' => $nfce->tipo_pagamento,
+                    'local_id' => $caixa->local_id,
+                    'caixa_id' => $caixa->id,
+                    'referencia' => "Pedido PDV {$nfce->numero_sequencial} 1/1"
                 ]);
             }
 
@@ -1825,37 +1839,30 @@ public function updatePdv3(Request $request){
             if ($request->fatura && $request->fatura[0]['valor'] > 0) {
 
                 $nfce->contaReceber()->delete();
-                foreach($request->fatura as $f){
+                foreach($request->fatura as $index => $f){
                     $f = (object)$f;
-
-                    $dataAtual = date('Y-m-d');
-                    $vencimento = $f->data;
-                    if($f->data && strtotime($vencimento) > strtotime($dataAtual)){
-
-                        ContaReceber::create([
-                            'nfe_id' => null,
-                            'nfce_id' => $nfce->id,
-                            'cliente_id' => $request->cliente_id,
-                            'data_vencimento' => $vencimento,
-                            'data_recebimento' => $vencimento,
-                            'valor_integral' => __convert_value_bd($f->valor),
-                            'valor_recebido' => 0,
-                            'status' => 0,
-                            'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . " Parcela " . $i+1 . " de " . sizeof($request->fatura),
-                            'empresa_id' => $request->empresa_id,
-                            'juros' => 0,
-                            'multa' => 0,
-                            'observacao' => $request->obs_row[$i] ?? '',
-                            'tipo_pagamento' => $f->tipo_pagamento,
-                            'local_id' => $caixa->local_id,
-                            'referencia' => "Pedido PDV " . $nfce->numero_sequencial
-                        ]);
-                    }
+                    $vencimento = $f->data ?: date('Y-m-d');
+                    ContaReceber::gerarDeFaturaNfce([
+                        'empresa_id' => $request->empresa_id,
+                        'nfce_id' => $nfce->id,
+                        'cliente_id' => $request->cliente_id,
+                        'data_vencimento' => $vencimento,
+                        'data_recebimento' => $vencimento,
+                        'valor_integral' => __convert_value_bd($f->valor),
+                        'valor_recebido' => 0,
+                        'status' => 0,
+                        'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . ' Parcela ' . ($index + 1) . ' de ' . sizeof($request->fatura),
+                        'observacao' => $request->obs_row[$index] ?? '',
+                        'tipo_pagamento' => $f->tipo_pagamento,
+                        'local_id' => $caixa->local_id,
+                        'caixa_id' => $caixa->id,
+                        'referencia' => "Pedido PDV {$nfce->numero_sequencial} " . ($index + 1) . "/" . sizeof($request->fatura)
+                    ]);
 
                     FaturaNfce::create([
                         'nfce_id' => $nfce->id,
                         'tipo_pagamento' => $f->tipo_pagamento,
-                        'data_vencimento' => $f->data ? $f->data : date('Y-m-d'),
+                        'data_vencimento' => $vencimento,
                         'valor' => __convert_value_bd($f->valor)
                     ]);
                 }
@@ -1867,6 +1874,21 @@ public function updatePdv3(Request $request){
                     'tipo_pagamento' => $nfce->tipo_pagamento,
                     'data_vencimento' => date('Y-m-d'),
                     'valor' => $nfce->total
+                ]);
+                ContaReceber::gerarDeFaturaNfce([
+                    'empresa_id' => $request->empresa_id,
+                    'nfce_id' => $nfce->id,
+                    'cliente_id' => $request->cliente_id,
+                    'data_vencimento' => date('Y-m-d'),
+                    'data_recebimento' => date('Y-m-d'),
+                    'valor_integral' => $nfce->total,
+                    'valor_recebido' => 0,
+                    'status' => 0,
+                    'descricao' => 'Venda PDV #' . $nfce->numero_sequencial,
+                    'tipo_pagamento' => $nfce->tipo_pagamento,
+                    'local_id' => $caixa->local_id,
+                    'caixa_id' => $caixa->id,
+                    'referencia' => "Pedido PDV {$nfce->numero_sequencial} 1/1"
                 ]);
             }
 
@@ -2151,32 +2173,23 @@ public function storeComanda(Request $request)
             if ($request->tipo_pagamento_row) {
                 for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
 
-                    $vencimento = $request->data_vencimento_row[$i];
-                    $dataAtual = date('Y-m-d');
-                    if($request->tipo_pagamento_row[$i] == TradeinCreditMovement::PAYMENT_CODE){
-                        continue;
-                    }
-                    if(strtotime($vencimento) > strtotime($dataAtual)){
-                        ContaReceber::create([
-                            'nfe_id' => null,
-                            'nfce_id' => $nfce->id,
-                            'cliente_id' => $request->cliente_id,
-                            'data_vencimento' => $request->data_vencimento_row[$i],
-                            'data_recebimento' => $request->data_vencimento_row[$i],
-                            'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
-                            'valor_recebido' => 0,
-                            'status' => 0,
-                            'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . " Parcela " . $i+1 . " de " . sizeof($request->tipo_pagamento_row),
-
-                            'empresa_id' => $request->empresa_id,
-                            'juros' => 0,
-                            'multa' => 0,
-                            'observacao' => $request->obs_row[$i] ?? '',
-                            'tipo_pagamento' => $request->tipo_pagamento_row[$i],
-                            'local_id' => $caixa->local_id,
-                            'referencia' => "Pedido PDV " . $nfce->numero_sequencial
-                        ]);
-                    }
+                    $vencimento = $request->data_vencimento_row[$i] ?: date('Y-m-d');
+                    ContaReceber::gerarDeFaturaNfce([
+                        'empresa_id' => $request->empresa_id,
+                        'nfce_id' => $nfce->id,
+                        'cliente_id' => $request->cliente_id,
+                        'data_vencimento' => $vencimento,
+                        'data_recebimento' => $vencimento,
+                        'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
+                        'valor_recebido' => 0,
+                        'status' => 0,
+                        'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->tipo_pagamento_row),
+                        'observacao' => $request->obs_row[$i] ?? '',
+                        'tipo_pagamento' => $request->tipo_pagamento_row[$i],
+                        'local_id' => $caixa->local_id,
+                        'caixa_id' => $caixa->id,
+                        'referencia' => "Pedido PDV {$nfce->numero_sequencial} " . ($i + 1) . "/" . sizeof($request->tipo_pagamento_row)
+                    ]);
 
                 }
                 for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
@@ -2195,6 +2208,21 @@ public function storeComanda(Request $request)
                     'tipo_pagamento' => $request->tipo_pagamento,
                     'data_vencimento' => date('Y-m-d'),
                     'valor' => __convert_value_bd($request->valor_total)
+                ]);
+                ContaReceber::gerarDeFaturaNfce([
+                    'empresa_id' => $request->empresa_id,
+                    'nfce_id' => $nfce->id,
+                    'cliente_id' => $request->cliente_id,
+                    'data_vencimento' => date('Y-m-d'),
+                    'data_recebimento' => date('Y-m-d'),
+                    'valor_integral' => __convert_value_bd($request->valor_total),
+                    'valor_recebido' => 0,
+                    'status' => 0,
+                    'descricao' => 'Venda PDV #' . $nfce->numero_sequencial,
+                    'tipo_pagamento' => $request->tipo_pagamento,
+                    'local_id' => $caixa->local_id,
+                    'caixa_id' => $caixa->id,
+                    'referencia' => "Pedido PDV {$nfce->numero_sequencial} 1/1"
                 ]);
             }
 
@@ -2336,52 +2364,44 @@ public function storeNfe(Request $request)
                 }
             }
 
-            if ($request->tipo_pagamento == '06') {
-                ContaReceber::create([
-                    'nfce_id' => null,
+            if ($request->tipo_pagamento == '06' && empty($request->tipo_pagamento_row)) {
+                $dataVencimento = $request->data_vencimento ?: date('Y-m-d');
+                ContaReceber::gerarDeFaturaNfe([
+                    'empresa_id' => $request->empresa_id,
                     'nfe_id' => $nfe->id,
-                    'data_vencimento' => $request->data_vencimento,
-                    'data_recebimento' =>  $request->data_vencimento,
+                    'cliente_id' => $request->cliente_id,
+                    'data_vencimento' => $dataVencimento,
+                    'data_recebimento' => $dataVencimento,
                     'valor_integral' => __convert_value_bd($request->valor_total),
                     'valor_recebido' => 0,
-                    'descricao' => 'Venda ' . $nfe->numero_sequencial,
                     'status' => 0,
-                    'empresa_id' => $request->empresa_id,
-                    'cliente_id' => $request->cliente_id,
+                    'descricao' => 'Venda ' . $nfe->numero_sequencial,
                     'tipo_pagamento' => $request->tipo_pagamento,
                     'observacao' => $request->observacao,
                     'local_id' => $caixa->local_id,
-                    'referencia' => "Pedido " . $nfe->numero_sequencial
+                    'referencia' => "Pedido {$nfe->numero_sequencial} 1/1"
                 ]);
             }
 
             if ($request->tipo_pagamento_row) {
                 for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
 
-                    $vencimento = $request->data_vencimento_row[$i];
-                    $dataAtual = date('Y-m-d');
-                    if($request->tipo_pagamento_row[$i] == TradeinCreditMovement::PAYMENT_CODE){
-                        continue;
-                    }
-                    if(strtotime($vencimento) > strtotime($dataAtual)){
-                        ContaReceber::create([
-                            'nfce_id' => null,
-                            'nfe_id' => $nfe->id,
-                            'cliente_id' => $request->cliente_id,
-                            'data_vencimento' => $request->data_vencimento_row[$i],
-                            'data_recebimento' => $request->data_vencimento_row[$i],
-                            'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
-                            'valor_recebido' => 0,
-                            'status' => 0,
-                            'referencia' => "Pedido " . $nfe->numero_sequencial,
-                            'empresa_id' => $request->empresa_id,
-                            'juros' => 0,
-                            'multa' => 0,
-                            'observacao' => $request->obs_row[$i] ?? '',
-                            'tipo_pagamento' => $request->tipo_pagamento_row[$i],
-                            'local_id' => $caixa->local_id
-                        ]);
-                    }
+                    $vencimento = $request->data_vencimento_row[$i] ?: date('Y-m-d');
+                    ContaReceber::gerarDeFaturaNfe([
+                        'empresa_id' => $request->empresa_id,
+                        'nfe_id' => $nfe->id,
+                        'cliente_id' => $request->cliente_id,
+                        'data_vencimento' => $vencimento,
+                        'data_recebimento' => $vencimento,
+                        'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
+                        'valor_recebido' => 0,
+                        'status' => 0,
+                        'referencia' => "Pedido {$nfe->numero_sequencial} " . ($i + 1) . "/" . sizeof($request->tipo_pagamento_row),
+                        'descricao' => 'Venda ' . $nfe->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->tipo_pagamento_row),
+                        'observacao' => $request->obs_row[$i] ?? '',
+                        'tipo_pagamento' => $request->tipo_pagamento_row[$i],
+                        'local_id' => $caixa->local_id
+                    ]);
                 }
                 for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
                     if ($request->tipo_pagamento_row[$i]) {
@@ -2618,28 +2638,23 @@ public function update(Request $request, $id){
                 $item->contaReceber()->delete();
                 for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
 
-                    $vencimento = $request->data_vencimento_row[$i];
-                    $dataAtual = date('Y-m-d');
-                    if(strtotime($vencimento) > strtotime($dataAtual)){
-                        ContaReceber::create([
-                            'nfe_id' => null,
-                            'nfce_id' => $item->id,
-                            'cliente_id' => $request->cliente_id,
-                            'data_vencimento' => $request->data_vencimento_row[$i],
-                            'data_recebimento' => $request->data_vencimento_row[$i],
-                            'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
-                            'valor_recebido' => 0,
-                            'status' => 0,
-                            'descricao' => 'Venda #' . $item->numero_sequencial . " Parcela " . $i+1 . " de " . sizeof($request->tipo_pagamento_row),
-                            'empresa_id' => $request->empresa_id,
-                            'juros' => 0,
-                            'multa' => 0,
-                            'observacao' => $request->obs_row[$i] ?? '',
-                            'tipo_pagamento' => $request->tipo_pagamento_row[$i],
-                            'local_id' => $item->local_id,
-                            'referencia' => "Pedido PDV " . $item->numero_sequencial
-                        ]);
-                    }
+                    $vencimento = $request->data_vencimento_row[$i] ?: date('Y-m-d');
+                    ContaReceber::gerarDeFaturaNfce([
+                        'empresa_id' => $request->empresa_id,
+                        'nfce_id' => $item->id,
+                        'cliente_id' => $request->cliente_id,
+                        'data_vencimento' => $vencimento,
+                        'data_recebimento' => $vencimento,
+                        'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
+                        'valor_recebido' => 0,
+                        'status' => 0,
+                        'descricao' => 'Venda #' . $item->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->tipo_pagamento_row),
+                        'observacao' => $request->obs_row[$i] ?? '',
+                        'tipo_pagamento' => $request->tipo_pagamento_row[$i],
+                        'local_id' => $item->local_id,
+                        'caixa_id' => $item->caixa_id,
+                        'referencia' => "Pedido PDV {$item->numero_sequencial} " . ($i + 1) . "/" . sizeof($request->tipo_pagamento_row)
+                    ]);
 
                 }
                 for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
@@ -2659,6 +2674,21 @@ public function update(Request $request, $id){
                     'tipo_pagamento' => $request->tipo_pagamento,
                     'data_vencimento' => date('Y-m-d'),
                     'valor' => __convert_value_bd($request->valor_total)
+                ]);
+                ContaReceber::gerarDeFaturaNfce([
+                    'empresa_id' => $request->empresa_id,
+                    'nfce_id' => $item->id,
+                    'cliente_id' => $request->cliente_id,
+                    'data_vencimento' => date('Y-m-d'),
+                    'data_recebimento' => date('Y-m-d'),
+                    'valor_integral' => __convert_value_bd($request->valor_total),
+                    'valor_recebido' => 0,
+                    'status' => 0,
+                    'descricao' => 'Venda #' . $item->numero_sequencial,
+                    'tipo_pagamento' => $request->tipo_pagamento,
+                    'local_id' => $item->local_id,
+                    'caixa_id' => $item->caixa_id,
+                    'referencia' => "Pedido PDV {$item->numero_sequencial} 1/1"
                 ]);
             }
 

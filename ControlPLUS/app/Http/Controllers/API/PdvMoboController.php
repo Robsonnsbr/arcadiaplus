@@ -254,35 +254,28 @@ class PdvMoboController extends Controller
                     foreach($request->fatura as $key => $f){
                         $f = (object)$f;
 
-                        $dataAtual = date('Y-m-d');
-                        $vencimento = $f->data;
-                        if($f->data && strtotime($vencimento) > strtotime($dataAtual)){
-
-                            ContaReceber::create([
-                                'nfe_id' => null,
-                                'nfce_id' => $nfce->id,
-                                'cliente_id' => $request->cliente_id,
-                                'data_vencimento' => $vencimento,
-                                'data_recebimento' => $vencimento,
-                                'valor_integral' => __convert_value_bd($f->valor),
-                                'valor_recebido' => 0,
-                                'status' => 0,
-                            // 'descricao' => "Parcela $i+1 da venda código $nfce->id",
-                                'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . " Parcela " . ($key+1) . " de " . sizeof($request->fatura),
-                                'empresa_id' => $request->empresa_id,
-                                'juros' => 0,
-                                'multa' => 0,
-                                'observacao' => $request->obs_row[$i] ?? '',
-                                'tipo_pagamento' => $f->forma,
-                                'local_id' => $caixa->local_id,
-                                'referencia' => "Pedido PDV " . $nfce->numero_sequencial
-                            ]);
-                        }
+                        $vencimento = $f->data ?: date('Y-m-d');
+                        ContaReceber::gerarDeFaturaNfce([
+                            'empresa_id' => $request->empresa_id,
+                            'nfce_id' => $nfce->id,
+                            'cliente_id' => $request->cliente_id,
+                            'data_vencimento' => $vencimento,
+                            'data_recebimento' => $vencimento,
+                            'valor_integral' => __convert_value_bd($f->valor),
+                            'valor_recebido' => 0,
+                            'status' => 0,
+                            'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . ' Parcela ' . ($key + 1) . ' de ' . sizeof($request->fatura),
+                            'observacao' => $request->obs_row[$key] ?? '',
+                            'tipo_pagamento' => $f->forma,
+                            'local_id' => $caixa->local_id,
+                            'caixa_id' => $caixa->id,
+                            'referencia' => "Pedido PDV {$nfce->numero_sequencial} " . ($key + 1) . "/" . sizeof($request->fatura)
+                        ]);
 
                         FaturaNfce::create([
                             'nfce_id' => $nfce->id,
                             'tipo_pagamento' => $f->forma,
-                            'data_vencimento' => $f->data ? $f->data : date('Y-m-d'),
+                            'data_vencimento' => $vencimento,
                             'valor' => __convert_value_bd($f->valor)
                         ]);
                     }
@@ -294,6 +287,21 @@ class PdvMoboController extends Controller
                         'tipo_pagamento' => $tipoPagamento,
                         'data_vencimento' => date('Y-m-d'),
                         'valor' => $nfce->total
+                    ]);
+                    ContaReceber::gerarDeFaturaNfce([
+                        'empresa_id' => $request->empresa_id,
+                        'nfce_id' => $nfce->id,
+                        'cliente_id' => $request->cliente_id,
+                        'data_vencimento' => date('Y-m-d'),
+                        'data_recebimento' => date('Y-m-d'),
+                        'valor_integral' => $nfce->total,
+                        'valor_recebido' => 0,
+                        'status' => 0,
+                        'descricao' => 'Venda PDV #' . $nfce->numero_sequencial,
+                        'tipo_pagamento' => $tipoPagamento,
+                        'local_id' => $caixa->local_id,
+                        'caixa_id' => $caixa->id,
+                        'referencia' => "Pedido PDV {$nfce->numero_sequencial} 1/1"
                     ]);
                 }
 

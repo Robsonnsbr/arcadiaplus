@@ -18,6 +18,7 @@ use App\Models\ItemContaEmpresa;
 use App\Models\SuprimentoCaixa;
 use App\Models\UsuarioEmissao;
 use App\Models\Caixa;
+use App\Models\ContaReceber;
 use App\Models\User;
 use App\Models\OrdemServico;
 use App\Models\Localizacao;
@@ -521,12 +522,27 @@ class VendaController extends Controller
                 }
 
                 if(sizeof($request->fatura) > 0){
-                    foreach($request->fatura as $fat){
+                    foreach($request->fatura as $index => $fat){
+                        $dataVencimento = $fat['data'] ?? date('Y-m-d');
+                        $valorParcela = $fat['valor'] ?? 0;
                         FaturaNfce::create([
                             'nfce_id' => $nfce->id,
                             'tipo_pagamento' => $fat['tipo'],
-                            'data_vencimento' => $fat['data'],
-                            'valor' => $fat['valor']
+                            'data_vencimento' => $dataVencimento,
+                            'valor' => $valorParcela
+                        ]);
+
+                        ContaReceber::gerarDeFaturaNfce([
+                            'empresa_id' => $nfce->empresa_id,
+                            'nfce_id' => $nfce->id,
+                            'cliente_id' => $nfce->cliente_id,
+                            'valor_integral' => $valorParcela,
+                            'tipo_pagamento' => $fat['tipo'],
+                            'data_vencimento' => $dataVencimento,
+                            'local_id' => $local_id,
+                            'caixa_id' => $nfce->caixa_id,
+                            'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . ' Parcela ' . ($index + 1) . ' de ' . sizeof($request->fatura),
+                            'referencia' => 'Pedido PDV ' . $nfce->numero_sequencial . ' ' . ($index + 1) . '/' . sizeof($request->fatura),
                         ]);
                     }
                 }else{
@@ -535,6 +551,19 @@ class VendaController extends Controller
                         'tipo_pagamento' => $request->tipo_pagamento,
                         'data_vencimento' => date('Y-m-d'),
                         'valor' => $request->total
+                    ]);
+
+                    ContaReceber::gerarDeFaturaNfce([
+                        'empresa_id' => $nfce->empresa_id,
+                        'nfce_id' => $nfce->id,
+                        'cliente_id' => $nfce->cliente_id,
+                        'valor_integral' => $request->total,
+                        'tipo_pagamento' => $request->tipo_pagamento,
+                        'data_vencimento' => date('Y-m-d'),
+                        'local_id' => $local_id,
+                        'caixa_id' => $nfce->caixa_id,
+                        'descricao' => 'Venda PDV #' . $nfce->numero_sequencial,
+                        'referencia' => 'Pedido PDV ' . $nfce->numero_sequencial . ' 1/1',
                     ]);
                 }
 
