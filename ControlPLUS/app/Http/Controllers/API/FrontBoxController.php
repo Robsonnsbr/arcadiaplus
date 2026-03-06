@@ -808,6 +808,59 @@ class FrontBoxController extends Controller
         return (float) $total;
     }
 
+    private function extractNonTradeinPaymentAmount(Request $request): float
+    {
+        $total = 0;
+        $hasRows = is_array($request->tipo_pagamento_row) && sizeof($request->tipo_pagamento_row) > 0;
+        $hasFatura = is_array($request->fatura) && sizeof($request->fatura) > 0;
+        $tipoPrincipal = trim((string)($request->tipo_pagamento ?? ''));
+
+        if ($hasRows && is_array($request->valor_integral_row)) {
+            for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
+                $tipo = trim((string)($request->tipo_pagamento_row[$i] ?? ''));
+                if ($tipo == TradeinCreditMovement::PAYMENT_CODE) {
+                    continue;
+                }
+                $valorLinha = __convert_value_bd($request->valor_integral_row[$i] ?? 0);
+                $total += max(0, (float) $valorLinha);
+            }
+            return (float) $total;
+        }
+
+        if ($hasFatura) {
+            foreach ($request->fatura as $fatura) {
+                $tipo = is_array($fatura) ? ($fatura['tipo_pagamento'] ?? ($fatura['tipo'] ?? ($fatura['forma'] ?? null))) : ($fatura->tipo_pagamento ?? ($fatura->tipo ?? ($fatura->forma ?? null)));
+                if (trim((string)$tipo) == TradeinCreditMovement::PAYMENT_CODE) {
+                    continue;
+                }
+                $valor = is_array($fatura) ? ($fatura['valor'] ?? ($fatura['valor_integral'] ?? 0)) : ($fatura->valor ?? ($fatura->valor_integral ?? 0));
+                $total += max(0, (float) __convert_value_bd($valor));
+            }
+            return (float) $total;
+        }
+
+        if ($tipoPrincipal !== '' && $tipoPrincipal != TradeinCreditMovement::PAYMENT_CODE) {
+            $total += __convert_value_bd($request->valor_total);
+        }
+
+        return (float) $total;
+    }
+
+    private function validateTradeinAmountAgainstSale(Request $request, float $tradeinValor): void
+    {
+        if ($tradeinValor <= 0) {
+            return;
+        }
+
+        $valorVenda = max(0, (float) __convert_value_bd($request->valor_total));
+        $outrosPagamentos = $this->extractNonTradeinPaymentAmount($request);
+        $limiteTradein = max(0, $valorVenda - $outrosPagamentos);
+
+        if ($tradeinValor > ($limiteTradein + 0.0001)) {
+            abort(422, 'Valor de crédito trade-in maior que o restante da venda.');
+        }
+    }
+
     private function debitTradeinCredit(int $empresaId, ?int $clienteId, float $valor, int $origemId, ?int $userId): void
     {
         if ($valor <= 0) {
@@ -1372,6 +1425,7 @@ class FrontBoxController extends Controller
 
                 $tradeinValor = $this->extractTradeinCreditAmount($request);
                 if ($tradeinValor > 0) {
+                    $this->validateTradeinAmountAgainstSale($request, $tradeinValor);
                     $this->debitTradeinCredit(
                         (int) $request->empresa_id,
                         $request->cliente_id ? (int) $request->cliente_id : null,
@@ -1707,6 +1761,7 @@ public function storePdv3(Request $request){
 
             $tradeinValor = $this->extractTradeinCreditAmount($request);
             if ($tradeinValor > 0) {
+                $this->validateTradeinAmountAgainstSale($request, $tradeinValor);
                 $this->debitTradeinCredit(
                     (int) $request->empresa_id,
                     $request->cliente_id ? (int) $request->cliente_id : null,
@@ -1932,6 +1987,7 @@ public function updatePdv3(Request $request){
 
             $tradeinValor = $this->extractTradeinCreditAmount($request);
             if ($tradeinValor > 0) {
+                $this->validateTradeinAmountAgainstSale($request, $tradeinValor);
                 $this->debitTradeinCredit(
                     (int) $request->empresa_id,
                     $request->cliente_id ? (int) $request->cliente_id : null,
@@ -2238,6 +2294,7 @@ public function storeComanda(Request $request)
 
             $tradeinValor = $this->extractTradeinCreditAmount($request);
             if ($tradeinValor > 0) {
+                $this->validateTradeinAmountAgainstSale($request, $tradeinValor);
                 $this->debitTradeinCredit(
                     (int) $request->empresa_id,
                     $request->cliente_id ? (int) $request->cliente_id : null,
@@ -2451,6 +2508,7 @@ public function storeNfe(Request $request)
 
             $tradeinValor = $this->extractTradeinCreditAmount($request);
             if ($tradeinValor > 0) {
+                $this->validateTradeinAmountAgainstSale($request, $tradeinValor);
                 $this->debitTradeinCredit(
                     (int) $request->empresa_id,
                     $request->cliente_id ? (int) $request->cliente_id : null,

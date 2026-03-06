@@ -1443,6 +1443,8 @@ $("body").on("click", "#btn-subtrai", function () {
 });
 
 $(".table-itens").on("click", ".btn-delete-row", function () {
+    // DESATIVADO TEMPORARIAMENTE – validação de senha para remover item
+    /*
     if (senhaAcao != "") {
         swal({
             title: "Senha para remover item",
@@ -1469,6 +1471,10 @@ $(".table-itens").on("click", ".btn-delete-row", function () {
     } else {
         removeItem($(this));
     }
+    */
+
+    // Remoção direta do item (sem senha)
+    removeItem($(this));
 });
 
 function removeItem(element) {

@@ -51,8 +51,7 @@ function showModal(selectorOrEl) {
     if (window.bootstrap && window.bootstrap.Modal) {
         try {
             if (
-                typeof window.bootstrap.Modal.getOrCreateInstance ===
-                "function"
+                typeof window.bootstrap.Modal.getOrCreateInstance === "function"
             ) {
                 window.bootstrap.Modal.getOrCreateInstance(element).show();
             } else {
@@ -1327,6 +1326,7 @@ function calcTotal() {
         $("#inp-produto_id").val("").change();
 
         validateButtonSave();
+        calcTotalPayment();
     }, 100);
 }
 
@@ -1542,6 +1542,8 @@ $("body").on("click", "#btn-subtrai", function () {
 });
 
 $(".table-itens").on("click", ".btn-delete-row", function () {
+    // DESATIVADO TEMPORARIAMENTE – validação de senha para remover item
+    /*
     if (senhaAcao != "") {
         swal({
             title: "Senha para remover item",
@@ -1568,6 +1570,10 @@ $(".table-itens").on("click", ".btn-delete-row", function () {
     } else {
         removeItem($(this));
     }
+    */
+
+    // Remoção direta do item (sem senha)
+    removeItem($(this));
 });
 
 function removeItem(element) {
@@ -1982,6 +1988,7 @@ $("#inp-tipo_pagamento_row").change(() => {
             $("#inp-tipo_pagamento_row").val("").change();
         }
     }
+    refreshTradeinPaymentState();
 });
 
 $("#inp-valor_recebido").blur(() => {
@@ -2272,6 +2279,19 @@ $(".btn-add-payment").click(() => {
 
     validateButtonSave();
 
+    if (tipo_pagamento_row == TRADEIN_PAYMENT_CODE) {
+        refreshTradeinPaymentState(false);
+        valor_integral_row = $("#inp-valor_row").val();
+        if (convertMoedaToFloat(valor_integral_row) <= 0) {
+            swal(
+                "Atenção",
+                "Não há valor disponível para pagamento com crédito Trade-in.",
+                "warning",
+            );
+            return;
+        }
+    }
+
     let v = convertMoedaToFloat(valor_integral_row);
     let total = total_venda + parseFloat(VALORACRESCIMO) - parseFloat(DESCONTO);
     // console.log(total)
@@ -2310,7 +2330,10 @@ $(".btn-add-payment").click(() => {
     //         );
     // }
 
-    if (isTipoPagamentoCredito(tipo_pagamento_row) && !String(bandeira_cartao_row).trim()) {
+    if (
+        isTipoPagamentoCredito(tipo_pagamento_row) &&
+        !String(bandeira_cartao_row).trim()
+    ) {
         swal(
             "Atenção",
             "Selecione a bandeira do cartão para pagamento no crédito.",
@@ -2390,6 +2413,7 @@ $("body").on("click", ".btn-delete", function (e) {
 
 var total_payment = 0;
 function calcTotalPayment() {
+    refreshTradeinPaymentState();
     $(".div-troco-modal").addClass("d-none");
     $("#inp-troco").val("");
     $("#btn-pag_row").attr("disabled", true);
@@ -2490,6 +2514,7 @@ function selecionaLista() {
 let TRADEIN_POLL_TIMER = null;
 let TRADEIN_ALLOW_CLOSE = false;
 let TRADEIN_OPEN_EVALUATION_ID = null;
+let TRADEIN_CREDIT_BALANCE = 0;
 const TRADEIN_PAYMENT_CODE = "98";
 const tradeinStatusLabels = {
     submitted: "Submetido",
@@ -2503,27 +2528,107 @@ const tradeinDecisionLabels = {
     rejected: "Recusado",
 };
 
+function getTotalVendaAtual() {
+    return Math.max(0, convertMoedaToFloat($(".total-venda").text()));
+}
+
+function getSaldoTradeinDisponivel() {
+    return Math.max(0, parseFloat(TRADEIN_CREDIT_BALANCE) || 0);
+}
+
+function getTotalPagamentosSemTradein() {
+    let total = 0;
+    $(".table-payment tbody tr").each(function () {
+        const tipo = String(
+            $(this).find("input[name='tipo_pagamento_row[]']").val() || "",
+        ).trim();
+        if (tipo == TRADEIN_PAYMENT_CODE) {
+            return;
+        }
+        const valor = convertMoedaToFloat(
+            $(this).find("input[name='valor_integral_row[]']").val() || "0",
+        );
+        total += valor > 0 ? valor : 0;
+    });
+    return total;
+}
+
+function getValorTradeinMaximoPermitido() {
+    const restante = Math.max(
+        getTotalVendaAtual() - getTotalPagamentosSemTradein(),
+        0,
+    );
+    return Math.min(getSaldoTradeinDisponivel(), restante);
+}
+
+function syncTradeinPaymentInput() {
+    const tipo = String($("#inp-tipo_pagamento_row").val() || "").trim();
+    const $valorInput = $("#inp-valor_row");
+    const isTradein = tipo == TRADEIN_PAYMENT_CODE;
+    $valorInput.prop("readonly", isTradein);
+    if (isTradein) {
+        $valorInput.val(convertFloatToMoeda(getValorTradeinMaximoPermitido()));
+    }
+}
+
+function syncTradeinPaymentRows() {
+    const valorPermitido = getValorTradeinMaximoPermitido();
+    let firstTradein = true;
+    $(".table-payment tbody tr").each(function () {
+        const tipo = String(
+            $(this).find("input[name='tipo_pagamento_row[]']").val() || "",
+        ).trim();
+        if (tipo != TRADEIN_PAYMENT_CODE) {
+            return;
+        }
+        const valorLinha = firstTradein ? valorPermitido : 0;
+        firstTradein = false;
+        $(this)
+            .find("input[name='valor_integral_row[]']")
+            .val(convertFloatToMoeda(valorLinha));
+    });
+}
+
+function refreshTradeinPaymentState(syncRows) {
+    if (syncRows === undefined) {
+        syncRows = true;
+    }
+    syncTradeinPaymentInput();
+    if (syncRows) {
+        syncTradeinPaymentRows();
+    }
+}
+
 function updateTradeinCreditBalance(clienteId) {
     if (!clienteId) {
+        TRADEIN_CREDIT_BALANCE = 0;
         $("#tradein_credit_balance").text("R$ 0,00");
         $("#tradein_credit_wrap").addClass("d-none");
+        calcTotalPayment();
         return;
     }
+
+    TRADEIN_CREDIT_BALANCE = 0;
+    $("#tradein_credit_balance").text("R$ 0,00");
 
     $.get(path_url + "trade-in/credit/" + clienteId, {
         empresa_id: $("#empresa_id").val(),
     })
         .done((res) => {
             const saldo = parseFloat(res.saldo) || 0;
+            TRADEIN_CREDIT_BALANCE = saldo;
             $("#tradein_credit_balance").text(
                 "R$ " + convertFloatToMoeda(saldo),
             );
             $("#tradein_credit_wrap").removeClass("d-none");
+            calcTotalPayment();
         })
         .fail((err) => {
             console.log(err);
+            TRADEIN_CREDIT_BALANCE = 0;
             $("#tradein_credit_balance").text("R$ 0,00");
             $("#tradein_credit_wrap").removeClass("d-none");
+            calcTotalPayment();
         });
 }
 
@@ -2537,13 +2642,16 @@ function updateTradeinModal(data) {
     } else {
         $("#tradein_valor_text").text("R$ 0,00");
     }
-    const decisionKey = data.status_aceite_cliente || data.client_decision_status;
-    const decisionLabel = tradeinDecisionLabels[decisionKey] || decisionKey || "--";
+    const decisionKey =
+        data.status_aceite_cliente || data.client_decision_status;
+    const decisionLabel =
+        tradeinDecisionLabels[decisionKey] || decisionKey || "--";
     $("#tradein_aceite_text").text(decisionLabel);
 
     const completed = data.status === "completed";
     const evaluationSaved = data.evaluation_saved === true;
-    const termGenerated = data.term_generated === true || !!data.term_generated_at;
+    const termGenerated =
+        data.term_generated === true || !!data.term_generated_at;
     const decisionPending = !decisionKey || decisionKey === "pending";
     $("#btn-tradein-termo")
         .prop("disabled", !evaluationSaved)
@@ -2572,7 +2680,11 @@ function clearTradeinModalErrors() {
 function renderTradeinModalErrors(errors, fallbackMessage) {
     const $errors = $("#tradein-modal-errors");
     if (!$errors.length) {
-        swal("Erro", fallbackMessage || "Não foi possível salvar a avaliação.", "error");
+        swal(
+            "Erro",
+            fallbackMessage || "Não foi possível salvar a avaliação.",
+            "error",
+        );
         return;
     }
 
@@ -2596,7 +2708,9 @@ function renderTradeinModalErrors(errors, fallbackMessage) {
         messages.push("Não foi possível salvar a avaliação.");
     }
 
-    const html = messages.map((message) => "<div>" + message + "</div>").join("");
+    const html = messages
+        .map((message) => "<div>" + message + "</div>")
+        .join("");
     $errors.removeClass("d-none").html(html);
 }
 
@@ -2607,9 +2721,13 @@ function loadTradeinEvaluationForm(tradeinId) {
     }
 
     clearTradeinModalErrors();
-    $container.html('<div class="text-center py-4 text-muted">Carregando avaliação...</div>');
+    $container.html(
+        '<div class="text-center py-4 text-muted">Carregando avaliação...</div>',
+    );
     const vendaId = ($("#venda_id").val() || "").trim();
-    const consultor = ($(".funcionario_selecionado").first().text() || "").trim();
+    const consultor = (
+        $(".funcionario_selecionado").first().text() || ""
+    ).trim();
     return $.get(path_url + "trade-in/" + tradeinId + "/modal", {
         empresa_id: $("#empresa_id").val(),
         numero_venda: vendaId,
@@ -2645,7 +2763,8 @@ function fetchTradeinStatus(tradeinId) {
     })
         .done((data) => {
             updateTradeinModal(data);
-            const decisionKey = data.status_aceite_cliente || data.client_decision_status;
+            const decisionKey =
+                data.status_aceite_cliente || data.client_decision_status;
             const clienteId = data.cliente_id || $("#inp-cliente_id").val();
             if (decisionKey === "accepted" && clienteId) {
                 updateTradeinCreditBalance(clienteId);
@@ -2748,9 +2867,9 @@ $(document).on(
     "click",
     ".btn-tradein-generate-document.disabled, .btn-tradein-generate-pdv.disabled",
     function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    toastr.warning("Salve a avaliação antes de gerar o termo.");
+        e.preventDefault();
+        e.stopPropagation();
+        toastr.warning("Salve a avaliação antes de gerar o termo.");
     },
 );
 
@@ -2775,7 +2894,10 @@ $(document).on("click", "#btn-save-tradein-avaliacao", function (e) {
     if (typeof window.getTradeinEvaluationValidation === "function") {
         const validation = window.getTradeinEvaluationValidation($form.get(0));
         if (!validation.ok) {
-            renderTradeinModalErrors(validation.errors, "Preencha todos os campos obrigatórios.");
+            renderTradeinModalErrors(
+                validation.errors,
+                "Preencha todos os campos obrigatórios.",
+            );
             return;
         }
     }
@@ -2897,8 +3019,7 @@ $("#btn-tradein-accept").click(() => {
     if (!tradeinId) return;
     swal({
         title: "Confirmar",
-        text:
-            "Ao confirmar, será gerado um crédito de Trade-in para este cliente. Esta ação é irreversível e terá efeito financeiro. Deseja continuar?",
+        text: "Ao confirmar, será gerado um crédito de Trade-in para este cliente. Esta ação é irreversível e terá efeito financeiro. Deseja continuar?",
         icon: "warning",
         buttons: ["Cancelar", "Sim, gerar crédito"],
         dangerMode: true,
@@ -2935,8 +3056,7 @@ $("#btn-tradein-reject").click(() => {
     if (!tradeinId) return;
     swal({
         title: "Confirmar",
-        text:
-            "Ao confirmar a recusa, a oferta será encerrada e não terá mais validade. Esta ação é irreversível. Deseja continuar?",
+        text: "Ao confirmar a recusa, a oferta será encerrada e não terá mais validade. Esta ação é irreversível. Deseja continuar?",
         icon: "warning",
         buttons: ["Voltar", "Sim, recusar"],
         dangerMode: true,
@@ -3019,6 +3139,40 @@ function normalizeArray(value) {
     return Array.isArray(value) ? value : [value];
 }
 
+function getPayloadField(json, key) {
+    if (json[key] !== undefined && json[key] !== null) {
+        return json[key];
+    }
+    return json[key + "[]"];
+}
+
+function getPayloadArray(json, key) {
+    return normalizeArray(getPayloadField(json, key));
+}
+
+function setPayloadArray(json, key, value) {
+    json[key] = normalizeArray(value);
+    delete json[key + "[]"];
+}
+
+function normalizePagamentoPayloadKeys(json) {
+    [
+        "tipo_pagamento_row",
+        "bandeira_cartao_row",
+        "cAut_cartao_row",
+        "cnpj_cartao_row",
+        "data_vencimento_row",
+        "valor_integral_row",
+        "obs_row",
+        "nome_pagamento",
+    ].forEach((key) => {
+        const value = getPayloadField(json, key);
+        if (value !== undefined && value !== null) {
+            setPayloadArray(json, key, value);
+        }
+    });
+}
+
 function isTipoPagamentoCredito(tipo) {
     const valor = String(tipo || "").trim();
     return valor === "03" || valor === "30";
@@ -3029,7 +3183,7 @@ function vendaTemPagamentoCredito(json) {
         return true;
     }
 
-    const tiposRow = normalizeArray(json.tipo_pagamento_row);
+    const tiposRow = getPayloadArray(json, "tipo_pagamento_row");
     for (let i = 0; i < tiposRow.length; i++) {
         if (isTipoPagamentoCredito(tiposRow[i])) {
             return true;
@@ -3040,8 +3194,8 @@ function vendaTemPagamentoCredito(json) {
 }
 
 function hasLinhaCreditoSemBandeira(json) {
-    const tiposRow = normalizeArray(json.tipo_pagamento_row);
-    const bandeirasRow = normalizeArray(json.bandeira_cartao_row);
+    const tiposRow = getPayloadArray(json, "tipo_pagamento_row");
+    const bandeirasRow = getPayloadArray(json, "bandeira_cartao_row");
 
     for (let i = 0; i < tiposRow.length; i++) {
         if (isTipoPagamentoCredito(tiposRow[i])) {
@@ -3056,10 +3210,10 @@ function hasLinhaCreditoSemBandeira(json) {
 }
 
 function applyFallbackCardDataToCreditoRows(json, fallback) {
-    const tiposRow = normalizeArray(json.tipo_pagamento_row);
-    const bandeirasRow = normalizeArray(json.bandeira_cartao_row);
-    const cAutRow = normalizeArray(json.cAut_cartao_row);
-    const cnpjRow = normalizeArray(json.cnpj_cartao_row);
+    const tiposRow = getPayloadArray(json, "tipo_pagamento_row");
+    const bandeirasRow = getPayloadArray(json, "bandeira_cartao_row");
+    const cAutRow = getPayloadArray(json, "cAut_cartao_row");
+    const cnpjRow = getPayloadArray(json, "cnpj_cartao_row");
 
     for (let i = 0; i < tiposRow.length; i++) {
         if (!isTipoPagamentoCredito(tiposRow[i])) {
@@ -3077,22 +3231,17 @@ function applyFallbackCardDataToCreditoRows(json, fallback) {
         }
     }
 
-    if (bandeirasRow.length > 0) {
-        json.bandeira_cartao_row = bandeirasRow;
-    }
-    if (cAutRow.length > 0) {
-        json.cAut_cartao_row = cAutRow;
-    }
-    if (cnpjRow.length > 0) {
-        json.cnpj_cartao_row = cnpjRow;
-    }
+    if (bandeirasRow.length > 0)
+        setPayloadArray(json, "bandeira_cartao_row", bandeirasRow);
+    if (cAutRow.length > 0) setPayloadArray(json, "cAut_cartao_row", cAutRow);
+    if (cnpjRow.length > 0) setPayloadArray(json, "cnpj_cartao_row", cnpjRow);
 }
 
 function resolveBandeiraCreditoFromRows(json) {
-    const tiposRow = normalizeArray(json.tipo_pagamento_row);
-    const bandeirasRow = normalizeArray(json.bandeira_cartao_row);
-    const cAutRow = normalizeArray(json.cAut_cartao_row);
-    const cnpjRow = normalizeArray(json.cnpj_cartao_row);
+    const tiposRow = getPayloadArray(json, "tipo_pagamento_row");
+    const bandeirasRow = getPayloadArray(json, "bandeira_cartao_row");
+    const cAutRow = getPayloadArray(json, "cAut_cartao_row");
+    const cnpjRow = getPayloadArray(json, "cnpj_cartao_row");
 
     for (let i = 0; i < tiposRow.length; i++) {
         if (!isTipoPagamentoCredito(tiposRow[i])) {
@@ -3113,6 +3262,8 @@ function resolveBandeiraCreditoFromRows(json) {
 }
 
 function validarDadosCartaoCredito(json) {
+    normalizePagamentoPayloadKeys(json);
+
     const dadosModal = {
         bandeira: ($("select[name='bandeira_cartao']").val() || "").trim(),
         cnpj: ($("input[name='cnpj_cartao']").val() || "").trim(),
@@ -3149,7 +3300,9 @@ function validarDadosCartaoCredito(json) {
     }
 
     if (!json.bandeira_cartao) {
-        toastr.warning("Selecione a bandeira do cartão para pagamento no crédito.");
+        toastr.warning(
+            "Selecione a bandeira do cartão para pagamento no crédito.",
+        );
         if ($("#cartao_credito").length) {
             showModal("#cartao_credito");
             setTimeout(() => {
@@ -3199,7 +3352,11 @@ $(document).on("click", ".btn-modal-multiplo", function (e) {
             new window.bootstrap.Modal(
                 document.getElementById("pagamento_multiplo"),
             ).hide();
-        } else if (window.jQuery && window.jQuery.fn && window.jQuery.fn.modal) {
+        } else if (
+            window.jQuery &&
+            window.jQuery.fn &&
+            window.jQuery.fn.modal
+        ) {
             window.jQuery("#pagamento_multiplo").modal("hide");
         }
     }
