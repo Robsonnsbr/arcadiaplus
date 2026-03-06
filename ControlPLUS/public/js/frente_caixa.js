@@ -2645,6 +2645,11 @@ function fetchTradeinStatus(tradeinId) {
     })
         .done((data) => {
             updateTradeinModal(data);
+            const decisionKey = data.status_aceite_cliente || data.client_decision_status;
+            const clienteId = data.cliente_id || $("#inp-cliente_id").val();
+            if (decisionKey === "accepted" && clienteId) {
+                updateTradeinCreditBalance(clienteId);
+            }
             if (data.status === "completed" && TRADEIN_POLL_TIMER) {
                 clearInterval(TRADEIN_POLL_TIMER);
                 TRADEIN_POLL_TIMER = null;
@@ -2904,6 +2909,7 @@ $("#btn-tradein-accept").click(() => {
             _token: $('meta[name="csrf-token"]').attr("content"),
         })
             .done((data) => {
+                const clienteId = data.cliente_id || $("#inp-cliente_id").val();
                 $("#tradein_aceite_text").text(
                     data.status_aceite_cliente || "--",
                 );
@@ -2911,6 +2917,8 @@ $("#btn-tradein-accept").click(() => {
                 $("#btn-tradein-reject").prop("disabled", true);
                 if (typeof fetchTradeinStatus === "function") {
                     fetchTradeinStatus(tradeinId);
+                } else if (clienteId) {
+                    updateTradeinCreditBalance(clienteId);
                 }
                 TRADEIN_ALLOW_CLOSE = true;
                 $("#modal_tradein_status").modal("hide");

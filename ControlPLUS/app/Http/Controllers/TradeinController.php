@@ -402,6 +402,7 @@ class TradeinController extends Controller
 
         return response()->json([
             'id' => $tradein->id,
+            'cliente_id' => $tradein->cliente_id,
             'status' => $tradein->status,
             'client_decision_status' => $tradein->status_aceite_cliente,
             'status_aceite_cliente' => $tradein->status_aceite_cliente,
@@ -503,6 +504,7 @@ class TradeinController extends Controller
 
         return response()->json([
             'tradein_id' => $result->id,
+            'cliente_id' => $result->cliente_id,
             'status_aceite_cliente' => $result->status_aceite_cliente,
             'client_decision_status' => $result->status_aceite_cliente,
             'credit_created' => $creditCreated,
