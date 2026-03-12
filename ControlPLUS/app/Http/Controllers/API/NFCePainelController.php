@@ -16,6 +16,7 @@ use Mail;
 use NFePHP\DA\NFe\Danfce;
 use App\Utils\SiegUtil;
 use App\Utils\EstoqueUtil;
+use Illuminate\Support\Facades\DB;
 
 class NFCePainelController extends Controller
 {
@@ -43,7 +44,24 @@ class NFCePainelController extends Controller
         $empresa = __objetoParaEmissao($empresa, $nfce->local_id);
         
         if($empresa->arquivo == null){
-            return response()->json("Certificado não encontrado para este emitente", 401);
+            $message = "Venda concluída. Emissão fiscal pendente: certificado digital não configurado.";
+            $nfce->motivo_rejeicao = substr("PENDENTE_CERTIFICADO: $message", 0, 200);
+            $nfce->save();
+            __createLog($nfce->empresa_id, 'NFCe', 'pendente', "NFCe #{$nfce->id} pendente por ausência de certificado");
+
+            return response()->json([
+                'ok' => true,
+                'fiscal_status' => 'pending',
+                'code' => 'MISSING_CERTIFICATE',
+                'message' => $message,
+                'data' => [
+                    'nfce_id' => $nfce->id,
+                    'numero' => $nfce->numero,
+                    'chave' => null,
+                    'recibo' => null,
+                    'estado' => $nfce->estado,
+                ],
+            ], 200);
         }
 
         $configUsuarioEmissao = UsuarioEmissao::where('usuario_empresas.empresa_id', $nfce->empresa_id)
@@ -51,6 +69,8 @@ class NFCePainelController extends Controller
         ->select('usuario_emissaos.*')
         ->where('usuario_emissaos.usuario_id', $nfce->user_id)
         ->first();
+
+        $nfce = $this->revalidarNumeroParaEmissao($nfce, $empresa, $configUsuarioEmissao);
 
         $nfe_service = new NFCeService([
             "atualizacao" => date('Y-m-d h:i:s'),
@@ -85,7 +105,16 @@ class NFCePainelController extends Controller
             }
 
             if($itensComErro){
-                return response()->json($itensComErro, 403);
+                return response()->json([
+                    'ok' => false,
+                    'fiscal_status' => 'error',
+                    'code' => 'FISCAL_VALIDATION_ERROR',
+                    'message' => $itensComErro,
+                    'data' => [
+                        'nfce_id' => $nfce->id,
+                        'estado' => $nfce->estado,
+                    ],
+                ], 422);
             }
             try{
                 $signed = $nfe_service->sign($xml);
@@ -124,7 +153,23 @@ class NFCePainelController extends Controller
                     ];
                     $descricaoLog = 'Emitida em contigência número ' . $doc['numero'];
                     __createLog($nfce->empresa_id, 'NFCe', 'transmitir', $descricaoLog);
-                    return response()->json($data, 200);
+                    return response()->json([
+                        'ok' => true,
+                        'fiscal_status' => 'authorized',
+                        'code' => 'NFCE_AUTHORIZED',
+                        'message' => 'NFC-e emitida com sucesso.',
+                        'data' => [
+                            'nfce_id' => $nfce->id,
+                            'numero' => $nfce->numero,
+                            'chave' => $nfce->chave,
+                            'recibo' => '',
+                            'estado' => $nfce->estado,
+                            'contigencia' => 1,
+                        ],
+                        'recibo' => '',
+                        'chave' => $nfce->chave,
+                        'contigencia' => 1,
+                    ], 200);
 
                 }else{
                     $resultado = $nfe_service->transmitir($signed, $doc['chave']);
@@ -175,7 +220,21 @@ class NFCePainelController extends Controller
 
                         }
 
-                        return response()->json($data, 200);
+                        return response()->json([
+                            'ok' => true,
+                            'fiscal_status' => 'authorized',
+                            'code' => 'NFCE_AUTHORIZED',
+                            'message' => 'NFC-e emitida com sucesso.',
+                            'data' => [
+                                'nfce_id' => $nfce->id,
+                                'numero' => $nfce->numero,
+                                'chave' => $nfce->chave,
+                                'recibo' => $resultado['success'],
+                                'estado' => $nfce->estado,
+                            ],
+                            'recibo' => $resultado['success'],
+                            'chave' => $nfce->chave,
+                        ], 200);
                     }else{
                         $recibo = isset($resultado['recibo']) ? $resultado['recibo'] : null;
 
@@ -204,20 +263,120 @@ class NFCePainelController extends Controller
                             $descricaoLog = "REJEITADA $nfce->chave - $motivo";
                             __createLog($nfce->empresa_id, 'NFCe', 'erro', $descricaoLog);
 
-                            return response()->json("[$cStat] $motivo", 403);
+                            return response()->json([
+                                'ok' => false,
+                                'fiscal_status' => 'error',
+                                'code' => 'SEFAZ_REJECTION',
+                                'message' => "[$cStat] $motivo",
+                                'data' => [
+                                    'nfce_id' => $nfce->id,
+                                    'estado' => $nfce->estado,
+                                ],
+                            ], 422);
                         }else{
-                            return response()->json($error, 403);
+                            $message = is_string($error) ? $error : json_encode($error, JSON_UNESCAPED_UNICODE);
+                            return response()->json([
+                                'ok' => false,
+                                'fiscal_status' => 'error',
+                                'code' => 'FISCAL_ERROR',
+                                'message' => $message,
+                                'data' => [
+                                    'nfce_id' => $nfce->id,
+                                    'estado' => $nfce->estado,
+                                ],
+                            ], 422);
                         }
                     }
                 }
             }catch(\Exception $e){
                 __createLog($nfce->empresa_id, 'NFCe', 'erro', $e->getMessage());
-                return response()->json($e->getMessage(), 404);
+                return response()->json([
+                    'ok' => false,
+                    'fiscal_status' => 'error',
+                    'code' => 'INTERNAL_ERROR',
+                    'message' => 'Erro técnico ao processar emissão fiscal.',
+                    'data' => [
+                        'nfce_id' => $nfce->id,
+                        'estado' => $nfce->estado,
+                    ],
+                ], 500);
             }
 
         }else{
-            return response()->json($doc['erros_xml'], 401);
+            $message = is_string($doc['erros_xml']) ? $doc['erros_xml'] : json_encode($doc['erros_xml'], JSON_UNESCAPED_UNICODE);
+            return response()->json([
+                'ok' => false,
+                'fiscal_status' => 'error',
+                'code' => 'XML_VALIDATION_ERROR',
+                'message' => $message,
+                'data' => [
+                    'nfce_id' => $nfce->id,
+                    'estado' => $nfce->estado,
+                ],
+            ], 422);
         }
+    }
+
+    private function revalidarNumeroParaEmissao(Nfce $nfce, $empresa, ?UsuarioEmissao $configUsuarioEmissao): Nfce
+    {
+        return DB::transaction(function () use ($nfce, $empresa, $configUsuarioEmissao) {
+            $nfce = Nfce::where('id', $nfce->id)->lockForUpdate()->firstOrFail();
+            if ($nfce->estado === 'aprovado') {
+                return $nfce;
+            }
+
+            $empresaClass = get_class($empresa);
+            $empresaLocked = $empresaClass::where('id', $empresa->id)->lockForUpdate()->first();
+
+            $proximoNumeroContador = 1;
+            if ($empresaLocked) {
+                $ultimoEmitido = (int)$empresaLocked->numero_ultima_nfce_producao;
+                if ((int)$empresaLocked->ambiente === 2) {
+                    $ultimoEmitido = (int)$empresaLocked->numero_ultima_nfce_homologacao;
+                }
+                $proximoNumeroContador = max($proximoNumeroContador, $ultimoEmitido + 1);
+            }
+
+            if ($configUsuarioEmissao) {
+                $configUsuarioEmissaoLocked = UsuarioEmissao::where('id', $configUsuarioEmissao->id)
+                    ->lockForUpdate()
+                    ->first();
+                if ($configUsuarioEmissaoLocked) {
+                    $proximoNumeroContador = max(
+                        $proximoNumeroContador,
+                        ((int)$configUsuarioEmissaoLocked->numero_ultima_nfce) + 1
+                    );
+                }
+            }
+
+            $maiorNumeroEmitido = (int)(Nfce::where('empresa_id', $nfce->empresa_id)
+                ->where('ambiente', $nfce->ambiente)
+                ->where('numero_serie', $nfce->numero_serie)
+                ->where('id', '!=', $nfce->id)
+                ->where('numero', '>', 0)
+                ->lockForUpdate()
+                ->orderBy('numero', 'desc')
+                ->value('numero') ?? 0);
+
+            $numeroAtual = (int)$nfce->numero;
+            $numeroDuplicado = false;
+            if ($numeroAtual > 0) {
+                $numeroDuplicado = Nfce::where('empresa_id', $nfce->empresa_id)
+                    ->where('ambiente', $nfce->ambiente)
+                    ->where('numero_serie', $nfce->numero_serie)
+                    ->where('id', '!=', $nfce->id)
+                    ->where('numero', $numeroAtual)
+                    ->lockForUpdate()
+                    ->exists();
+            }
+
+            if ($numeroAtual <= 0 || $numeroAtual < $proximoNumeroContador || $numeroDuplicado) {
+                $nfce->numero = max($proximoNumeroContador, $maiorNumeroEmitido + 1);
+                $nfce->save();
+            }
+
+            return $nfce->fresh();
+        });
     }
 
     private function getContigencia($empresa_id){

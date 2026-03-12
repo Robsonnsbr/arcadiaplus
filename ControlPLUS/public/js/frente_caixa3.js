@@ -4,6 +4,26 @@ var fatura = []
 var tipoPagamento = null
 var cliente = null
 var emitirNfce = false
+var envioVendaEmAndamento = false
+var ultimaVendaFinalizadaId = null
+
+function setVendaEmAndamento(status){
+	envioVendaEmAndamento = status
+	$('#btn_fiscal, #btn_nao_fiscal, .btn-fiscal').prop('disabled', status)
+}
+
+function getFiscalMessage(payload, fallback){
+	if(!payload) return fallback
+	if(typeof payload === 'string') return payload
+	if(payload.message) return payload.message
+	if(payload.error){
+		if(typeof payload.error === 'string') return payload.error
+		try{
+			return JSON.stringify(payload.error)
+		}catch(e){}
+	}
+	return fallback
+}
 
 function showModalBs5(modalTarget){
 	const element = typeof modalTarget === 'string'
@@ -1156,6 +1176,12 @@ function salvarVenda(suspender = 0){
 		return
 	}
 
+	if(envioVendaEmAndamento){
+		return
+	}
+
+	setVendaEmAndamento(true)
+
 	let json = {
 		_id: Math.floor(Math.random() * (10000000000 - 1 + 1)) + 1,
 		itens: itens,
@@ -1201,9 +1227,10 @@ function salvarVenda(suspender = 0){
 	$.post(url, json)
 	.done((success) => {
 		// console.log(success)
+		ultimaVendaFinalizadaId = success.id
 
 		if (emitirNfce == true) {
-			gerarNfce(success)
+			gerarNfce({ id: success.id })
 		} else {
 			if(suspender == 0){
 				swal({
@@ -1225,16 +1252,17 @@ function salvarVenda(suspender = 0){
 						location.href = '/frontbox/create';
 					}
 
-				});
+					});
+				}
+				else if(suspender == 1){
+					toastr.success("Venda suspensa!")
+					limpaFormulario()
+				}
 			}
-			else if(suspender == 1){
-				toastr.success("Venda suspensa!")
-				limpaFormulario()
-			}
-		}
-	}).fail((err) => {
-		if(!$('.d-offline').hasClass('d-none')){
-			let vendasOff = JSON.parse(localStorage.getItem("vendas-off-slym")) || [];
+		}).fail((err) => {
+			setVendaEmAndamento(false)
+			if(!$('.d-offline').hasClass('d-none')){
+				let vendasOff = JSON.parse(localStorage.getItem("vendas-off-slym")) || [];
 
 			vendasOff.push(json)
 			// console.log(vendasOff)
@@ -1250,15 +1278,50 @@ function salvarVenda(suspender = 0){
 }
 
 function gerarNfce(venda) {
-
+	const vendaId = venda && venda.id ? venda.id : ultimaVendaFinalizadaId
+	if(!vendaId){
+		swal("Atenção", "Venda concluída, mas não foi possível identificar a venda para emissão fiscal.", "warning")
+		.then(() => {
+			limpaFormulario()
+		})
+		return
+	}
 
 	$.post(path_url + "api/nfce_painel/emitir", {
-		id: venda.id,
+		id: vendaId,
 	})
 	.done((success) => {
-		swal("Sucesso", "NFCe emitida " + success.recibo + " - chave: [" + success.chave + "]", "success")
-		.then(() => {
-			window.open(path_url + 'nfce/imprimir/' + venda.id, "_blank")
+		const fiscalStatus = success && success.fiscal_status ? success.fiscal_status : 'authorized'
+		const code = success && success.code ? success.code : ''
+
+		if(fiscalStatus === 'pending' && code === 'MISSING_CERTIFICATE'){
+			const message = getFiscalMessage(success, "Venda concluída. Emissão fiscal pendente por ausência de certificado digital.")
+			swal("Fiscal pendente", message, "warning").then(() => {
+				limpaFormulario()
+			})
+			return
+		}
+
+		if((success && success.ok === false) || fiscalStatus === 'error'){
+			const message = getFiscalMessage(success, "Venda concluída, mas a emissão fiscal falhou.")
+			swal("Atenção", message, "warning").then(() => {
+				limpaFormulario()
+			})
+			return
+		}
+
+		const recibo = ((success && success.data && success.data.recibo) ? success.data.recibo : success.recibo) || ''
+		const chave = ((success && success.data && success.data.chave) ? success.data.chave : success.chave) || ''
+		let mensagem = "NFCe emitida com sucesso."
+		if(recibo){
+			mensagem = "NFCe emitida " + recibo
+		}
+		if(chave){
+			mensagem += " - chave: [" + chave + "]"
+		}
+
+		swal("Sucesso", mensagem, "success").then(() => {
+			window.open(path_url + 'nfce/imprimir/' + vendaId, "_blank")
 			setTimeout(() => {
 				limpaFormulario()
 			}, 100)
@@ -1266,8 +1329,11 @@ function gerarNfce(venda) {
 	})
 	.fail((err) => {
 		console.log(err)
-
-		swal("Algo deu errado", err.responseJSON, "error")
+		const payload = err && err.responseJSON ? err.responseJSON : null
+		const message = getFiscalMessage(payload, "Venda concluída, mas a emissão fiscal falhou.")
+		swal("Atenção", message, "warning").then(() => {
+			limpaFormulario()
+		})
 	})
 }
 
@@ -1288,6 +1354,7 @@ function imprimirNaoFiscal(id){
 
 function limpaFormulario(){
 	console.clear()
+	setVendaEmAndamento(false)
 	$('#inp-valor_desconto').val("")
 	$('#inp-valor_acrescimo').val("")
 	$('.desconto').text("R$ 0,00")

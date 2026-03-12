@@ -2365,6 +2365,42 @@ $("body").on("change", "#inp-lista_preco_id", function () {
 
 var emitirNfce = false;
 var clienteCNPJ = false;
+var pdvFinalizacaoEmAndamento = false;
+var ultimaVendaFinalizadaId = null;
+
+function setFinalizacaoPdvEmAndamento(status) {
+    pdvFinalizacaoEmAndamento = status;
+    $("#btn_fiscal, #btn_nao_fiscal, #salvar_venda").prop("disabled", status);
+}
+
+function redirecionaPosFluxoFiscal() {
+    if (!update) {
+        location.reload();
+    } else {
+        location.href = path_url + "frontbox";
+    }
+}
+
+function getFiscalMessage(payload, fallback) {
+    if (!payload) {
+        return fallback;
+    }
+    if (typeof payload === "string") {
+        return payload;
+    }
+    if (payload.message) {
+        return payload.message;
+    }
+    if (payload.error) {
+        if (typeof payload.error === "string") {
+            return payload.error;
+        }
+        try {
+            return JSON.stringify(payload.error);
+        } catch (e) {}
+    }
+    return fallback;
+}
 $("#btn_fiscal").click(() => {
     emitirNfce = true;
     $("#form-pdv").submit();
@@ -2382,6 +2418,9 @@ $("#btn_nao_fiscal").click(() => {
 
 $("#form-pdv").on("submit", function (e) {
     e.preventDefault();
+    if (pdvFinalizacaoEmAndamento) {
+        return;
+    }
     if (!validateCodigoUnicoRows()) {
         return;
     }
@@ -2396,6 +2435,7 @@ $("#form-pdv").on("submit", function (e) {
     json.valor_frete = convertMoedaToFloat($(".valor-frete").text());
     // console.log(">>>>>>>> salvando ", json);
     // return;
+    setFinalizacaoPdvEmAndamento(true);
     let documentoPdv = $("#documento_pdv").val();
     let cliente = $("#inp-cliente_id").val();
 
@@ -2407,8 +2447,9 @@ $("#form-pdv").on("submit", function (e) {
     } else {
         $.post(path_url + "api/frenteCaixa/store", json)
             .done((success) => {
+                ultimaVendaFinalizadaId = success.id;
                 if (emitirNfce == true) {
-                    gerarNfce(success);
+                    gerarNfce({ id: success.id });
                 } else {
                     swal({
                         title: "Sucesso",
@@ -2460,7 +2501,12 @@ $("#form-pdv").on("submit", function (e) {
                 }
             })
             .fail((err) => {
-                swal("Erro", err.responseJSON, "error");
+                setFinalizacaoPdvEmAndamento(false);
+                swal(
+                    "Erro",
+                    getFiscalMessage(err.responseJSON, "Algo deu errado"),
+                    "error",
+                );
                 console.log(err);
             });
     }
@@ -2474,7 +2520,12 @@ function storeNfe(json) {
             gerarNfe(success);
         })
         .fail((err) => {
-            swal("Erro", err.responseJSON, "error");
+            setFinalizacaoPdvEmAndamento(false);
+            swal(
+                "Erro",
+                getFiscalMessage(err.responseJSON, "Algo deu errado"),
+                "error",
+            );
             console.log(err);
         });
 }
@@ -2537,6 +2588,9 @@ var update = false;
 $("#form-pdv-update").on("submit", function (e) {
     update = true;
     e.preventDefault();
+    if (pdvFinalizacaoEmAndamento) {
+        return;
+    }
     if (!validateCodigoUnicoRows()) {
         return;
     }
@@ -2551,10 +2605,12 @@ $("#form-pdv-update").on("submit", function (e) {
     json.valor_frete = convertMoedaToFloat($(".valor-frete").text());
 
     // console.log(">>>>>>>> salvando ", json);
+    setFinalizacaoPdvEmAndamento(true);
     $.post(path_url + "api/frenteCaixa/update/" + $("#venda_id").val(), json)
         .done((success) => {
+            ultimaVendaFinalizadaId = success.id;
             if (emitirNfce == true) {
-                gerarNfce(success);
+                gerarNfce({ id: success.id });
             } else {
                 swal(
                     "Sucesso",
@@ -2595,6 +2651,7 @@ $("#form-pdv-update").on("submit", function (e) {
             }
         })
         .fail((err) => {
+            setFinalizacaoPdvEmAndamento(false);
             console.log(err);
         });
 });
@@ -2689,46 +2746,91 @@ function gerarNfe(venda) {
 }
 
 function gerarNfce(venda) {
-    let empresa_id = $("#empresa_id").val();
+    const vendaId = venda && venda.id ? venda.id : ultimaVendaFinalizadaId;
+    if (!vendaId) {
+        swal(
+            "Atenção",
+            "Venda concluída, mas não foi possível identificar o documento fiscal para emissão.",
+            "warning",
+        ).then(() => {
+            redirecionaPosFluxoFiscal();
+        });
+        return;
+    }
 
     $.post(path_url + "api/nfce_painel/emitir", {
-        id: venda.id,
+        id: vendaId,
     })
         .done((success) => {
-            swal(
-                "Sucesso",
-                "NFCe emitida " +
-                    success.recibo +
-                    " - chave: [" +
-                    success.chave +
-                    "]",
-                "success",
-            ).then(() => {
-                window.open(path_url + "nfce/imprimir/" + venda.id, "_blank");
+            const fiscalStatus =
+                success && success.fiscal_status
+                    ? success.fiscal_status
+                    : "authorized";
+            const code = success && success.code ? success.code : "";
+
+            if (fiscalStatus === "pending" && code === "MISSING_CERTIFICATE") {
+                const message = getFiscalMessage(
+                    success,
+                    "Venda concluída. Emissão fiscal pendente por ausência de certificado digital.",
+                );
+                swal("Fiscal pendente", message, "warning").then(() => {
+                    redirecionaPosFluxoFiscal();
+                });
+                return;
+            }
+
+            if ((success && success.ok === false) || fiscalStatus === "error") {
+                const message = getFiscalMessage(
+                    success,
+                    "Venda concluída, mas a emissão fiscal falhou.",
+                );
+                swal("Atenção", message, "warning").then(() => {
+                    redirecionaPosFluxoFiscal();
+                });
+                return;
+            }
+
+            const recibo =
+                (success &&
+                    success.data &&
+                    success.data.recibo !== undefined &&
+                    success.data.recibo !== null &&
+                    success.data.recibo !== ""
+                    ? success.data.recibo
+                    : success.recibo) || "";
+            const chave =
+                (success &&
+                    success.data &&
+                    success.data.chave !== undefined &&
+                    success.data.chave !== null &&
+                    success.data.chave !== ""
+                    ? success.data.chave
+                    : success.chave) || "";
+
+            let mensagem = "NFCe emitida com sucesso.";
+            if (recibo) {
+                mensagem = "NFCe emitida " + recibo;
+            }
+            if (chave) {
+                mensagem += " - chave: [" + chave + "]";
+            }
+
+            swal("Sucesso", mensagem, "success").then(() => {
+                window.open(path_url + "nfce/imprimir/" + vendaId, "_blank");
                 setTimeout(() => {
-                    if (!update) {
-                        location.reload();
-                    } else {
-                        location.href = path_url + "frontbox";
-                    }
+                    redirecionaPosFluxoFiscal();
                 }, 100);
             });
         })
         .fail((err) => {
-            // console.log(err)
-
-            // swal("Algo deu errado", err.responseJSON, "error")
-            if (err.responseJSON.message) {
-                swal("Algo deu errado", err.responseJSON.message, "error").then(
-                    () => {
-                        location.reload();
-                    },
-                );
-            } else {
-                swal("Algo deu errado", err.responseJSON, "error").then(() => {
-                    location.reload();
-                });
-            }
+            const payload = err && err.responseJSON ? err.responseJSON : null;
+            const message = getFiscalMessage(
+                payload,
+                "Venda concluída, mas a emissão fiscal falhou.",
+            );
+            swal("Atenção", message, "warning").then(() => {
+                redirecionaPosFluxoFiscal();
+            });
         });
 }
 
