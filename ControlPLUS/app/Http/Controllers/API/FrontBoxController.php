@@ -737,25 +737,27 @@ class FrontBoxController extends Controller
             return 0;
         }
 
-        if(!isset($request->tipo_pagamento_row) && $request->tipo_pagamento != '06'){
+        if(!isset($request->tipo_pagamento_row) && !ContaReceber::isPagamentoPosterior($request->tipo_pagamento)){
             return 0;
         }
         $cliente = Cliente::findOrFail($request->cliente_id);
         $faturaPrazo = 0;
         $total = 0;
 
-        if($request->tipo_pagamento_row){
-            for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
-                $vencimento = $request->data_vencimento_row[$i];
-                $dataAtual = date('Y-m-d');
-                if(strtotime($vencimento) > strtotime($dataAtual)){
+        $tipoPagamentoRows = is_array($request->tipo_pagamento_row) ? $request->tipo_pagamento_row : [];
+        $valorIntegralRows = is_array($request->valor_integral_row) ? $request->valor_integral_row : [];
+
+        if(sizeof($tipoPagamentoRows) > 0){
+            for ($i = 0; $i < sizeof($tipoPagamentoRows); $i++) {
+                $tipoLinha = $tipoPagamentoRows[$i] ?? null;
+                if(ContaReceber::isPagamentoPosterior($tipoLinha)){
                     $faturaPrazo = 1;
-                    $total += __convert_value_bd($request->valor_integral_row[$i]);
+                    $total += __convert_value_bd($valorIntegralRows[$i] ?? 0);
                 }
             }
         }
 
-        if($faturaPrazo == 0 && $request->tipo_pagamento == '06'){
+        if($faturaPrazo == 0 && ContaReceber::isPagamentoPosterior($request->tipo_pagamento)){
             $faturaPrazo = 1;
         }
 
@@ -787,10 +789,13 @@ class FrontBoxController extends Controller
             $total += __convert_value_bd($request->valor_total);
         }
 
-        if ($request->tipo_pagamento_row) {
-            for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
-                if ($request->tipo_pagamento_row[$i] == TradeinCreditMovement::PAYMENT_CODE) {
-                    $total += __convert_value_bd($request->valor_integral_row[$i]);
+        $tipoPagamentoRows = is_array($request->tipo_pagamento_row) ? $request->tipo_pagamento_row : [];
+        $valorIntegralRows = is_array($request->valor_integral_row) ? $request->valor_integral_row : [];
+
+        if (sizeof($tipoPagamentoRows) > 0) {
+            for ($i = 0; $i < sizeof($tipoPagamentoRows); $i++) {
+                if (($tipoPagamentoRows[$i] ?? null) == TradeinCreditMovement::PAYMENT_CODE) {
+                    $total += __convert_value_bd($valorIntegralRows[$i] ?? 0);
                 }
             }
         }
@@ -1313,63 +1318,75 @@ class FrontBoxController extends Controller
                     }
                 }
 
-            if ($request->tipo_pagamento == '06' && empty($request->tipo_pagamento_row)) {
-                $dataVencimento = date('Y-m-d', strtotime('+30 days'));
-                ContaReceber::gerarDeFaturaNfce([
-                    'empresa_id' => $request->empresa_id,
-                    'nfce_id' => $nfce->id,
-                    'cliente_id' => $request->cliente_id,
-                    'data_vencimento' => $dataVencimento,
-                    'data_recebimento' => $dataVencimento,
-                    'valor_integral' => __convert_value_bd($request->valor_total),
-                    'valor_recebido' => 0,
-                    'status' => 0,
-                    'descricao' => 'Venda PDV #' . $nfce->numero_sequencial,
-                    'tipo_pagamento' => $request->tipo_pagamento,
-                    'observacao' => $request->observacao,
-                    'local_id' => $caixa->local_id,
-                    'caixa_id' => $caixa->id,
-                    'referencia' => "Pedido PDV {$nfce->numero_sequencial} 1/" . max(1, sizeof($request->tipo_pagamento_row ?? []))
-                ]);
-            }
+                $tipoPagamentoRows = is_array($request->tipo_pagamento_row) ? $request->tipo_pagamento_row : [];
+                $valorIntegralRows = is_array($request->valor_integral_row) ? $request->valor_integral_row : [];
+                $dataVencimentoRows = is_array($request->data_vencimento_row) ? $request->data_vencimento_row : [];
+                $obsRows = is_array($request->obs_row) ? $request->obs_row : [];
 
-                if ($request->tipo_pagamento_row) {
-                    for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
-                        // if ($request->tipo_pagamento_row[$i] == '06') {
-                        $vencimento = $request->data_vencimento_row[$i] ?: date('Y-m-d');
+                $linhasPagamento = [];
+                $totalRows = max(
+                    sizeof($tipoPagamentoRows),
+                    sizeof($valorIntegralRows),
+                    sizeof($dataVencimentoRows),
+                    sizeof($obsRows)
+                );
+
+                for ($i = 0; $i < $totalRows; $i++) {
+                    $tipoPagamentoLinha = trim((string)($tipoPagamentoRows[$i] ?? ''));
+                    if ($tipoPagamentoLinha === '') {
+                        continue;
+                    }
+
+                    $valorLinha = __convert_value_bd($valorIntegralRows[$i] ?? 0);
+                    if ($valorLinha <= 0) {
+                        continue;
+                    }
+
+                    $linhasPagamento[] = [
+                        'tipo_pagamento' => $tipoPagamentoLinha,
+                        'valor' => $valorLinha,
+                        'vencimento' => ($dataVencimentoRows[$i] ?? null) ?: date('Y-m-d'),
+                        'observacao' => $obsRows[$i] ?? '',
+                    ];
+                }
+
+                if (sizeof($linhasPagamento) > 0) {
+                    $totalLinhas = sizeof($linhasPagamento);
+                    foreach ($linhasPagamento as $index => $linhaPagamento) {
                         ContaReceber::gerarDeFaturaNfce([
                             'empresa_id' => $request->empresa_id,
                             'nfce_id' => $nfce->id,
                             'cliente_id' => $request->cliente_id,
-                            'data_vencimento' => $vencimento,
-                            'data_recebimento' => $vencimento,
-                            'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
+                            'data_vencimento' => $linhaPagamento['vencimento'],
+                            'data_recebimento' => $linhaPagamento['vencimento'],
+                            'valor_integral' => $linhaPagamento['valor'],
                             'valor_recebido' => 0,
                             'status' => 0,
-                            'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->tipo_pagamento_row),
-                            'observacao' => $request->obs_row[$i] ?? '',
-                            'tipo_pagamento' => $request->tipo_pagamento_row[$i],
+                            'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . ' Parcela ' . ($index + 1) . ' de ' . $totalLinhas,
+                            'observacao' => $linhaPagamento['observacao'],
+                            'tipo_pagamento' => $linhaPagamento['tipo_pagamento'],
                             'local_id' => $caixa->local_id,
                             'caixa_id' => $caixa->id,
-                            'referencia' => "Pedido PDV {$nfce->numero_sequencial} " . ($i + 1) . "/" . sizeof($request->tipo_pagamento_row)
+                            'referencia' => "Pedido PDV {$nfce->numero_sequencial} " . ($index + 1) . "/" . $totalLinhas
                         ]);
-                        // }
-                    }
-                    for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
-                        if ($request->tipo_pagamento_row[$i]) {
-                            FaturaNfce::create([
-                                'nfce_id' => $nfce->id,
-                                'tipo_pagamento' => $request->tipo_pagamento_row[$i],
-                                'data_vencimento' => $request->data_vencimento_row[$i],
-                                'valor' => __convert_value_bd($request->valor_integral_row[$i])
-                            ]);
-                        }
+
+                        FaturaNfce::create([
+                            'nfce_id' => $nfce->id,
+                            'tipo_pagamento' => $linhaPagamento['tipo_pagamento'],
+                            'data_vencimento' => $linhaPagamento['vencimento'],
+                            'valor' => $linhaPagamento['valor']
+                        ]);
                     }
                 } else {
+                    $dataVencimentoPadrao = date('Y-m-d');
+                    if (ContaReceber::isPagamentoPosterior($request->tipo_pagamento)) {
+                        $dataVencimentoPadrao = $request->data_vencimento ?: date('Y-m-d', strtotime('+30 days'));
+                    }
+
                     FaturaNfce::create([
                         'nfce_id' => $nfce->id,
                         'tipo_pagamento' => $request->tipo_pagamento,
-                        'data_vencimento' => date('Y-m-d'),
+                        'data_vencimento' => $dataVencimentoPadrao,
                         'valor' => __convert_value_bd($request->valor_total)
                     ]);
 
@@ -1377,8 +1394,8 @@ class FrontBoxController extends Controller
                         'empresa_id' => $request->empresa_id,
                         'nfce_id' => $nfce->id,
                         'cliente_id' => $request->cliente_id,
-                        'data_vencimento' => date('Y-m-d'),
-                        'data_recebimento' => date('Y-m-d'),
+                        'data_vencimento' => $dataVencimentoPadrao,
+                        'data_recebimento' => $dataVencimentoPadrao,
                         'valor_integral' => __convert_value_bd($request->valor_total),
                         'valor_recebido' => 0,
                         'status' => 0,
@@ -2226,35 +2243,46 @@ public function storeComanda(Request $request)
                 }
             }
 
-            if ($request->tipo_pagamento_row) {
-                for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
+            if (is_array($request->tipo_pagamento_row) && sizeof($request->tipo_pagamento_row) > 0) {
+                $totalLinhas = sizeof($request->tipo_pagamento_row);
+                for ($i = 0; $i < $totalLinhas; $i++) {
+                    $tipoPagamentoLinha = $request->tipo_pagamento_row[$i] ?? null;
+                    if (!$tipoPagamentoLinha) {
+                        continue;
+                    }
 
-                    $vencimento = $request->data_vencimento_row[$i] ?: date('Y-m-d');
+                    $valorLinha = __convert_value_bd($request->valor_integral_row[$i] ?? 0);
+                    if ($valorLinha <= 0) {
+                        continue;
+                    }
+
+                    $vencimento = ($request->data_vencimento_row[$i] ?? null) ?: date('Y-m-d');
                     ContaReceber::gerarDeFaturaNfce([
                         'empresa_id' => $request->empresa_id,
                         'nfce_id' => $nfce->id,
                         'cliente_id' => $request->cliente_id,
                         'data_vencimento' => $vencimento,
                         'data_recebimento' => $vencimento,
-                        'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
+                        'valor_integral' => $valorLinha,
                         'valor_recebido' => 0,
                         'status' => 0,
-                        'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->tipo_pagamento_row),
+                        'descricao' => 'Venda PDV #' . $nfce->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . $totalLinhas,
                         'observacao' => $request->obs_row[$i] ?? '',
-                        'tipo_pagamento' => $request->tipo_pagamento_row[$i],
+                        'tipo_pagamento' => $tipoPagamentoLinha,
                         'local_id' => $caixa->local_id,
                         'caixa_id' => $caixa->id,
-                        'referencia' => "Pedido PDV {$nfce->numero_sequencial} " . ($i + 1) . "/" . sizeof($request->tipo_pagamento_row)
+                        'referencia' => "Pedido PDV {$nfce->numero_sequencial} " . ($i + 1) . "/" . $totalLinhas
                     ]);
 
                 }
-                for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
-                    if ($request->tipo_pagamento_row[$i]) {
+                for ($i = 0; $i < $totalLinhas; $i++) {
+                    $tipoPagamentoLinha = $request->tipo_pagamento_row[$i] ?? null;
+                    if ($tipoPagamentoLinha) {
                         FaturaNfce::create([
                             'nfce_id' => $nfce->id,
-                            'tipo_pagamento' => $request->tipo_pagamento_row[$i],
-                            'data_vencimento' => $request->data_vencimento_row[$i],
-                            'valor' => __convert_value_bd($request->valor_integral_row[$i])
+                            'tipo_pagamento' => $tipoPagamentoLinha,
+                            'data_vencimento' => ($request->data_vencimento_row[$i] ?? null) ?: date('Y-m-d'),
+                            'valor' => __convert_value_bd($request->valor_integral_row[$i] ?? 0)
                         ]);
                     }
                 }
@@ -2421,14 +2449,83 @@ public function storeNfe(Request $request)
                 }
             }
 
-            if ($request->tipo_pagamento == '06' && empty($request->tipo_pagamento_row)) {
-                $dataVencimento = $request->data_vencimento ?: date('Y-m-d');
+            $tipoPagamentoRows = is_array($request->tipo_pagamento_row) ? $request->tipo_pagamento_row : [];
+            $valorIntegralRows = is_array($request->valor_integral_row) ? $request->valor_integral_row : [];
+            $dataVencimentoRows = is_array($request->data_vencimento_row) ? $request->data_vencimento_row : [];
+            $obsRows = is_array($request->obs_row) ? $request->obs_row : [];
+
+            $linhasPagamento = [];
+            $totalRows = max(
+                sizeof($tipoPagamentoRows),
+                sizeof($valorIntegralRows),
+                sizeof($dataVencimentoRows),
+                sizeof($obsRows)
+            );
+
+            for ($i = 0; $i < $totalRows; $i++) {
+                $tipoPagamentoLinha = trim((string)($tipoPagamentoRows[$i] ?? ''));
+                if ($tipoPagamentoLinha === '') {
+                    continue;
+                }
+
+                $valorLinha = __convert_value_bd($valorIntegralRows[$i] ?? 0);
+                if ($valorLinha <= 0) {
+                    continue;
+                }
+
+                $linhasPagamento[] = [
+                    'tipo_pagamento' => $tipoPagamentoLinha,
+                    'valor' => $valorLinha,
+                    'vencimento' => ($dataVencimentoRows[$i] ?? null) ?: date('Y-m-d'),
+                    'observacao' => $obsRows[$i] ?? '',
+                ];
+            }
+
+            if (sizeof($linhasPagamento) > 0) {
+                $totalLinhas = sizeof($linhasPagamento);
+                foreach ($linhasPagamento as $index => $linhaPagamento) {
+                    ContaReceber::gerarDeFaturaNfe([
+                        'empresa_id' => $request->empresa_id,
+                        'nfe_id' => $nfe->id,
+                        'cliente_id' => $request->cliente_id,
+                        'data_vencimento' => $linhaPagamento['vencimento'],
+                        'data_recebimento' => $linhaPagamento['vencimento'],
+                        'valor_integral' => $linhaPagamento['valor'],
+                        'valor_recebido' => 0,
+                        'status' => 0,
+                        'referencia' => "Pedido {$nfe->numero_sequencial} " . ($index + 1) . "/" . $totalLinhas,
+                        'descricao' => 'Venda ' . $nfe->numero_sequencial . ' Parcela ' . ($index + 1) . ' de ' . $totalLinhas,
+                        'observacao' => $linhaPagamento['observacao'],
+                        'tipo_pagamento' => $linhaPagamento['tipo_pagamento'],
+                        'local_id' => $caixa->local_id
+                    ]);
+
+                    FaturaNfe::create([
+                        'nfe_id' => $nfe->id,
+                        'tipo_pagamento' => $linhaPagamento['tipo_pagamento'],
+                        'data_vencimento' => $linhaPagamento['vencimento'],
+                        'valor' => $linhaPagamento['valor']
+                    ]);
+                }
+            } else {
+                $dataVencimentoPadrao = date('Y-m-d');
+                if (ContaReceber::isPagamentoPosterior($request->tipo_pagamento)) {
+                    $dataVencimentoPadrao = $request->data_vencimento ?: date('Y-m-d');
+                }
+
+                FaturaNfe::create([
+                    'nfe_id' => $nfe->id,
+                    'tipo_pagamento' => $request->tipo_pagamento,
+                    'data_vencimento' => $dataVencimentoPadrao,
+                    'valor' => __convert_value_bd($request->valor_total)
+                ]);
+
                 ContaReceber::gerarDeFaturaNfe([
                     'empresa_id' => $request->empresa_id,
                     'nfe_id' => $nfe->id,
                     'cliente_id' => $request->cliente_id,
-                    'data_vencimento' => $dataVencimento,
-                    'data_recebimento' => $dataVencimento,
+                    'data_vencimento' => $dataVencimentoPadrao,
+                    'data_recebimento' => $dataVencimentoPadrao,
                     'valor_integral' => __convert_value_bd($request->valor_total),
                     'valor_recebido' => 0,
                     'status' => 0,
@@ -2438,45 +2535,6 @@ public function storeNfe(Request $request)
                     'local_id' => $caixa->local_id,
                     'referencia' => "Pedido {$nfe->numero_sequencial} 1/1"
                 ]);
-            }
-
-            if ($request->tipo_pagamento_row) {
-                for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
-
-                    $vencimento = $request->data_vencimento_row[$i] ?: date('Y-m-d');
-                    ContaReceber::gerarDeFaturaNfe([
-                        'empresa_id' => $request->empresa_id,
-                        'nfe_id' => $nfe->id,
-                        'cliente_id' => $request->cliente_id,
-                        'data_vencimento' => $vencimento,
-                        'data_recebimento' => $vencimento,
-                        'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
-                        'valor_recebido' => 0,
-                        'status' => 0,
-                        'referencia' => "Pedido {$nfe->numero_sequencial} " . ($i + 1) . "/" . sizeof($request->tipo_pagamento_row),
-                        'descricao' => 'Venda ' . $nfe->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->tipo_pagamento_row),
-                        'observacao' => $request->obs_row[$i] ?? '',
-                        'tipo_pagamento' => $request->tipo_pagamento_row[$i],
-                        'local_id' => $caixa->local_id
-                    ]);
-                }
-                for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
-                    if ($request->tipo_pagamento_row[$i]) {
-                        FaturaNfe::create([
-                            'nfe_id' => $nfe->id,
-                            'tipo_pagamento' => $request->tipo_pagamento_row[$i],
-                            'data_vencimento' => $request->data_vencimento_row[$i],
-                            'valor' => __convert_value_bd($request->valor_integral_row[$i])
-                        ]);
-                    }
-                }
-            } else {
-                // FaturaNfe::create([
-                //     'nfe_id' => $nfe->id,
-                //     'tipo_pagamento' => $request->tipo_pagamento,
-                //     'data_vencimento' => date('Y-m-d'),
-                //     'valor' => __convert_value_bd($request->valor_total)
-                // ]);
             }
 
             if ($request->funcionario_id != null) {
@@ -2691,37 +2749,48 @@ public function update(Request $request, $id){
                 }
             }
 
-            if ($request->tipo_pagamento_row) {
+            if (is_array($request->tipo_pagamento_row) && sizeof($request->tipo_pagamento_row) > 0) {
                 $item->fatura()->delete();
                 $item->contaReceber()->delete();
-                for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
+                $totalLinhas = sizeof($request->tipo_pagamento_row);
+                for ($i = 0; $i < $totalLinhas; $i++) {
+                    $tipoPagamentoLinha = $request->tipo_pagamento_row[$i] ?? null;
+                    if (!$tipoPagamentoLinha) {
+                        continue;
+                    }
 
-                    $vencimento = $request->data_vencimento_row[$i] ?: date('Y-m-d');
+                    $valorLinha = __convert_value_bd($request->valor_integral_row[$i] ?? 0);
+                    if ($valorLinha <= 0) {
+                        continue;
+                    }
+
+                    $vencimento = ($request->data_vencimento_row[$i] ?? null) ?: date('Y-m-d');
                     ContaReceber::gerarDeFaturaNfce([
                         'empresa_id' => $request->empresa_id,
                         'nfce_id' => $item->id,
                         'cliente_id' => $request->cliente_id,
                         'data_vencimento' => $vencimento,
                         'data_recebimento' => $vencimento,
-                        'valor_integral' => __convert_value_bd($request->valor_integral_row[$i]),
+                        'valor_integral' => $valorLinha,
                         'valor_recebido' => 0,
                         'status' => 0,
-                        'descricao' => 'Venda #' . $item->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . sizeof($request->tipo_pagamento_row),
+                        'descricao' => 'Venda #' . $item->numero_sequencial . ' Parcela ' . ($i + 1) . ' de ' . $totalLinhas,
                         'observacao' => $request->obs_row[$i] ?? '',
-                        'tipo_pagamento' => $request->tipo_pagamento_row[$i],
+                        'tipo_pagamento' => $tipoPagamentoLinha,
                         'local_id' => $item->local_id,
                         'caixa_id' => $item->caixa_id,
-                        'referencia' => "Pedido PDV {$item->numero_sequencial} " . ($i + 1) . "/" . sizeof($request->tipo_pagamento_row)
+                        'referencia' => "Pedido PDV {$item->numero_sequencial} " . ($i + 1) . "/" . $totalLinhas
                     ]);
 
                 }
-                for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
-                    if ($request->tipo_pagamento_row[$i]) {
+                for ($i = 0; $i < $totalLinhas; $i++) {
+                    $tipoPagamentoLinha = $request->tipo_pagamento_row[$i] ?? null;
+                    if ($tipoPagamentoLinha) {
                         FaturaNfce::create([
                             'nfce_id' => $item->id,
-                            'tipo_pagamento' => $request->tipo_pagamento_row[$i],
-                            'data_vencimento' => $request->data_vencimento_row[$i],
-                            'valor' => __convert_value_bd($request->valor_integral_row[$i])
+                            'tipo_pagamento' => $tipoPagamentoLinha,
+                            'data_vencimento' => ($request->data_vencimento_row[$i] ?? null) ?: date('Y-m-d'),
+                            'valor' => __convert_value_bd($request->valor_integral_row[$i] ?? 0)
                         ]);
                     }
                 }

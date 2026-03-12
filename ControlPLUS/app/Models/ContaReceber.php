@@ -9,6 +9,9 @@ class ContaReceber extends Model
 {
     use HasFactory;
 
+    public const TIPO_FINANCEIRO_IMEDIATO = 'pagamento_imediato';
+    public const TIPO_FINANCEIRO_POSTERIOR = 'pagamento_posterior';
+
     protected $fillable = [
         'empresa_id', 'nfe_id', 'nfce_id', 'cliente_id', 'descricao', 'valor_integral', 'valor_recebido', 'data_vencimento',
         'data_recebimento', 'status', 'observacao', 'tipo_pagamento', 'caixa_id', 'local_id', 'arquivo', 'motivo_estorno',
@@ -106,12 +109,22 @@ class ContaReceber extends Model
 
     public static function isPagamentoImediato($tipoPagamento): bool
     {
+        return self::getTipoFinanceiroPagamento($tipoPagamento) === self::TIPO_FINANCEIRO_IMEDIATO;
+    }
+
+    public static function isPagamentoPosterior($tipoPagamento): bool
+    {
+        return self::getTipoFinanceiroPagamento($tipoPagamento) === self::TIPO_FINANCEIRO_POSTERIOR;
+    }
+
+    public static function getTipoFinanceiroPagamento($tipoPagamento): string
+    {
         $tipo = trim((string)$tipoPagamento);
         if ($tipo === '') {
-            return false;
+            return self::TIPO_FINANCEIRO_POSTERIOR;
         }
 
-        return in_array($tipo, [
+        if (in_array($tipo, [
             '01', // Dinheiro
             '03', // Cartão de Crédito
             '04', // Cartão de Débito
@@ -128,7 +141,11 @@ class ContaReceber extends Model
             '31', // Débito TEF
             '32', // PIX TEF
             TradeinCreditMovement::PAYMENT_CODE,
-        ], true);
+        ], true)) {
+            return self::TIPO_FINANCEIRO_IMEDIATO;
+        }
+
+        return self::TIPO_FINANCEIRO_POSTERIOR;
     }
 
     private static function resolveStatusPorPagamento(string $tipoPagamento, ?int $statusInformado): int
@@ -232,6 +249,7 @@ class ContaReceber extends Model
             'caixa_id' => $data['caixa_id'] ?? null,
             'local_id' => $data['local_id'] ?? null,
         ];
+        $payload = self::completarCamposListagem($payload, $tipoDocumento, $documentoId);
 
         $lookup = [
             'empresa_id' => $payload['empresa_id'],
@@ -249,17 +267,77 @@ class ContaReceber extends Model
         }
 
         $conta = self::firstOrCreate($lookup, $payload);
-        if (!$conta->wasRecentlyCreated && (int)$conta->status === 0 && $status === 1) {
-            $conta->fill([
-                'status' => 1,
-                'valor_recebido' => $payload['valor_recebido'],
-                'data_recebimento' => $payload['data_recebimento'],
-                'tipo_pagamento' => $payload['tipo_pagamento'],
-            ]);
-            $conta->save();
+        if (!$conta->wasRecentlyCreated) {
+            $updates = [];
+
+            if ((int)$conta->status === 0 && $status === 1) {
+                $updates['status'] = 1;
+                $updates['valor_recebido'] = $payload['valor_recebido'];
+                $updates['data_recebimento'] = $payload['data_recebimento'];
+                $updates['tipo_pagamento'] = $payload['tipo_pagamento'];
+            }
+
+            if (empty($conta->local_id) && !empty($payload['local_id'])) {
+                $updates['local_id'] = $payload['local_id'];
+            }
+            if (empty($conta->caixa_id) && !empty($payload['caixa_id'])) {
+                $updates['caixa_id'] = $payload['caixa_id'];
+            }
+            if (empty($conta->cliente_id) && !empty($payload['cliente_id'])) {
+                $updates['cliente_id'] = $payload['cliente_id'];
+            }
+
+            if (!empty($updates)) {
+                $conta->fill($updates);
+                $conta->save();
+            }
         }
 
         return $conta;
+    }
+
+    private static function completarCamposListagem(array $payload, string $tipoDocumento, int $documentoId): array
+    {
+        if (empty($payload['local_id']) && function_exists('__getLocalPadraoEmpresa')) {
+            $localPadrao = __getLocalPadraoEmpresa((int)$payload['empresa_id']);
+            if ($localPadrao && isset($localPadrao->id)) {
+                $payload['local_id'] = (int)$localPadrao->id;
+            }
+        }
+
+        if (!empty($payload['local_id']) && !empty($payload['caixa_id']) && !empty($payload['cliente_id'])) {
+            return $payload;
+        }
+
+        $documento = self::buscarDocumento($tipoDocumento, $documentoId);
+        if (!$documento) {
+            return $payload;
+        }
+
+        if (empty($payload['local_id']) && !empty($documento->local_id)) {
+            $payload['local_id'] = (int)$documento->local_id;
+        }
+        if (empty($payload['caixa_id']) && !empty($documento->caixa_id)) {
+            $payload['caixa_id'] = (int)$documento->caixa_id;
+        }
+        if (empty($payload['cliente_id']) && !empty($documento->cliente_id)) {
+            $payload['cliente_id'] = (int)$documento->cliente_id;
+        }
+
+        return $payload;
+    }
+
+    private static function buscarDocumento(string $tipoDocumento, int $documentoId)
+    {
+        if ($documentoId <= 0) {
+            return null;
+        }
+
+        if ($tipoDocumento === 'nfce') {
+            return Nfce::select('id', 'local_id', 'caixa_id', 'cliente_id')->find($documentoId);
+        }
+
+        return Nfe::select('id', 'local_id', 'caixa_id', 'cliente_id')->find($documentoId);
     }
 
     private static function normalizeValor($valor): ?float

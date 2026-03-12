@@ -81,7 +81,7 @@ class ContaReceberController extends Controller
         ->when(!$local_id, function ($query) use ($locais) {
             return $query->whereIn('conta_recebers.local_id', $locais);
         })
-        ->when($status !== null, function ($query) use ($status) {
+        ->when($status !== null && $status !== '', function ($query) use ($status) {
             if($status != -1){
                 return $query->where('conta_recebers.status', $status);
             }else{
@@ -143,7 +143,7 @@ class ContaReceberController extends Controller
         ->when(!$local_id, function ($query) use ($locais) {
             return $query->whereIn('local_id', $locais);
         })
-        ->when($status != '', function ($query) use ($status) {
+        ->when($status !== null && $status !== '', function ($query) use ($status) {
             return $query->where('status', $status);
         })
         ->when($ordem != '', function ($query) use ($ordem) {
