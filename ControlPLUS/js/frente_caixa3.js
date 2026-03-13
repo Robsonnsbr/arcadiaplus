@@ -1251,8 +1251,26 @@ function gerarNfce(venda) {
 		const code = success && success.code ? success.code : ''
 
 		if(fiscalStatus === 'pending' && code === 'MISSING_CERTIFICATE'){
-			const message = getFiscalMessage(success, "Venda concluída. Emissão fiscal pendente por ausência de certificado digital.")
-			swal("Fiscal pendente", message, "warning").then(() => {
+			const message = "Venda concluída com sucesso. Emissão fiscal pendente por ausência de certificado digital. Comprovante não fiscal disponível para impressão."
+			swal({
+				title: "Fiscal pendente",
+				text: message,
+				icon: "warning",
+				buttons: ["Fechar", "Imprimir comprovante"],
+			}).then((imprimirComprovante) => {
+				if(imprimirComprovante){
+					const opened = imprimirNaoFiscal(vendaId, true)
+					if(!opened){
+						swal(
+							"Atenção",
+							"O navegador bloqueou a abertura do comprovante. Libere pop-ups e reimprima pela listagem de vendas.",
+							"warning"
+						).then(() => {
+							limpaFormulario()
+						})
+						return
+					}
+				}
 				limpaFormulario()
 			})
 			return
@@ -1293,19 +1311,33 @@ function gerarNfce(venda) {
 	})
 }
 
-function imprimirNaoFiscal(id){
+function imprimirNaoFiscal(id, fiscalPendente = false){
+	let opened = true
+	let urlImpressao = path_url+"frontbox/imprimir-nao-fiscal/"+id
+	let urlImpressaoHtml = path_url+"frontbox/imprimir-nao-fiscal-html/"+id
+	if(fiscalPendente){
+		urlImpressao += "?fiscal_pending=1"
+		urlImpressaoHtml += "?fiscal_pending=1"
+	}
 	let impressao_sem_janela_cupom = $('#impressao_sem_janela_cupom').val()
 	if(impressao_sem_janela_cupom == 0){
 		var disp_setting="toolbar=yes,location=no,";
 		disp_setting+="directories=yes,menubar=yes,";
 		disp_setting+="scrollbars=yes,width=850, height=600, left=100, top=25";
 
-		var docprint=window.open(path_url+"frontbox/imprimir-nao-fiscal/"+id,"",disp_setting);
-
-		docprint.focus();
+		var docprint=window.open(urlImpressao,"",disp_setting);
+		if(docprint){
+			docprint.focus();
+		}else{
+			opened = false
+		}
 	}else{
-		window.open(path_url+"frontbox/imprimir-nao-fiscal-html/"+id)
+		let htmlWindow = window.open(urlImpressaoHtml)
+		if(!htmlWindow){
+			opened = false
+		}
 	}
+	return opened
 }
 
 function limpaFormulario(){

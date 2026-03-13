@@ -92,11 +92,11 @@
 					</th>
 				</tr>
 				@endif
-				<tr>
-					<th class="ttu" colspan="3">
-						<b>DOCUMENTO AUXILIAR</b>
-					</th>
-				</tr>
+					<tr>
+						<th class="ttu" colspan="3">
+							<b>COMPROVANTE NÃO FISCAL</b>
+						</th>
+					</tr>
 			</thead>
 			<tbody>
 				@foreach($item->itens as $i)
@@ -195,19 +195,31 @@
 					<td align="right">{{ $item->numero_sequencial }}</td>
 				</tr>
 				
-				@if($item->observacao)
-				<tr class="sup">
-					<td colspan="3" align="center">
-						<b>Observação:</b>
-						{{ $item->observacao }}
-					</td>
-				</tr>
-				@endif
+					@if($item->observacao)
+					<tr class="sup">
+						<td colspan="3" align="center">
+							<b>Observação:</b>
+							{{ $item->observacao }}
+						</td>
+					</tr>
+					@endif
+					@if(request()->get('fiscal_pending') == 1)
+					<tr class="sup">
+						<td colspan="3" align="center">
+							Emissão fiscal pendente
+						</td>
+					</tr>
+					<tr class="sup">
+						<td colspan="3" align="center">
+							Documento sem validade fiscal
+						</td>
+					</tr>
+					@endif
 
-				<tr class="sup">
-					<td colspan="3" align="center">
-					</td>
-				</tr>
+					<tr class="sup">
+						<td colspan="3" align="center">
+						</td>
+					</tr>
 				<tr class="">
 					<td colspan="3" align="center">
 					</td>

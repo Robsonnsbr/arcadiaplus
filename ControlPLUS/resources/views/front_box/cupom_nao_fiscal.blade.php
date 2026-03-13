@@ -102,13 +102,13 @@
 	@endif
 
 	<div style="margin-left: 10px;">---------------------------------------------------------</div>
-	<h4 class="mt-5" style="text-align:center; font-size: 8px;">
-		@isset($preVenda)
-		PRÉ VENDA
-		@else
-		DOCUMENTO AUXILIAR
-		@endif
-	</h4>
+		<h4 class="mt-5" style="text-align:center; font-size: 8px;">
+			@isset($preVenda)
+			PRÉ VENDA
+			@else
+			COMPROVANTE NÃO FISCAL
+			@endif
+		</h4>
 	<div class="mt-10" style="margin-left: 10px;">---------------------------------------------------------</div>
 
 	<table>
@@ -275,13 +275,21 @@
 			</tr>
 			@endif
 
-			@if($configGeral && $configGeral->mensagem_padrao_impressao_venda != "")
-			<tr>
-				<th colspan="2">{!! $configGeral->mensagem_padrao_impressao_venda !!}</th>
-			</tr>
-			@endif
-		</thead>
-	</table>
+				@if($configGeral && $configGeral->mensagem_padrao_impressao_venda != "")
+				<tr>
+					<th colspan="2">{!! $configGeral->mensagem_padrao_impressao_venda !!}</th>
+				</tr>
+				@endif
+				@if(!isset($preVenda) && request()->get('fiscal_pending') == 1)
+				<tr>
+					<th colspan="2" style="text-align: center;">Emissão fiscal pendente</th>
+				</tr>
+				<tr>
+					<th colspan="2" style="text-align: center;">Documento sem validade fiscal</th>
+				</tr>
+				@endif
+			</thead>
+		</table>
 
 
 </body>
