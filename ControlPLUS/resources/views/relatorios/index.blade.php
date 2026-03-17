@@ -53,6 +53,13 @@
                                 !!}
                             </div>
 
+                            <div class="col-md-6 col-12 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
+
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
                                 {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
@@ -128,6 +135,13 @@
                                 !!}
                             </div>
 
+                            <div class="col-md-3 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
+
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
                                 {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
@@ -172,6 +186,13 @@
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
+
+                            <div class="col-md-4 col-12 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -209,6 +230,13 @@
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
+
+                            <div class="col-md-4 col-12 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -243,6 +271,13 @@
                                 'cancelado' => 'Canceladas',
                                 'aprovado' => 'Aprovadas',
                                 '' => 'Todos'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
+
+                            <div class="col-md-3 col-12 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -301,6 +336,13 @@
                                 !!}
                             </div>
 
+                            <div class="col-md-3 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
+
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
                                 {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
@@ -339,6 +381,13 @@
                             <div class="col-md-4 col-12">
                                 {!!Form::select('status', 'Estado',
                                 ['1' => 'Quitadas', '-1' => 'Pendentes', '' => 'Todas'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
+
+                            <div class="col-md-4 col-12 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -393,6 +442,13 @@
                                 !!}
                             </div>
 
+                            <div class="col-md-4 col-12 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
+
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
                                 {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
@@ -443,6 +499,13 @@
                                 !!}
                             </div>
 
+                            <div class="col-md-4 col-12 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
+
                         </div>
                     </div>
                     <div class="card-footer">
@@ -470,6 +533,12 @@
                                 {!!Form::date('end_date', 'Data final')
                                 !!}
                             </div>
+                            <div class="col-md-3 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12">
                                 {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
@@ -477,6 +546,12 @@
                                 !!}
                             </div>
                             @endif
+                            <div class="col-md-6 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -632,6 +707,12 @@
                                 !!}
                             </div>
                             @endif
+                            <div class="col-md-4 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -659,6 +740,12 @@
                                 {!!Form::date('end_date', 'Data final')
                                 !!}
                             </div>
+                            <div class="col-md-3 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12">
                                 {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
@@ -666,6 +753,12 @@
                                 !!}
                             </div>
                             @endif
+                            <div class="col-md-6 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -700,6 +793,13 @@
                                 !!}
                             </div>
 
+                            <div class="col-md-3 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
+
                             
                         </div>
                     </div>
@@ -728,6 +828,13 @@
                             <div class="col-md-3 col-12">
                                 {!!Form::date('end_date', 'Data final cadastro')
                                 ->required()
+                                !!}
+                            </div>
+
+                            <div class="col-md-3 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
 
@@ -836,6 +943,12 @@
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
+                            <div class="col-md-6 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12">
                                 {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
@@ -868,6 +981,12 @@
                             </div>
                             <div class="col-md-3 col-12">
                                 {!!Form::date('end_date', 'Data final')
+                                !!}
+                            </div>
+                            <div class="col-md-3 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
                         </div>
@@ -903,6 +1022,12 @@
 
                                 </select>
                             </div>
+                            <div class="col-md-3 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -934,6 +1059,13 @@
                             <div class="col-md-6 col-12">
                                 {!!Form::select('funcionario_id', 'Vendedor', ['' => 'Selecione'] + $funcionarios->pluck('nome', 'id')->all())
                                 ->attrs(['class' => 'form-select'])->required()
+                                !!}
+                            </div>
+
+                            <div class="col-md-6 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
                             
@@ -980,6 +1112,13 @@
 
                             <div class="col-md-2 col-12">
                                 {!!Form::text('livro', 'Livro')
+                                !!}
+                            </div>
+
+                            <div class="col-md-4 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
 
@@ -1049,6 +1188,12 @@
                                 !!}
                             </div>
                             @endif
+                            <div class="col-md-6 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -1115,6 +1260,12 @@
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
+                            <div class="col-md-4 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -1146,6 +1297,13 @@
                                 {!!Form::select('cliente', 'Cliente')
                                 ->attrs(['class' => 'form-select cliente'])
                                 ->id('cliente5')
+                                !!}
+                            </div>
+
+                            <div class="col-md-4 col-12 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
 
@@ -1185,6 +1343,13 @@
                             </div>
                             <div class="col-md-4 col-12">
                                 {!!Form::select('tipo_pagamento', 'Tipo de pagamento', ['' => 'Selecione'] + App\Models\Nfe::tiposPagamento())
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
+
+                            <div class="col-md-4 col-12 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -1244,6 +1409,12 @@
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
+                            <div class="col-md-4 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -1290,6 +1461,12 @@
                                 ->id('produto3')
                                 !!}
                             </div>
+                            <div class="col-md-6 col-12 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -1321,6 +1498,12 @@
                             <div class="col-md-4 col-12">
                                 {!!Form::select('tipo_custo', 'Tipo do custo', ['' => 'Selecione', 'media' => 'Médio', 'padrao' => 'Padrão'])
                                 ->attrs(['class' => 'form-select'])->required()
+                                !!}
+                            </div>
+                            <div class="col-md-2 col-12">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
                         </div>

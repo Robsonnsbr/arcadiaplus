@@ -30,6 +30,33 @@ use App\Models\Estoque;
 use App\Models\MovimentacaoProduto;
 use Dompdf\Dompdf;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\RelatorioClientesExport;
+use App\Exports\RelatorioFornecedoresExport;
+use App\Exports\RelatorioNfeExport;
+use App\Exports\RelatorioNfceExport;
+use App\Exports\RelatorioCteExport;
+use App\Exports\RelatorioMdfeExport;
+use App\Exports\RelatorioContaPagarExport;
+use App\Exports\RelatorioContaReceberExport;
+use App\Exports\RelatorioComissaoExport;
+use App\Exports\RelatorioComprasExport;
+use App\Exports\RelatorioDespesaFretesExport;
+use App\Exports\RelatorioTotalizaProdutosExport;
+use App\Exports\RelatorioVendasPorVendedorExport;
+use App\Exports\RelatorioOrdemServicoExport;
+use App\Exports\RelatorioProdutosExport;
+use App\Exports\RelatorioLucroExport;
+use App\Exports\RelatorioInventarioCustoMedioExport;
+use App\Exports\RelatorioCurvaAbcClientesExport;
+use App\Exports\RelatorioEntregaProdutosExport;
+use App\Exports\RelatorioReservasExport;
+use App\Exports\RelatorioLucroProdutoExport;
+use App\Exports\RelatorioTiposPagamentoExport;
+use App\Exports\RelatorioInventarioExport;
+use App\Exports\RelatorioTaxasExport;
+use App\Exports\RelatorioVendaProdutosExport;
+use App\Exports\RelatorioMovimentacaoExport;
+use App\Exports\RelatorioRegistroInventarioExport;
 use App\Exports\RelatorioEstoqueExport;
 use App\Exports\RelatorioVendasExport;
 use Illuminate\Support\Facades\DB;
@@ -60,6 +87,7 @@ class RelatorioController extends Controller
         $local_id = $request->local_id;
         $start_date = $request->start_date;
         $end_date = $request->end_date;
+        $esportar_excel = $request->esportar_excel;
 
         $data = Produto::select('produtos.*')
         ->where('empresa_id', $request->empresa_id)
@@ -172,6 +200,11 @@ class RelatorioController extends Controller
             $categoria = CategoriaProduto::findOrFail($categoria_id);
         }
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioProdutosExport($data, $tipo, $marca, $categoria);
+            return Excel::download($relatorioEx, 'relatorio_produtos.xlsx');
+        }
+
         $p = view('relatorios/produtos', compact('data', 'tipo', 'marca', 'categoria'))
         ->with('title', 'Relatório de Produtos');
 
@@ -193,6 +226,7 @@ class RelatorioController extends Controller
         $tipo = $request->tipo;
         $start_date = $request->start_date;
         $end_date = $request->end_date;
+        $esportar_excel = $request->esportar_excel;
 
         $data = Cliente::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -220,6 +254,11 @@ class RelatorioController extends Controller
             }
         }
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioClientesExport($data, $tipo);
+            return Excel::download($relatorioEx, 'relatorio_clientes.xlsx');
+        }
+
         $p = view('relatorios/clientes', compact('data', 'tipo'))
         ->with('title', 'Relatório de Clientes');
 
@@ -240,6 +279,7 @@ class RelatorioController extends Controller
         $tipo = $request->tipo;
         $start_date = $request->start_date;
         $end_date = $request->end_date;
+        $esportar_excel = $request->esportar_excel;
 
         $data = Fornecedor::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -263,6 +303,11 @@ class RelatorioController extends Controller
             } else {
                 $data = $data->sortBy('total');
             }
+        }
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioFornecedoresExport($data, $tipo);
+            return Excel::download($relatorioEx, 'relatorio_fornecedores.xlsx');
         }
 
         $p = view('relatorios/fornecedores', compact('data', 'tipo'))
@@ -293,6 +338,7 @@ class RelatorioController extends Controller
         $cliente = $request->cliente;
         $estado = $request->estado;
         $local_id = $request->local_id;
+        $esportar_excel = $request->esportar_excel;
 
         $data = Nfe::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -321,6 +367,11 @@ class RelatorioController extends Controller
             return $query->where('finNFe', $finNFe);
         })->get();
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioNfeExport($data);
+            return Excel::download($relatorioEx, 'relatorio_nfe.xlsx');
+        }
+
         $p = view('relatorios/nfe', compact('data'))
         ->with('title', 'Relatório de NFe');
 
@@ -346,6 +397,7 @@ class RelatorioController extends Controller
         $cliente_id = $request->cliente;
         $estado = $request->estado;
         $local_id = $request->local_id;
+        $esportar_excel = $request->esportar_excel;
 
         $data = Nfce::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -366,6 +418,11 @@ class RelatorioController extends Controller
         ->when(!empty($cliente_id), function ($query) use ($cliente_id) {
             return $query->where('cliente_id', $cliente_id);
         })->get();
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioNfceExport($data);
+            return Excel::download($relatorioEx, 'relatorio_nfce.xlsx');
+        }
 
         $p = view('relatorios/nfce', compact('data'))
         ->with('title', 'Relatório de NFCe');
@@ -392,6 +449,7 @@ class RelatorioController extends Controller
         $end_date = $request->end_date;
         $estado = $request->estado;
         $local_id = $request->local_id;
+        $esportar_excel = $request->esportar_excel;
 
         $data = Cte::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -410,6 +468,11 @@ class RelatorioController extends Controller
             return $query->whereIn('local_id', $locais);
         })
         ->get();
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioCteExport($data);
+            return Excel::download($relatorioEx, 'relatorio_cte.xlsx');
+        }
 
         $p = view('relatorios/cte', compact('data'))
         ->with('title', 'Relatório de CTe');
@@ -434,6 +497,7 @@ class RelatorioController extends Controller
         $end_date = $request->end_date;
         $estado = $request->estado;
         $local_id = $request->local_id;
+        $esportar_excel = $request->esportar_excel;
 
         $data = Mdfe::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -452,6 +516,11 @@ class RelatorioController extends Controller
             return $query->whereIn('local_id', $locais);
         })
         ->get();
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioMdfeExport($data);
+            return Excel::download($relatorioEx, 'relatorio_mdfe.xlsx');
+        }
 
 
         $p = view('relatorios/mdfe', compact('data'))
@@ -479,6 +548,7 @@ class RelatorioController extends Controller
         $status = $request->status;
         $local_id = $request->local_id;
         $fornecedor_id = $request->fornecedor_id;
+        $esportar_excel = $request->esportar_excel;
 
         $data = ContaPagar::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -506,6 +576,11 @@ class RelatorioController extends Controller
         ->orderBy('data_vencimento')
         ->get();
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioContaPagarExport($data);
+            return Excel::download($relatorioEx, 'relatorio_contas_pagar.xlsx');
+        }
+
         $p = view('relatorios/conta_pagar', compact('data'))
         ->with('title', 'Relatório de Contas a Pagar');
 
@@ -531,6 +606,7 @@ class RelatorioController extends Controller
         $status = $request->status;
         $local_id = $request->local_id;
         $cliente_id = $request->cliente;
+        $esportar_excel = $request->esportar_excel;
 
         $data = ContaReceber::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -558,6 +634,11 @@ class RelatorioController extends Controller
         ->orderBy('data_vencimento')
         ->get();
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioContaReceberExport($data);
+            return Excel::download($relatorioEx, 'relatorio_contas_receber.xlsx');
+        }
+
         $p = view('relatorios/conta_receber', compact('data'))
         ->with('title', 'Relatório de Contas a Receber');
 
@@ -578,6 +659,7 @@ class RelatorioController extends Controller
         $start_date = $request->start_date;
         $end_date = $request->end_date;
         $funcionario_id = $request->funcionario_id;
+        $esportar_excel = $request->esportar_excel;
 
         $data = ComissaoVenda::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -590,6 +672,11 @@ class RelatorioController extends Controller
             return $query->where('funcionario_id', $funcionario_id);
         })
         ->get();
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioComissaoExport($data);
+            return Excel::download($relatorioEx, 'relatorio_comissao.xlsx');
+        }
 
         $p = view('relatorios/comissao', compact('data'))
         ->with('title', 'Relatório de Comissao');
@@ -777,6 +864,7 @@ class RelatorioController extends Controller
         $start_date = $request->start_date;
         $end_date = $request->end_date;
         $tipo_despesa_frete_id = $request->tipo_despesa_frete_id;
+        $esportar_excel = $request->esportar_excel;
 
         $data = DespesaFrete::
         select('despesa_fretes.*')
@@ -792,6 +880,11 @@ class RelatorioController extends Controller
             return $query->where('despesa_fretes.tipo_despesa_id', $tipo_despesa_frete_id);
         })
         ->get();
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioDespesaFretesExport($data);
+            return Excel::download($relatorioEx, 'relatorio_despesa_fretes.xlsx');
+        }
 
         $p = view('relatorios/despesa_fretes', compact('data'))
         ->with('title', 'Relatório de Despesas de Frete');
@@ -814,6 +907,7 @@ class RelatorioController extends Controller
         $start_date = $request->start_date;
         $end_date = $request->end_date;
         $local_id = $request->local_id;
+        $esportar_excel = $request->esportar_excel;
 
         $data = Nfe::where('empresa_id', request()->empresa_id)->where('tpNF', 0)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -832,6 +926,11 @@ class RelatorioController extends Controller
         })
         ->get();
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioComprasExport($data);
+            return Excel::download($relatorioEx, 'relatorio_compras.xlsx');
+        }
+
         $p = view('relatorios/compras', compact('data'))
         ->with('title', 'Relatório de Compras');
         $domPdf = new Dompdf(["enable_remote" => true]);
@@ -849,6 +948,7 @@ class RelatorioController extends Controller
         $data_inicial = $request->data_inicial;
         $data_final = $request->data_final;
         $local_id = $request->local_id;
+        $esportar_excel = $request->esportar_excel;
         $locais = __getLocaisAtivoUsuario();
         $locais = $locais->pluck(['id']);
         
@@ -993,6 +1093,11 @@ class RelatorioController extends Controller
             }
         }
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioTaxasExport($data);
+            return Excel::download($relatorioEx, 'relatorio_taxas.xlsx');
+        }
+
         $p = view('relatorios/taxas')
         ->with('data', $data)
         ->with('title', 'Taxas de Pagamento');
@@ -1016,6 +1121,7 @@ class RelatorioController extends Controller
         $start_date = $request->start_date;
         $end_date = $request->end_date;
         $local_id = $request->local_id;
+        $esportar_excel = $request->esportar_excel;
 
         $nfe = Nfe::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -1077,6 +1183,11 @@ class RelatorioController extends Controller
             return $a['data'] < $b['data'] ? 1 : -1;
         });
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioLucroExport($data);
+            return Excel::download($relatorioEx, 'relatorio_lucro.xlsx');
+        }
+
         $p = view('relatorios/lucro', compact('data'))
         ->with('title', 'Relatório de Lucros');
 
@@ -1102,6 +1213,7 @@ class RelatorioController extends Controller
         $marca_id = $request->marca_id;
         $categoria_id = $request->categoria_id;
         $produto_id = $request->produto_id;
+        $esportar_excel = $request->esportar_excel;
 
         $diferenca = strtotime($end_date) - strtotime($start_date);
         $dias = floor($diferenca / (60 * 60 * 24));
@@ -1194,6 +1306,11 @@ class RelatorioController extends Controller
             ];
             array_push($data, $temp);
             $dataAtual = date('Y-m-d', strtotime($dataAtual. '+1day'));
+        }
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioVendaProdutosExport($data, $start_date, $end_date);
+            return Excel::download($relatorioEx, 'relatorio_venda_produtos.xlsx');
         }
 
         $p = view('relatorios/venda_por_produtos', compact('data', 'start_date', 'end_date'))
@@ -1493,6 +1610,7 @@ class RelatorioController extends Controller
         $start_date = $request->start_date;
         $end_date = $request->end_date;
         $local_id = $request->local_id;
+        $esportar_excel = $request->esportar_excel;
 
         $locais = __getLocaisAtivoUsuario();
         $locais = $locais->pluck(['id']);
@@ -1527,6 +1645,11 @@ class RelatorioController extends Controller
             $local = Localizacao::findOrFail($local_id);
         }
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioTotalizaProdutosExport($data, $local_id, $local);
+            return Excel::download($relatorioEx, 'relatorio_totaliza_produtos.xlsx');
+        }
+
         $p = view('relatorios/totaliza_produtos', compact('data', 'local_id', 'local'))
         ->with('title', 'Relatório Totalizador Produtos');
         $domPdf = new Dompdf(["enable_remote" => true]);
@@ -1544,6 +1667,7 @@ class RelatorioController extends Controller
         $end_date = $request->end_date;
         $funcionario_id = $request->funcionario_id;
         $local_id = $request->local_id;
+        $esportar_excel = $request->esportar_excel;
 
         $funcionario = Funcionario::findOrFail($funcionario_id);
         $nves = Nfe::
@@ -1592,6 +1716,12 @@ class RelatorioController extends Controller
                 'localizacao' => $n->localizacao
             ];
         }
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioVendasPorVendedorExport($data, $funcionario);
+            return Excel::download($relatorioEx, 'relatorio_vendas_por_vendedor.xlsx');
+        }
+
         $p = view('relatorios/vendas_por_vendedor', compact('data', 'funcionario'))
         ->with('title', 'Relatório Vendas por Vendedor');
         $domPdf = new Dompdf(["enable_remote" => true]);
@@ -1610,6 +1740,7 @@ class RelatorioController extends Controller
         $local_id = $request->local_id;
         $categoria_id = $request->categoria_id;
         $ordem = $request->ordem;
+        $esportar_excel = $request->esportar_excel;
 
         $locais = __getLocaisAtivoUsuario();
         $locais = $locais->pluck(['id']);
@@ -1672,6 +1803,11 @@ class RelatorioController extends Controller
             else return $a['nome'] > $b['nome'] ? 1 : -1;
         });
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioInventarioCustoMedioExport($data, $local);
+            return Excel::download($relatorioEx, 'relatorio_inventario_custo_medio.xlsx');
+        }
+
         $p = view('relatorios/inventario_custo_medio', compact('data', 'local_id', 'local'))
         ->with('title', 'Relatório inventário custo médio');
         $domPdf = new Dompdf(["enable_remote" => true]);
@@ -1687,6 +1823,7 @@ class RelatorioController extends Controller
         $date = $request->date;
         $livro = $request->livro;
         $tipo_custo = $request->tipo_custo;
+        $esportar_excel = $request->esportar_excel;
 
         // $data = MovimentacaoProduto::
         // select('movimentacao_produtos.*')
@@ -1755,6 +1892,11 @@ class RelatorioController extends Controller
 
         $empresa = Empresa::findOrFail($request->empresa_id);
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioRegistroInventarioExport($data, $livro, $empresa, date('Y-m-d H:i'));
+            return Excel::download($relatorioEx, 'relatorio_registro_inventario.xlsx');
+        }
+
         $p = view('relatorios.registro_inventario', compact('data', 'livro', 'empresa'))
         ->with('title', 'Relatório registro inventário');
         $domPdf = new Dompdf(["enable_remote" => true]);
@@ -1771,6 +1913,7 @@ class RelatorioController extends Controller
         $local_id = $request->local_id;
         $ordem = $request->ordem;
         $livro = $request->livro;
+        $esportar_excel = $request->esportar_excel;
 
         $locais = __getLocaisAtivoUsuario();
         $locais = $locais->pluck(['id']);
@@ -1827,6 +1970,11 @@ class RelatorioController extends Controller
             else return $a['nome'] > $b['nome'] ? 1 : -1;
         });
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioInventarioExport($data, $local, $empresa, $livro);
+            return Excel::download($relatorioEx, 'relatorio_inventario.xlsx');
+        }
+
         $p = view('relatorios/inventario', compact('data', 'local_id', 'local', 'livro', 'empresa'))
         ->with('title', 'Relatório inventário');
         $domPdf = new Dompdf(["enable_remote" => true]);
@@ -1841,6 +1989,7 @@ class RelatorioController extends Controller
     public function curvaAbcClientes(Request $request){
         $start_date = $request->start_date;
         $end_date = $request->end_date;
+        $esportar_excel = $request->esportar_excel;
 
         $nfe = Nfe::where('nves.empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -1881,6 +2030,11 @@ class RelatorioController extends Controller
             $data[$key]['percentual'] = number_format($v, 2);
         }
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioCurvaAbcClientesExport($data, $soma);
+            return Excel::download($relatorioEx, 'relatorio_curva_abc_clientes.xlsx');
+        }
+
         $p = view('relatorios/curva_abc_clientes')
         ->with('data', $data)
         ->with('soma', $soma)
@@ -1901,6 +2055,7 @@ class RelatorioController extends Controller
         $start_date = $request->start_date;
         $end_date = $request->end_date;
         $vendas = $request->vendas;
+        $esportar_excel = $request->esportar_excel;
 
         $vNfe = [];
         $vNfce = [];
@@ -1999,6 +2154,11 @@ class RelatorioController extends Controller
             }
         }
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioEntregaProdutosExport($data);
+            return Excel::download($relatorioEx, 'relatorio_entrega_produtos.xlsx');
+        }
+
         $p = view('relatorios/entrega_produtos')
         ->with('data', $data)
         ->with('title', 'Entrega de Produtos');
@@ -2060,6 +2220,7 @@ class RelatorioController extends Controller
         $produto_id = $request->produto_id;
         $ordem = $request->ordem;
         $fiscal = $request->fiscal;
+        $esportar_excel = $request->esportar_excel;
 
         $produtos = Produto::where('status', 1)->where('empresa_id', $request->empresa_id)
         ->when(!empty($categoria_id), function ($query) use ($categoria_id) {
@@ -2191,6 +2352,11 @@ class RelatorioController extends Controller
             });
         }
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioMovimentacaoExport($data, $start_date, $end_date);
+            return Excel::download($relatorioEx, 'relatorio_movimentacao.xlsx');
+        }
+
         // dd($data);
         $p = view('relatorios/movimentacao')
         ->with('data', $data)
@@ -2216,6 +2382,7 @@ class RelatorioController extends Controller
         $end_date = $request->end_date;
         $cliente_id = $request->cliente;
         $local_id = $request->local_id;
+        $esportar_excel = $request->esportar_excel;
 
         $data = OrdemServico::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -2234,6 +2401,11 @@ class RelatorioController extends Controller
             return $query->whereIn('local_id', $locais);
         })
         ->get();
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioOrdemServicoExport($data);
+            return Excel::download($relatorioEx, 'relatorio_ordem_servico.xlsx');
+        }
 
 
         $p = view('relatorios/ordem_servico', compact('data'))
@@ -2259,6 +2431,7 @@ class RelatorioController extends Controller
         $end_date = $request->end_date;
         $tipo_pagamento = $request->tipo_pagamento;
         $local_id = $request->local_id;
+        $esportar_excel = $request->esportar_excel;
 
         $nves = Nfe::where('empresa_id', $request->empresa_id)
         ->when(!empty($start_date), function ($query) use ($start_date) {
@@ -2307,6 +2480,11 @@ class RelatorioController extends Controller
             }
         }
 
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioTiposPagamentoExport($data);
+            return Excel::download($relatorioEx, 'relatorio_tipos_pagamento.xlsx');
+        }
+
         $p = view('relatorios/tipos_pagamento', compact('data'))
         ->with('title', 'Relatório de Tipos de Pagamento');
 
@@ -2343,6 +2521,7 @@ class RelatorioController extends Controller
         $end_date = $request->end_date;
         $estado = $request->estado;
         $vagos = $request->vagos;
+        $esportar_excel = $request->esportar_excel;
 
         if($vagos == 1){
 
@@ -2360,6 +2539,11 @@ class RelatorioController extends Controller
             ->where('status', 1)
             ->get();
 
+            if($esportar_excel == 1){
+                $relatorioEx = new RelatorioReservasExport($data, $start_date, $end_date, $vagos);
+                return Excel::download($relatorioEx, 'relatorio_reservas.xlsx');
+            }
+
             $p = view('relatorios/reserva_vagos', compact('data', 'start_date', 'end_date'))
             ->with('title', 'Relatório de acomodações vagas por período');
         }else{
@@ -2374,6 +2558,11 @@ class RelatorioController extends Controller
                 return $query->where('estado', $estado);
             })
             ->get();
+
+            if($esportar_excel == 1){
+                $relatorioEx = new RelatorioReservasExport($data, $start_date, $end_date, $vagos);
+                return Excel::download($relatorioEx, 'relatorio_reservas.xlsx');
+            }
 
             $p = view('relatorios/reservas', compact('data', 'start_date', 'end_date'))
             ->with('title', 'Relatório de Reservas');
@@ -2396,6 +2585,7 @@ class RelatorioController extends Controller
         $marca_id = $request->marca_id;
         $categoria_id = $request->categoria_id;
         $produto_id = $request->produto_id;
+        $esportar_excel = $request->esportar_excel;
 
         $dataNfe = ItemNfe::where('produtos.empresa_id', $request->empresa_id)
         ->select('produtos.id as produto_id')
@@ -2464,13 +2654,18 @@ class RelatorioController extends Controller
             ->join('nves', 'nves.id', '=', 'item_nves.nfe_id')
             ->sum('sub_total');
 
-            $data[] = [
+        $data[] = [
                 'produto_id' => $produto_id,
                 'numero_sequencial' => $produto->numero_sequencial,
                 'produto_nome' => $produto->nome,
                 'total_vendas' => $subVenda + $subVendaNfce,
                 'total_compras' => $subCompra,
             ];
+        }
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioLucroProdutoExport($data, $start_date, $end_date);
+            return Excel::download($relatorioEx, 'relatorio_lucro_produto.xlsx');
         }
 
         $p = view('relatorios.lucro_produto', compact('data', 'start_date', 'end_date'))
