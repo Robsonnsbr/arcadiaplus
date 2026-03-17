@@ -1009,6 +1009,8 @@ Route::middleware(['verificaEmpresa', 'validaPlano', 'validaContrato'])->group(f
         Route::get('/imprimir-nao-fiscal/{id}', 'FrontBoxController@imprimirNaoFiscal')->name('frontbox.imprimir-nao-fiscal');
         Route::get('/imprimir-a4/{id}', 'FrontBoxController@imprimirA4')->name('frontbox.imprimir-a4');
         Route::get('/imprimir-nao-fiscal-html/{id}', 'FrontBoxController@imprimirNaoFiscalHtml')->name('frontbox.imprimir-nao-fiscal-html');
+        Route::get('/imprimir-venda-a4/{id}', 'FrontBoxController@imprimirVendaA4')->name('frontbox.imprimir-venda-a4');
+        Route::get('/imprimir-venda-a4-html/{id}', 'FrontBoxController@imprimirVendaA4Html')->name('frontbox.imprimir-venda-a4-html');
         Route::get('/destroy-suspensa/{id}', 'FrontBoxController@destroySuspensa')->name('frontbox.destroy-suspensa');
         Route::post('/definir-mesa', 'FrontBoxController@definirMesa')->name('frontbox.definir-mesa');
         Route::get('/imprimir-carne/{id}', 'FrontBoxController@imprimirCarne')->name('frontbox.imprimir-carne');

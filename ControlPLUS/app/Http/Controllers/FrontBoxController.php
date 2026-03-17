@@ -819,6 +819,40 @@ class FrontBoxController extends Controller
         $domPdf->stream("Venda #$item->numero_sequencial.pdf", array("Attachment" => false));
     }
 
+    public function imprimirVendaA4($id)
+    {
+        $data = $this->getVendaA4Data($id);
+        $printMode = 'pdf';
+        $p = view('front_box.imprimir_venda_a4', array_merge($data, compact('printMode')));
+
+        $domPdf = new Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($p);
+        $pdf = ob_get_clean();
+        $domPdf->setPaper("A4");
+        $domPdf->render();
+        header("Content-Disposition: ; filename=ComprovanteVenda.pdf");
+        $domPdf->stream("ComprovanteVenda #".$data['item']->numero_sequencial.".pdf", array("Attachment" => false));
+    }
+
+    public function imprimirVendaA4Html($id)
+    {
+        $data = $this->getVendaA4Data($id);
+        $printMode = 'html';
+        return view('front_box.imprimir_venda_a4', array_merge($data, compact('printMode')));
+    }
+
+    private function getVendaA4Data($id)
+    {
+        $item = Nfce::findOrFail($id);
+        __validaObjetoEmpresa($item);
+        $config = Empresa::where('id', $item->empresa_id)->first();
+
+        $config = __objetoParaEmissao($config, $item->local_id);
+        $configGeral = ConfigGeral::where('empresa_id', $item->empresa_id)->first();
+
+        return compact('config', 'item', 'configGeral');
+    }
+
     public function mesas(Request $request){
         if (!__isCaixaAberto()) {
             session()->flash("flash_warning", "Abrir caixa antes de continuar!");

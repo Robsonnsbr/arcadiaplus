@@ -2532,8 +2532,8 @@ function storeNfe(json) {
 
 function imprimirNaoFiscal(id, tipo_pagamento, fiscalPendente = false) {
     let opened = true;
-    let urlImpressao = path_url + "frontbox/imprimir-nao-fiscal/" + id;
-    let urlImpressaoHtml = path_url + "frontbox/imprimir-nao-fiscal-html/" + id;
+    let urlImpressao = path_url + "frontbox/imprimir-venda-a4/" + id;
+    let urlImpressaoHtml = path_url + "frontbox/imprimir-venda-a4-html/" + id;
     if (fiscalPendente) {
         urlImpressao += "?fiscal_pending=1";
         urlImpressaoHtml += "?fiscal_pending=1";
@@ -2640,9 +2640,7 @@ $("#form-pdv-update").on("submit", function (e) {
                 }).then((isConfirm) => {
                     if (isConfirm) {
                         window.open(
-                            path_url +
-                                "frontbox/imprimir-nao-fiscal/" +
-                                success.id,
+                            path_url + "frontbox/imprimir-venda-a4/" + success.id,
                             "_blank",
                         );
                     } else {
