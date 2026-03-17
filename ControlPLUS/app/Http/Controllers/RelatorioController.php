@@ -622,6 +622,7 @@ class RelatorioController extends Controller
         $end_date = $request->end_date;
         $local_id = $request->local_id;
         $cliente_id = $request->cliente;
+        $funcionario_id = $request->funcionario_id;
         $start_time = $request->start_time;
         $end_time = $request->end_time;
         $estado = $request->estado;
@@ -668,6 +669,9 @@ class RelatorioController extends Controller
         ->when($cliente_id, function ($query) use ($cliente_id) {
             return $query->where('cliente_id', $cliente_id);
         })
+        ->when($funcionario_id, function ($query) use ($funcionario_id) {
+            return $query->where('funcionario_id', $funcionario_id);
+        })
         ->with(['cliente', 'localizacao', 'funcionario'])
         ->get();
 
@@ -695,6 +699,9 @@ class RelatorioController extends Controller
         })
         ->when($cliente_id, function ($query) use ($cliente_id) {
             return $query->where('cliente_id', $cliente_id);
+        })
+        ->when($funcionario_id, function ($query) use ($funcionario_id) {
+            return $query->where('funcionario_id', $funcionario_id);
         })
         ->with(['cliente', 'localizacao', 'funcionario'])
         ->get();

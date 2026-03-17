@@ -74,5 +74,42 @@ $(function(){
             });
             return;
         });
+
+        $(".funcionario").each(function (i) {
+            $(this).select2({
+                minimumInputLength: 2,
+                language: "pt-BR",
+                placeholder: "Digite para buscar o vendedor",
+
+                ajax: {
+                    cache: true,
+                    url: path_url + "api/funcionarios/pesquisa",
+                    dataType: "json",
+                    data: function (params) {
+                        console.clear();
+                        var query = {
+                            pesquisa: params.term,
+                            empresa_id: $("#empresa_id").val(),
+                        };
+                        return query;
+                    },
+                    processResults: function (response) {
+                        var results = [];
+
+                        $.each(response, function (i, v) {
+                            var o = {};
+                            o.id = v.id;
+                            o.text = v.nome;
+                            o.value = v.id;
+                            results.push(o);
+                        });
+                        return {
+                            results: results,
+                        };
+                    },
+                },
+            });
+            return;
+        });
     }, 100);
 });

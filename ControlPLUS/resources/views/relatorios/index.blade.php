@@ -522,6 +522,13 @@
                                 !!}
                             </div>
 
+                            <div class="col-md-6 col-12 mt-2">
+                                {!!Form::select('funcionario_id', 'Vendedor')
+                                ->attrs(['class' => 'form-select funcionario'])
+                                ->id('funcionario4')
+                                !!}
+                            </div>
+
                             <div class="col-md-3 col-6 mt-2">
                                 {!!Form::time('start_time', 'Horário inicial')
                                 !!}
@@ -1327,5 +1334,4 @@
 @section('js')
 <script type="text/javascript" src="/js/relatorio.js"></script>
 @endsection
-
 
