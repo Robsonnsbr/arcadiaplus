@@ -31,6 +31,7 @@ use App\Models\MovimentacaoProduto;
 use Dompdf\Dompdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\RelatorioEstoqueExport;
+use App\Exports\RelatorioVendasExport;
 use Illuminate\Support\Facades\DB;
 
 class RelatorioController extends Controller
@@ -626,6 +627,7 @@ class RelatorioController extends Controller
         $start_time = $request->start_time;
         $end_time = $request->end_time;
         $estado = $request->estado;
+        $esportar_excel = $request->esportar_excel;
 
         if($start_date){
             if($start_time){
@@ -714,6 +716,12 @@ class RelatorioController extends Controller
         usort($data, function($a, $b){
             return $a['data'] > $b['data'] ? 1 : -1;
         });
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioVendasExport($data);
+            return Excel::download($relatorioEx, 'relatorio_vendas.xlsx');
+        }
+
         // dd($data);
         $p = view('relatorios/vendas', compact('data', 'tipo'))
         ->with('title', 'Relatório de Vendas');

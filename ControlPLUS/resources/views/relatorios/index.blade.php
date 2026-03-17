@@ -538,8 +538,15 @@
                                 !!}
                             </div>
 
+                            <div class="col-md-3 col-6 mt-2">
+                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                ['-1' => 'Não', '1' => 'Sim'])
+                                ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
+
                             @if(__countLocalAtivo() > 1)
-                            <div class="col-md-6 col-12 mt-2">
+                            <div class="col-md-3 col-12 mt-2">
                                 {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
@@ -1334,4 +1341,3 @@
 @section('js')
 <script type="text/javascript" src="/js/relatorio.js"></script>
 @endsection
-
