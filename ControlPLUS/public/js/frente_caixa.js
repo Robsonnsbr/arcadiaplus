@@ -3,6 +3,7 @@ var VALORCREDITO = 0;
 var VALORFRETE = 0;
 var VALORACRESCIMO = 0;
 var PERCENTUALMAXDESCONTO = false;
+var paymentModeSyncGuard = false;
 function isTablet() {
     const ua = navigator.userAgent.toLowerCase();
     return /ipad|android(?!.*mobile)|tablet|kindle|playbook/.test(ua);
@@ -201,7 +202,12 @@ $(".btn-gerar-fatura").click(() => {
 });
 
 $(".btn-pagamento-multi").click(() => {
+    activateMultiplePaymentMode();
     calcTotalPayment();
+});
+
+$("#pagamento_multiplo").on("show.bs.modal", () => {
+    activateMultiplePaymentMode();
 });
 
 $(".btn-store-fatura").click(() => {
@@ -1908,6 +1914,16 @@ function modalAcrescimo() {
 $(document).on("change", "#inp-tipo_pagamento, .tp-pag", function () {
     $("#inp-valor_recebido").val("");
     let tipo = $(this).val();
+    let tipoNormalizado = String(tipo || "").trim();
+
+    if (!paymentModeSyncGuard && tipoNormalizado !== "") {
+        resetMultiplePaymentMode();
+    }
+
+    if (!isTipoPagamentoCredito(tipoNormalizado)) {
+        clearSimpleCardFields();
+    }
+
     let cliente = $("#inp-cliente_id").val();
     if (tipo == TRADEIN_PAYMENT_CODE && !cliente) {
         swal(
@@ -2378,6 +2394,7 @@ $(".btn-add-payment").click(() => {
 });
 
 $(".pagamento_multiplo").click(() => {
+    activateMultiplePaymentMode();
     // let cliente = $("#inp-cliente_id").val();
     let count_itens = $(".table-itens tbody tr").length;
 
@@ -3191,6 +3208,210 @@ function setPayloadArray(json, key, value) {
     delete json[key + "[]"];
 }
 
+function deletePayloadField(json, key) {
+    delete json[key];
+    delete json[key + "[]"];
+}
+
+function clearSimpleCardFields() {
+    $("select[name='bandeira_cartao']").val("");
+    $("input[name='cAut_cartao']").val("");
+    $("input[name='cnpj_cartao']").val("");
+    $("#tef_hash").val("");
+}
+
+function resetSimplePaymentVisualState() {
+    $("#inp-valor_recebido").val("").attr("disabled", "true");
+    $("#inp-troco").val("");
+    $("#valor-troco").html("0,00");
+    $(".div-troco").addClass("d-none");
+    $("#finalizar-venda").removeAttr("disabled");
+    $("#finalizar-rascunho").removeAttr("disabled");
+    $("#finalizar-consignado").removeAttr("disabled");
+    $(".div-btns").removeClass("d-none");
+}
+
+function clearMultiplePaymentDraftInputs() {
+    $("#inp-tipo_pagamento_row").val("").change();
+    $("#inp-valor_row").val("");
+    $("#inp-observacao_row").val("");
+    $("#inp-bandeira_cartao_row_input").val("");
+    $("#inp-cAut_cartao_row_input").val("");
+    $("#inp-cnpj_cartao_row_input").val("");
+}
+
+function clearMultiplePaymentRows() {
+    $(".table-payment tbody").html("");
+    calcTotalPayment();
+}
+
+function resetMultiplePaymentMode() {
+    clearMultiplePaymentDraftInputs();
+    clearMultiplePaymentRows();
+    refreshTradeinPaymentState(false);
+    validateButtonSave();
+}
+
+function activateMultiplePaymentMode() {
+    paymentModeSyncGuard = true;
+    $("#inp-tipo_pagamento").val("").trigger("change");
+    paymentModeSyncGuard = false;
+    clearSimpleCardFields();
+    resetSimplePaymentVisualState();
+    validateButtonSave();
+}
+
+function buildValidMultiplePaymentRowsFromDom() {
+    const rows = [];
+
+    $(".table-payment tbody tr").each(function () {
+        const tipo = String(
+            $(this).find("input[name='tipo_pagamento_row[]']").val() || "",
+        ).trim();
+        if (!tipo) {
+            return;
+        }
+
+        const valorRaw =
+            $(this).find("input[name='valor_integral_row[]']").val() || "0";
+        const valor = convertMoedaToFloat(valorRaw);
+        if (valor <= 0) {
+            return;
+        }
+
+        rows.push({
+            tipo_pagamento: tipo,
+            valor_integral: valorRaw,
+            data_vencimento:
+                $(this).find("input[name='data_vencimento_row[]']").val() || "",
+            obs: $(this).find("input[name='obs_row[]']").val() || "",
+            bandeira_cartao:
+                $(this).find("input[name='bandeira_cartao_row[]']").val() ||
+                "",
+            cAut_cartao:
+                $(this).find("input[name='cAut_cartao_row[]']").val() || "",
+            cnpj_cartao:
+                $(this).find("input[name='cnpj_cartao_row[]']").val() || "",
+        });
+    });
+
+    return rows;
+}
+
+function buildValidMultiplePaymentRows(json) {
+    const rowsFromDom = buildValidMultiplePaymentRowsFromDom();
+    if (rowsFromDom.length > 0) {
+        return rowsFromDom;
+    }
+
+    normalizePagamentoPayloadKeys(json);
+
+    const tiposRow = getPayloadArray(json, "tipo_pagamento_row");
+    const valoresRow = getPayloadArray(json, "valor_integral_row");
+    const vencimentosRow = getPayloadArray(json, "data_vencimento_row");
+    const observacoesRow = getPayloadArray(json, "obs_row");
+    const bandeirasRow = getPayloadArray(json, "bandeira_cartao_row");
+    const cAutRow = getPayloadArray(json, "cAut_cartao_row");
+    const cnpjRow = getPayloadArray(json, "cnpj_cartao_row");
+
+    const totalRows = Math.max(
+        tiposRow.length,
+        valoresRow.length,
+        vencimentosRow.length,
+        observacoesRow.length,
+        bandeirasRow.length,
+        cAutRow.length,
+        cnpjRow.length,
+    );
+
+    const rows = [];
+    for (let i = 0; i < totalRows; i++) {
+        const tipo = String(tiposRow[i] || "").trim();
+        if (!tipo) {
+            continue;
+        }
+
+        const valorRaw = valoresRow[i] || 0;
+        const valor = convertMoedaToFloat(valorRaw);
+        if (valor <= 0) {
+            continue;
+        }
+
+        rows.push({
+            tipo_pagamento: tipo,
+            valor_integral: valorRaw,
+            data_vencimento: vencimentosRow[i] || "",
+            obs: observacoesRow[i] || "",
+            bandeira_cartao: bandeirasRow[i] || "",
+            cAut_cartao: cAutRow[i] || "",
+            cnpj_cartao: cnpjRow[i] || "",
+        });
+    }
+
+    return rows;
+}
+
+function sanitizePagamentoPayload(json) {
+    const multipleRows = buildValidMultiplePaymentRows(json);
+    if (multipleRows.length > 0) {
+        json.tipo_pagamento = "";
+        json.bandeira_cartao = "";
+        json.cAut_cartao = "";
+        json.cnpj_cartao = "";
+        json.tef_hash = "";
+        json.valor_recebido = "";
+        json.troco = "";
+
+        setPayloadArray(
+            json,
+            "tipo_pagamento_row",
+            multipleRows.map((row) => row.tipo_pagamento),
+        );
+        setPayloadArray(
+            json,
+            "valor_integral_row",
+            multipleRows.map((row) => row.valor_integral),
+        );
+        setPayloadArray(
+            json,
+            "data_vencimento_row",
+            multipleRows.map((row) => row.data_vencimento),
+        );
+        setPayloadArray(
+            json,
+            "obs_row",
+            multipleRows.map((row) => row.obs),
+        );
+        setPayloadArray(
+            json,
+            "bandeira_cartao_row",
+            multipleRows.map((row) => row.bandeira_cartao),
+        );
+        setPayloadArray(
+            json,
+            "cAut_cartao_row",
+            multipleRows.map((row) => row.cAut_cartao),
+        );
+        setPayloadArray(
+            json,
+            "cnpj_cartao_row",
+            multipleRows.map((row) => row.cnpj_cartao),
+        );
+        return;
+    }
+
+    [
+        "tipo_pagamento_row",
+        "valor_integral_row",
+        "data_vencimento_row",
+        "obs_row",
+        "bandeira_cartao_row",
+        "cAut_cartao_row",
+        "cnpj_cartao_row",
+        "nome_pagamento",
+    ].forEach((key) => deletePayloadField(json, key));
+}
+
 function normalizePagamentoPayloadKeys(json) {
     [
         "tipo_pagamento_row",
@@ -3415,6 +3636,7 @@ $("#form-pdv").on("submit", function (e) {
     json.desconto = convertMoedaToFloat($("#valor_desconto").text());
     json.acrescimo = convertMoedaToFloat($("#valor_acrescimo").text());
     json.valor_frete = convertMoedaToFloat($(".valor-frete").text());
+    sanitizePagamentoPayload(json);
     if (!validarDadosCartaoCredito(json)) {
         return;
     }
@@ -3565,6 +3787,7 @@ $("body").on("click", "#btn-suspender", function () {
             var json = $("#form-pdv").serializeFormJSON();
             json.empresa_id = $("#empresa_id").val();
             json.usuario_id = $("#usuario_id").val();
+            sanitizePagamentoPayload(json);
 
             // console.log(json)
             $.post(path_url + "api/frenteCaixa/suspender", json)
@@ -3601,6 +3824,7 @@ $("#form-pdv-update").on("submit", function (e) {
     json.desconto = convertMoedaToFloat($("#valor_desconto").text());
     json.acrescimo = convertMoedaToFloat($("#valor_acrescimo").text());
     json.valor_frete = convertMoedaToFloat($(".valor-frete").text());
+    sanitizePagamentoPayload(json);
     if (!validarDadosCartaoCredito(json)) {
         return;
     }

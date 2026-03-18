@@ -773,7 +773,10 @@ class FrontBoxController extends Controller
             $height += 30;
         }
 
-        $height += sizeof($item->fatura)*5;
+        foreach ($item->pagamentos_documento as $pagamento) {
+            $height += 5;
+            $height += sizeof($pagamento['complementos'] ?? []) * 5;
+        }
 
         $domPdf->setPaper([0,0,244,$height]);
         $pdf = $domPdf->render();

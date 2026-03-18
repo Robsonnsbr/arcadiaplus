@@ -1037,7 +1037,8 @@
         <br>
     @endif
 
-    @if (sizeof($item->fatura) > 0)
+    @php $paymentRows = $item->pagamentos_documento; @endphp
+    @if (sizeof($paymentRows) > 0)
         <table>
             <tr>
                 <td class="b-bottom" style="width: 700px; height: 50px;">
@@ -1057,16 +1058,19 @@
                     Valor
                 </td>
             </tr>
-            @foreach ($item->fatura as $key => $d)
+            @foreach ($paymentRows as $payment)
                 <tr>
                     <td class="" style="text-align: left;">
-                        <strong>{{ \App\Models\Nfe::getTipo($d->tipo_pagamento) }}</strong>
+                        <strong>{{ $payment['descricao'] }}</strong>
+                        @if (sizeof($payment['complementos']) > 0)
+                            <br><small>{{ implode(' | ', $payment['complementos']) }}</small>
+                        @endif
                     </td>
                     <td style="text-align: left;">
-                        <strong>{{ \Carbon\Carbon::parse($d->data_vencimento)->format('d/m/Y') }}</strong>
+                        <strong>{{ $payment['data_vencimento_formatada'] }}</strong>
                     </td>
                     <td style="text-align: left;">
-                        <strong>{{ __moeda($d->valor) }}</strong>
+                        <strong>{{ __moeda($payment['valor']) }}</strong>
                     </td>
                 </tr>
             @endforeach

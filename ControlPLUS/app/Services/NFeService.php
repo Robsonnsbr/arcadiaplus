@@ -1128,7 +1128,16 @@ class NFeService{
 		if(sizeof($item->fatura) > 0){
 			foreach ($item->fatura as $ft) {
 				$stdDetPag = new \stdClass();
-				$stdDetPag->tPag = $ft->tipo_pagamento;
+				$tipoPagamento = $ft->tipo_pagamento;
+				if($tipoPagamento == '30'){
+					$tipoPagamento = '03';
+				}elseif($tipoPagamento == '31'){
+					$tipoPagamento = '04';
+				}elseif($tipoPagamento == '32'){
+					$tipoPagamento = '17';
+				}
+
+				$stdDetPag->tPag = $tipoPagamento;
 				if($stdDetPag->tPag == '06'){
 					$stdDetPag->tPag = '05';
 				}
@@ -1140,7 +1149,13 @@ class NFeService{
 				}
 
 				if($stdDetPag->tPag == '03' || $stdDetPag->tPag == '04' || $stdDetPag->tPag == '17'){
-					$stdDetPag->tBand = '01';
+					$stdDetPag->tBand = $item->bandeira_cartao ?: '01';
+					if($item->cnpj_cartao){
+						$stdDetPag->CNPJ = preg_replace('/[^0-9]/', '', $item->cnpj_cartao);
+					}
+					if($item->cAut_cartao != ""){
+						$stdDetPag->cAut = $item->cAut_cartao;
+					}
 					$stdDetPag->tpIntegra = 2;
 				}
 

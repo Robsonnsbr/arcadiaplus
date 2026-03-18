@@ -215,12 +215,18 @@
 			@endif
 
 			@else
-			@if (sizeof($item->fatura) > 0)
-			@foreach($item->fatura as $f)
+			@php $paymentRows = $item->pagamentos_documento; @endphp
+			@if (sizeof($paymentRows) > 0)
+			@foreach($paymentRows as $payment)
 			<tr>
-				<th class="total">{{ \App\Models\Nfce::getTipoPagamento($f->tipo_pagamento) }}</th>
-				<th class="total" style="text-align: right;">R${{ __moeda($f->valor) }}</th>
+				<th class="total">{{ $payment['descricao'] }}</th>
+				<th class="total" style="text-align: right;">R${{ __moeda($payment['valor']) }}</th>
 			</tr>
+			@foreach($payment['complementos'] as $complemento)
+			<tr>
+				<th class="total" colspan="2" style="text-align: left; font-size: 10px;">{{ $complemento }}</th>
+			</tr>
+			@endforeach
 			@endforeach
 			@else
 			<tr>

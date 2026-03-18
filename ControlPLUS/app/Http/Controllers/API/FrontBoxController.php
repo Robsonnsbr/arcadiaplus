@@ -95,6 +95,24 @@ class FrontBoxController extends Controller
         return in_array($tipo, ['03', '30'], true);
     }
 
+    private function getRequestArray(Request $request, string $key): array
+    {
+        $value = $request->input($key);
+        if ($value === null) {
+            $value = $request->input($key . '[]');
+        }
+
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        if (is_array($value)) {
+            return array_values($value);
+        }
+
+        return [$value];
+    }
+
     private function requestTemPagamentoCredito(Request $request): bool
     {
         $tipos = [];
@@ -102,9 +120,7 @@ class FrontBoxController extends Controller
             $tipos[] = $request->tipo_pagamento;
         }
 
-        if (is_array($request->tipo_pagamento_row)) {
-            $tipos = array_merge($tipos, $request->tipo_pagamento_row);
-        }
+        $tipos = array_merge($tipos, $this->getRequestArray($request, 'tipo_pagamento_row'));
 
         if (is_array($request->fatura)) {
             foreach ($request->fatura as $fatura) {
@@ -132,6 +148,50 @@ class FrontBoxController extends Controller
             'codigo' => trim((string)($request->cAut_cartao ?? '')),
             'cnpj' => trim((string)($request->cnpj_cartao ?? '')),
         ];
+    }
+
+    private function resolveTipoPagamentoCabecalho(Request $request): string
+    {
+        $tiposRow = $this->getRequestArray($request, 'tipo_pagamento_row');
+        $valoresRow = $this->getRequestArray($request, 'valor_integral_row');
+
+        for ($i = 0; $i < max(count($tiposRow), count($valoresRow)); $i++) {
+            $tipo = trim((string)($tiposRow[$i] ?? ''));
+            $valor = __convert_value_bd($valoresRow[$i] ?? 0);
+
+            if ($tipo !== '' && $valor > 0) {
+                return '99';
+            }
+        }
+
+        if (is_array($request->fatura)) {
+            foreach ($request->fatura as $fatura) {
+                $tipo = '';
+                $valor = 0;
+
+                if (is_array($fatura)) {
+                    $tipo = trim((string)($fatura['tipo_pagamento'] ?? ($fatura['tipo'] ?? ($fatura['forma'] ?? ''))));
+                    $valor = __convert_value_bd($fatura['valor'] ?? ($fatura['valor_integral'] ?? 0));
+                } elseif (is_object($fatura)) {
+                    $tipo = trim((string)($fatura->tipo_pagamento ?? ($fatura->tipo ?? ($fatura->forma ?? ''))));
+                    $valor = __convert_value_bd($fatura->valor ?? ($fatura->valor_integral ?? 0));
+                }
+
+                if ($tipo !== '' && $valor > 0) {
+                    return '99';
+                }
+            }
+        }
+
+        $tipoSimples = trim((string)($request->tipo_pagamento ?? ''));
+        if ($tipoSimples !== '') {
+            return $tipoSimples;
+        }
+
+        throw new \Symfony\Component\HttpKernel\Exception\HttpException(
+            422,
+            'Informe ao menos uma forma de pagamento válida.'
+        );
     }
 
     private function validarBandeiraCartaoCredito(Request $request): array
@@ -744,8 +804,8 @@ class FrontBoxController extends Controller
         $faturaPrazo = 0;
         $total = 0;
 
-        $tipoPagamentoRows = is_array($request->tipo_pagamento_row) ? $request->tipo_pagamento_row : [];
-        $valorIntegralRows = is_array($request->valor_integral_row) ? $request->valor_integral_row : [];
+        $tipoPagamentoRows = $this->getRequestArray($request, 'tipo_pagamento_row');
+        $valorIntegralRows = $this->getRequestArray($request, 'valor_integral_row');
 
         if(sizeof($tipoPagamentoRows) > 0){
             for ($i = 0; $i < sizeof($tipoPagamentoRows); $i++) {
@@ -789,8 +849,8 @@ class FrontBoxController extends Controller
             $total += __convert_value_bd($request->valor_total);
         }
 
-        $tipoPagamentoRows = is_array($request->tipo_pagamento_row) ? $request->tipo_pagamento_row : [];
-        $valorIntegralRows = is_array($request->valor_integral_row) ? $request->valor_integral_row : [];
+        $tipoPagamentoRows = $this->getRequestArray($request, 'tipo_pagamento_row');
+        $valorIntegralRows = $this->getRequestArray($request, 'valor_integral_row');
 
         if (sizeof($tipoPagamentoRows) > 0) {
             for ($i = 0; $i < sizeof($tipoPagamentoRows); $i++) {
@@ -816,17 +876,19 @@ class FrontBoxController extends Controller
     private function extractNonTradeinPaymentAmount(Request $request): float
     {
         $total = 0;
-        $hasRows = is_array($request->tipo_pagamento_row) && sizeof($request->tipo_pagamento_row) > 0;
+        $tiposPagamentoRows = $this->getRequestArray($request, 'tipo_pagamento_row');
+        $valorIntegralRows = $this->getRequestArray($request, 'valor_integral_row');
+        $hasRows = sizeof($tiposPagamentoRows) > 0;
         $hasFatura = is_array($request->fatura) && sizeof($request->fatura) > 0;
         $tipoPrincipal = trim((string)($request->tipo_pagamento ?? ''));
 
-        if ($hasRows && is_array($request->valor_integral_row)) {
-            for ($i = 0; $i < sizeof($request->tipo_pagamento_row); $i++) {
-                $tipo = trim((string)($request->tipo_pagamento_row[$i] ?? ''));
+        if ($hasRows && sizeof($valorIntegralRows) > 0) {
+            for ($i = 0; $i < sizeof($tiposPagamentoRows); $i++) {
+                $tipo = trim((string)($tiposPagamentoRows[$i] ?? ''));
                 if ($tipo == TradeinCreditMovement::PAYMENT_CODE) {
                     continue;
                 }
-                $valorLinha = __convert_value_bd($request->valor_integral_row[$i] ?? 0);
+                $valorLinha = __convert_value_bd($valorIntegralRows[$i] ?? 0);
                 $total += max(0, (float) $valorLinha);
             }
             return (float) $total;
@@ -1188,7 +1250,7 @@ class FrontBoxController extends Controller
                     'observacao' => $request->observacao ?? '',
                     'dinheiro_recebido' => $request->valor_recebido ? __convert_value_bd($request->valor_recebido) : 0,
                     'troco' => $request->troco ? __convert_value_bd($request->troco) : 0,
-                    'tipo_pagamento' => $request->tipo_pagamento_row ? '99' : $request->tipo_pagamento,
+                    'tipo_pagamento' => $this->resolveTipoPagamentoCabecalho($request),
                     'cnpj_cartao' => $request->cnpj_cartao ?? '',
                     'bandeira_cartao' => $request->bandeira_cartao ?? '',
                     'cAut_cartao' => $request->cAut_cartao ?? '',
@@ -1631,7 +1693,7 @@ public function storePdv3(Request $request){
                 'observacao' => isset($request->observacao) ? $request->observacao : '',
                 'dinheiro_recebido' => $request->valor_recebido ? __convert_value_bd($request->valor_recebido) : 0,
                 'troco' => $request->troco ? __convert_value_bd($request->troco) : 0,
-                'tipo_pagamento' => $request->tipo_pagamento ?? '99',
+                'tipo_pagamento' => $this->resolveTipoPagamentoCabecalho($request),
                 'cnpj_cartao' => $request->cnpj_cartao ?? '',
                 'bandeira_cartao' => $request->bandeira_cartao ?? '',
                 'cAut_cartao' => $request->cAut_cartao ?? '',
@@ -1852,7 +1914,7 @@ public function updatePdv3(Request $request){
                 'valor_frete' => 0,
                 'dinheiro_recebido' => $request->valor_recebido ? __convert_value_bd($request->valor_recebido) : 0,
                 'troco' => $request->troco ? __convert_value_bd($request->troco) : 0,
-                'tipo_pagamento' => $request->tipo_pagamento ?? '99',
+                'tipo_pagamento' => $this->resolveTipoPagamentoCabecalho($request),
                 'cnpj_cartao' => $request->cnpj_cartao ?? '',
                 'bandeira_cartao' => $request->bandeira_cartao ?? '',
                 'cAut_cartao' => $request->cAut_cartao ?? '',
@@ -2185,7 +2247,7 @@ public function storeComanda(Request $request)
                 'observacao' => $request->observacao ?? '',
                 'dinheiro_recebido' => $request->valor_recebido ? __convert_value_bd($request->valor_recebido) : 0,
                 'troco' => $request->troco ? __convert_value_bd($request->troco) : 0,
-                'tipo_pagamento' => $request->tipo_pagamento_row ? '99' : $request->tipo_pagamento,
+                'tipo_pagamento' => $this->resolveTipoPagamentoCabecalho($request),
                 'cnpj_cartao' => $request->cnpj_cartao ?? '',
                 'bandeira_cartao' => $request->bandeira_cartao ?? '',
                 'cAut_cartao' => $request->cAut_cartao ?? '',
@@ -2395,7 +2457,7 @@ public function storeNfe(Request $request)
                 'caixa_id' => $caixa->id,
                 'local_id' => $caixa->local_id,
                 'observacao' => $request->observacao ?? '',
-                'tipo_pagamento' => $request->tipo_pagamento_row ? '99' : $request->tipo_pagamento,
+                'tipo_pagamento' => $this->resolveTipoPagamentoCabecalho($request),
                 'cnpj_cartao' => $request->cnpj_cartao ?? '',
                 'bandeira_cartao' => $request->bandeira_cartao ?? '',
                 'cAut_cartao' => $request->cAut_cartao ?? '',

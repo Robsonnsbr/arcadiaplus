@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Utils\TradeinCreditUtil;
@@ -194,6 +195,9 @@ class Nfe extends Model
             '18' => 'Transferência bancária, Carteira Digital',
             '19' => 'Programa de fidelidade, Cashback, Crédito Virtual',
             TradeinCreditMovement::PAYMENT_CODE => TradeinCreditMovement::PAYMENT_LABEL,
+            '30' => 'Cartão de Crédito TEF',
+            '31' => 'Cartão de Débito TEF',
+            '32' => 'PIX TEF',
             // '20' => 'Pagamento Instantâneo (PIX) – Estático',
             // '21' => 'Crédito em Loja',
             // '22' => 'Pagamento Eletrônico não Informado - falha de hardware do sistema emissor',
@@ -258,6 +262,74 @@ class Nfe extends Model
         foreach (Nfe::tiposPagamento() as $key => $t) {
             if ($this->tipo_pagamento == $key) return $t;
         }
+    }
+
+    public function getPagamentosDocumentoAttribute()
+    {
+        $linhas = [];
+        $faturas = $this->relationLoaded('fatura') ? $this->fatura : $this->fatura()->get();
+
+        foreach ($faturas as $fatura) {
+            $linhas[] = $this->buildPagamentoDocumento(
+                (string) $fatura->tipo_pagamento,
+                $fatura->valor ?? 0,
+                $fatura->data_vencimento,
+                $fatura->observacao ?? null
+            );
+        }
+
+        if (sizeof($linhas) === 0 && $this->tipo_pagamento) {
+            $linhas[] = $this->buildPagamentoDocumento((string) $this->tipo_pagamento, $this->total);
+        }
+
+        return $linhas;
+    }
+
+    private function buildPagamentoDocumento(string $tipo, $valor, ?string $dataVencimento = null, ?string $observacao = null): array
+    {
+        $complementos = [];
+
+        if ($dataVencimento) {
+            $complementos[] = 'Vencimento: ' . Carbon::parse($dataVencimento)->format('d/m/Y');
+        }
+
+        foreach ($this->getComplementosPagamentoDocumento($tipo) as $complemento) {
+            $complementos[] = $complemento;
+        }
+
+        if ($observacao && trim($observacao) !== '') {
+            $complementos[] = 'Obs.: ' . trim($observacao);
+        }
+
+        return [
+            'tipo' => $tipo,
+            'descricao' => static::getTipo($tipo),
+            'valor' => (float) $valor,
+            'data_vencimento' => $dataVencimento,
+            'data_vencimento_formatada' => $dataVencimento ? Carbon::parse($dataVencimento)->format('d/m/Y') : '--',
+            'complementos' => $complementos,
+        ];
+    }
+
+    private function getComplementosPagamentoDocumento(string $tipo): array
+    {
+        $complementos = [];
+
+        if (in_array($tipo, ['03', '04', '30', '31'], true)) {
+            if ($this->bandeira_cartao) {
+                $complementos[] = 'Bandeira: ' . (Nfce::bandeiras()[$this->bandeira_cartao] ?? $this->bandeira_cartao);
+            }
+
+            if ($this->cAut_cartao) {
+                $complementos[] = 'Autorizacao: ' . $this->cAut_cartao;
+            }
+
+            if ($this->cnpj_cartao) {
+                $complementos[] = 'CNPJ operadora: ' . $this->cnpj_cartao;
+            }
+        }
+
+        return $complementos;
     }
 
     public function isItemValidade ()

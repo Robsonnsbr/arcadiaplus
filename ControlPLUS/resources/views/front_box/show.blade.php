@@ -100,11 +100,16 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($data->fatura as $item)
+                                @forelse($data->pagamentos_documento as $payment)
                                 <tr>
-                                    <td>{{ $item->getTipoPagamento($item->tipo_pagamento) }}</td>
-                                    <td>{{ __data_pt($item->data_vencimento, 0) }}</td>
-                                    <td>{{ __moeda($item->valor) }}</td>
+                                    <td>
+                                        {{ $payment['descricao'] }}
+                                        @if (sizeof($payment['complementos']) > 0)
+                                            <br><small>{{ implode(' | ', $payment['complementos']) }}</small>
+                                        @endif
+                                    </td>
+                                    <td>{{ $payment['data_vencimento_formatada'] }}</td>
+                                    <td>{{ __moeda($payment['valor']) }}</td>
                                 </tr>
                                 @empty
                                 <tr>

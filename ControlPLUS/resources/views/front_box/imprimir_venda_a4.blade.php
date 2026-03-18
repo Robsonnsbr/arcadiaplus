@@ -985,17 +985,21 @@
                 Valor
             </td>
         </tr>
-        @if (sizeof($item->fatura) > 0)
-            @foreach ($item->fatura as $d)
+        @php $paymentRows = $item->pagamentos_documento; @endphp
+        @if (sizeof($paymentRows) > 0)
+            @foreach ($paymentRows as $payment)
                 <tr>
                     <td style="text-align: left;">
-                        <strong>{{ \App\Models\Nfce::getTipoPagamento($d->tipo_pagamento) }}</strong>
+                        <strong>{{ $payment['descricao'] }}</strong>
+                        @if (sizeof($payment['complementos']) > 0)
+                            <br><small>{{ implode(' | ', $payment['complementos']) }}</small>
+                        @endif
                     </td>
                     <td style="text-align: left;">
-                        <strong>{{ $d->data_vencimento ? \Carbon\Carbon::parse($d->data_vencimento)->format('d/m/Y') : '--' }}</strong>
+                        <strong>{{ $payment['data_vencimento_formatada'] }}</strong>
                     </td>
                     <td style="text-align: left;">
-                        <strong>{{ __moeda($d->valor ?? $d->valor_parcela) }}</strong>
+                        <strong>{{ __moeda($payment['valor']) }}</strong>
                     </td>
                 </tr>
             @endforeach

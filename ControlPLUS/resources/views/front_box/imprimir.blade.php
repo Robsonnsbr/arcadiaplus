@@ -173,11 +173,17 @@
 						<b>FORMA DE PAGAMENTO</b>
 					</td>
 				</tr>
-				@foreach($item->fatura as $f) 
+				@php $paymentRows = $item->pagamentos_documento; @endphp
+				@foreach($paymentRows as $payment)
 				<tr class="ttu">
-					<td colspan="2">{{ \App\Models\Nfce::getTipoPagamento($f->tipo_pagamento) }}</td>
-					<td align="right">R${{ __moeda($f->valor) }}</td>
+					<td colspan="2">{{ $payment['descricao'] }}</td>
+					<td align="right">R${{ __moeda($payment['valor']) }}</td>
 				</tr>
+				@foreach($payment['complementos'] as $complemento)
+				<tr class="ttu">
+					<td colspan="3" style="font-size: 10px;">{{ $complemento }}</td>
+				</tr>
+				@endforeach
 				@endforeach
 
 				<tr class="ttu">
