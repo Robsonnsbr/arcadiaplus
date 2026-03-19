@@ -7,13 +7,20 @@
             </div> 
             <div class="modal-body">
                 <div class="row m-2">
-
+                    @php
+                        $pdvSangriaHabilitada = !isset($config) || $config == null || $config->pdvSangriaHabilitada();
+                        $pdvSuprimentoHabilitado = !isset($config) || $config == null || $config->pdvSuprimentoHabilitado();
+                    @endphp
+                    @if($pdvSuprimentoHabilitado)
                     <div class="col-md-6">
                         <button type="button" class="btn btn-primary btn-suprimento w-100">SUPRIMENTO</button>
                     </div>
+                    @endif
+                    @if($pdvSangriaHabilitada)
                     <div class="col-md-6">
                         <button type="button" class="btn btn-danger btn-sangria w-100">SANGRIA</button>
                     </div>
+                    @endif
                 </div>
 
             </div> 

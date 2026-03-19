@@ -283,16 +283,22 @@
 						</div>
 
 						<div class="list-group">
-							
+							@php
+								$pdvSangriaHabilitada = !isset($config) || $config == null || $config->pdvSangriaHabilitada();
+								$pdvSuprimentoHabilitado = !isset($config) || $config == null || $config->pdvSuprimentoHabilitado();
+							@endphp
+							@if($pdvSuprimentoHabilitado)
 							<button type="button" data-bs-toggle="modal" data-bs-target="#suprimento_caixa" class="btn btn-dark w-100 mt-1">
 								<i class="ri-add-box-line"></i>
 								Suprimento de Caixa
 							</button>
-
+							@endif
+							@if($pdvSangriaHabilitada)
 							<button type="button" data-bs-toggle="modal" data-bs-target="#sangria_caixa" class="btn btn-danger w-100 mt-1">
 								<i class="ri-checkbox-indeterminate-line"></i>
 								Sangria de Caixa
 							</button>
+							@endif
 							@if($isVendaSuspensa == 0)
 							<button type="button" id="btn-suspender" class="btn btn-light w-100 mt-1">
 								<i class="ri-timer-line"></i>

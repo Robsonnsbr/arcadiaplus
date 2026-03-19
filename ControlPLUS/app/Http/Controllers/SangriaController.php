@@ -8,6 +8,7 @@ use App\Models\Nfe;
 use App\Models\Empresa;
 use App\Models\SangriaCaixa;
 use App\Models\SuprimentoCaixa;
+use App\Models\ConfigGeral;
 use App\Models\ItemContaEmpresa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,11 @@ class SangriaController extends Controller
     public function store(Request $request)
     {
         try {
+            $caixa = Caixa::find($request->caixa_id);
+            if ($caixa && !ConfigGeral::empresaPdvSangriaHabilitada((int) $caixa->empresa_id)) {
+                session()->flash("flash_warning", "Sangria desabilitada nas configurações do PDV.");
+                return redirect()->back();
+            }
 
             if(!$request->valor || __convert_value_bd($request->valor) == 0){
                 session()->flash("flash_error", "Informe um valor maior que zero");

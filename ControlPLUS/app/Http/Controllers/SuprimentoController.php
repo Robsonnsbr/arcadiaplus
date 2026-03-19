@@ -8,6 +8,7 @@ use App\Models\Nfe;
 use App\Models\SangriaCaixa;
 use App\Models\Empresa;
 use App\Models\SuprimentoCaixa;
+use App\Models\ConfigGeral;
 use App\Models\ItemContaEmpresa;
 use Illuminate\Http\Request;
 use PhpParser\Node\Expr\FuncCall;
@@ -26,6 +27,12 @@ class SuprimentoController extends Controller
     public function store(Request $request)
     {
         try {
+            $caixa = Caixa::find($request->caixa_id);
+            if ($caixa && !ConfigGeral::empresaPdvSuprimentoHabilitado((int) $caixa->empresa_id)) {
+                session()->flash("flash_warning", "Suprimentos desabilitados nas configurações do PDV.");
+                return redirect()->back();
+            }
+
             if(!$request->valor || __convert_value_bd($request->valor) == 0){
                 session()->flash("flash_error", "Informe um valor maior que zero");
                 return redirect()->back();

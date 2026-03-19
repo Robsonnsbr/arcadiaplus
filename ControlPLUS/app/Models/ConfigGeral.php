@@ -22,12 +22,47 @@ class ConfigGeral extends Model
         'documento_pdv', 'numero_inicial_comanda', 'numero_final_comanda', 'corrigir_numeracao_fiscal', 'gerar_conta_pagar_padrao',
         'home_componentes', 'token_whatsapp', 'small_header_user', 'mensagem_wpp_link', 'status_wpp_link', 'enviar_danfe_wpp_link', 
         'enviar_xml_wpp_link', 'enviar_pedido_a4_wpp_link', 'produtos_exibe_tabela', 'itens_por_pagina', 'clientes_exibe_tabela',
-        'tipo_ordem_servico'
+        'tipo_ordem_servico', 'pdv_habilitar_sangria', 'pdv_habilitar_suprimentos'
+    ];
+
+    protected $casts = [
+        'pdv_habilitar_sangria' => 'boolean',
+        'pdv_habilitar_suprimentos' => 'boolean',
     ];
 
     public function cliente()
     {
         return $this->belongsTo(Cliente::class, 'cliente_padrao_pdv_off');
+    }
+
+    public function pdvSangriaHabilitada(): bool
+    {
+        return $this->pdv_habilitar_sangria !== null ? (bool) $this->pdv_habilitar_sangria : true;
+    }
+
+    public function pdvSuprimentoHabilitado(): bool
+    {
+        return $this->pdv_habilitar_suprimentos !== null ? (bool) $this->pdv_habilitar_suprimentos : true;
+    }
+
+    public static function empresaPdvSangriaHabilitada(?int $empresaId): bool
+    {
+        if (!$empresaId) {
+            return true;
+        }
+
+        $config = static::where('empresa_id', $empresaId)->first();
+        return $config ? $config->pdvSangriaHabilitada() : true;
+    }
+
+    public static function empresaPdvSuprimentoHabilitado(?int $empresaId): bool
+    {
+        if (!$empresaId) {
+            return true;
+        }
+
+        $config = static::where('empresa_id', $empresaId)->first();
+        return $config ? $config->pdvSuprimentoHabilitado() : true;
     }
 
     public static function getNotificacoes(){

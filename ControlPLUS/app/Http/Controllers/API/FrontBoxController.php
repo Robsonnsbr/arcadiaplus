@@ -38,6 +38,7 @@ use App\Models\PedidoDelivery;
 use App\Models\MotoboyComissao;
 use App\Models\ItemPedidoDelivery;
 use App\Models\Nfce;
+use App\Models\ConfigGeral;
 use App\Models\Nfe;
 use App\Models\ItemNfe;
 use App\Models\FaturaNfe;
@@ -2094,6 +2095,9 @@ public function storeSuprimento(Request $request){
         ->first();
 
         if($caixa != null){
+            if (!ConfigGeral::empresaPdvSuprimentoHabilitado((int) $caixa->empresa_id)) {
+                return response()->json("Suprimentos desabilitados nas configurações do PDV.", 403);
+            }
             $suprimento = SuprimentoCaixa::create([
                 'caixa_id' => $caixa->id,
                 'valor' => __convert_value_bd($request->valor),
@@ -2118,6 +2122,9 @@ public function storeSangria(Request $request){
         ->where('status', 1)
         ->first();
         if($caixa != null){
+            if (!ConfigGeral::empresaPdvSangriaHabilitada((int) $caixa->empresa_id)) {
+                return response()->json("Sangria desabilitada nas configurações do PDV.", 403);
+            }
             $sangria = SangriaCaixa::create([
                 'caixa_id' => $caixa->id,
                 'valor' => __convert_value_bd($request->valor),

@@ -104,6 +104,8 @@ class ConfigGeralController extends Controller
                 'mensagem_wpp_link' => $request->mensagem_wpp_link ?? '',
                 'mensagem_padrao_impressao_os' => $request->mensagem_padrao_impressao_os ?? '',
                 'cliente_padrao_pdv_off' => isset($request->cliente_padrao_pdv_off) ? $request->cliente_padrao_pdv_off : null,
+                'pdv_habilitar_sangria' => $request->boolean('pdv_habilitar_sangria'),
+                'pdv_habilitar_suprimentos' => $request->boolean('pdv_habilitar_suprimentos'),
 
                 'enviar_danfe_wpp_link' => $request->enviar_danfe_wpp_link ? 1 : 0,
                 'enviar_xml_wpp_link' => $request->enviar_xml_wpp_link ? 1 : 0,

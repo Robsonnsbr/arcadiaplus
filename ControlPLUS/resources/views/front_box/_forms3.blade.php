@@ -124,7 +124,12 @@
             </div>
 
             <div class="row" style="margin-top: 10px;">
-                <div class="col-12 col-xl-6 col-lg-12 totalizador acoes-pdv">
+                @php
+                    $pdvSangriaHabilitada = !isset($config) || $config == null || $config->pdvSangriaHabilitada();
+                    $pdvSuprimentoHabilitado = !isset($config) || $config == null || $config->pdvSuprimentoHabilitado();
+                    $pdvTemAcoesCaixa = $pdvSangriaHabilitada || $pdvSuprimentoHabilitado;
+                @endphp
+                <div class="col-12 col-xl-6 col-lg-12 totalizador {{ $pdvTemAcoesCaixa ? 'acoes-pdv' : '' }}">
                     Ações do PDV <span class="atalhos">[ctrl+a]</span>
                 </div>
                 <div class="col-12 col-lg-6 totalizador">
@@ -293,4 +298,3 @@
 
 <input type="hidden" id="definir_vendedor_pdv" value="{{ $config ? $config->definir_vendedor_pdv : 0 }}" name="">
 <input type="hidden" id="cliente_padrao" value="{{ isset($clientePadrao) && $clientePadrao ? $clientePadrao->id : 0 }}" name="">
-

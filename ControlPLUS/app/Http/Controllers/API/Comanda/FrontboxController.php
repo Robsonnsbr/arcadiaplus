@@ -321,6 +321,9 @@ public function caixa(Request $request){
 
 public function sangriaStore(Request $request){
     try{
+        if (!ConfigGeral::empresaPdvSangriaHabilitada((int) $request->empresa_id)) {
+            return response()->json("Sangria desabilitada nas configurações do PDV.", 403);
+        }
 
         $funcionario = Funcionario::where('codigo', $request->codigo_operador)
         ->where('empresa_id', $request->empresa_id)->first();
@@ -349,6 +352,9 @@ public function sangriaStore(Request $request){
 
 public function suprimentoStore(Request $request){
     try{
+        if (!ConfigGeral::empresaPdvSuprimentoHabilitado((int) $request->empresa_id)) {
+            return response()->json("Suprimentos desabilitados nas configurações do PDV.", 403);
+        }
 
         $funcionario = Funcionario::where('codigo', $request->codigo_operador)
         ->where('empresa_id', $request->empresa_id)->first();

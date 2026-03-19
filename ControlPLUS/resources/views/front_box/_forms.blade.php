@@ -471,10 +471,17 @@
                     </div> <!-- end card-->
                 </div> <!-- end col-->
 
+                @php
+                    $pdvSangriaHabilitada = !isset($config) || $config == null || $config->pdvSangriaHabilitada();
+                    $pdvSuprimentoHabilitado = !isset($config) || $config == null || $config->pdvSuprimentoHabilitado();
+                @endphp
+
+                @if($pdvSangriaHabilitada || $pdvSuprimentoHabilitado)
                 <div class="col-lg-3 col-md-4">
                     <div class="card widget-icon-box ">
                         <div class="card-body">
                             <div class="row mt-1">
+                                @if($pdvSuprimentoHabilitado)
                                 <div class="col-6">
                                     <div class="row">
                                         <h5 class="text-center">SUPRIMENTO</h5>
@@ -485,6 +492,8 @@
                                         </button>
                                     </div>
                                 </div>
+                                @endif
+                                @if($pdvSangriaHabilitada)
                                 <div class="col-6">
                                     <div class="row">
                                         <h5 class="text-center">SANGRIA</h5>
@@ -495,10 +504,12 @@
                                         </button>
                                     </div>
                                 </div>
+                                @endif
                             </div>
                         </div> <!-- end card-body-->
                     </div> <!-- end card-->
                 </div> <!-- end col-->
+                @endif
 
                 <div class="col-lg-3 col-md-4">
                     <div class="card widget-icon-box ">

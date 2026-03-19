@@ -98,7 +98,9 @@ $(document).on("keydown", function(e) {
 		case "a":
 		if (e.ctrlKey) {
 			e.preventDefault();
-			$('.modal-acoes').modal('show');
+			if ($('.modal-acoes .btn-suprimento, .modal-acoes .btn-sangria').length > 0) {
+				$('.modal-acoes').modal('show');
+			}
 		}
 		break;
 
@@ -787,7 +789,9 @@ $(document).on("click", ".btn-selecionar-lista", function () {
 })
 
 $(document).on("click", ".acoes-pdv", function () {
-	$('.modal-acoes').modal('show')
+	if ($('.modal-acoes .btn-suprimento, .modal-acoes .btn-sangria').length > 0) {
+		$('.modal-acoes').modal('show')
+	}
 })
 
 function openModalMultiploPagamento(){

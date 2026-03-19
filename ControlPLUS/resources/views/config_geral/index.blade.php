@@ -98,6 +98,28 @@
                                         </div>
 
                                         <div class="col-md-2">
+                                            <label class="form-label d-block">Habilitar Sangria</label>
+                                            <input type="hidden" name="pdv_habilitar_sangria" value="0">
+                                            <div class="form-check form-switch mt-2">
+                                                <input class="form-check-input" type="checkbox" role="switch"
+                                                    id="inp-pdv_habilitar_sangria" name="pdv_habilitar_sangria" value="1"
+                                                    @if (!isset($item) || $item->pdvSangriaHabilitada()) checked @endif>
+                                                <label class="form-check-label" for="inp-pdv_habilitar_sangria">Sim</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-2">
+                                            <label class="form-label d-block">Habilitar Suprimentos</label>
+                                            <input type="hidden" name="pdv_habilitar_suprimentos" value="0">
+                                            <div class="form-check form-switch mt-2">
+                                                <input class="form-check-input" type="checkbox" role="switch"
+                                                    id="inp-pdv_habilitar_suprimentos" name="pdv_habilitar_suprimentos" value="1"
+                                                    @if (!isset($item) || $item->pdvSuprimentoHabilitado()) checked @endif>
+                                                <label class="form-check-label" for="inp-pdv_habilitar_suprimentos">Sim</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-2">
                                             {!! Form::text('numero_inicial_comanda', 'Númeração inicial para comanda') !!}
                                         </div>
                                         <div class="col-md-2">

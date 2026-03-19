@@ -731,6 +731,10 @@ public function locaisUsuario(Request $request){
 
 public function storeSangria(Request $request){
     try{
+        if (!ConfigGeral::empresaPdvSangriaHabilitada((int) $request->empresa_id)) {
+            return response()->json("Sangria desabilitada nas configurações do PDV.", 403);
+        }
+
         $data = [
             'caixa_id' => $request->caixa_id,
             'valor' => __convert_value_bd($request->valor),
@@ -771,6 +775,10 @@ public function storeSangria(Request $request){
 
 public function storeSuprimento(Request $request){
     try{
+        if (!ConfigGeral::empresaPdvSuprimentoHabilitado((int) $request->empresa_id)) {
+            return response()->json("Suprimentos desabilitados nas configurações do PDV.", 403);
+        }
+
         $data = [
             'caixa_id' => $request->caixa_id,
             'valor' => __convert_value_bd($request->valor),
