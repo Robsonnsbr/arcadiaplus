@@ -44,7 +44,9 @@
 <input type="hidden" id="definir_vendedor_pdv" value="{{ $config ? $config->definir_vendedor_pdv : 0 }}"
     name="">
 <input type="hidden" id="venda_id" value="{{ isset($item) ? $item->id : '' }}">
-<input type="hidden" id="lista_id" value="" name="lista_id">
+<input type="hidden" id="lista_id"
+    value="@isset($item){{ $item->lista_id ?? '' }}@else@isset($cliente){{ $cliente->lista_preco->id ?? '' }}@endisset@endisset"
+    name="lista_id">
 <input type="hidden" id="inp-produto_tipo_unico" value="0">
 <input type="hidden" id="alerta_sonoro" value="{{ $config ? $config->alerta_sonoro : 0 }}">
 <input type="hidden" id="local_id" value="{{ $caixa->localizacao->id }}">

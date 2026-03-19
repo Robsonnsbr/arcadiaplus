@@ -34,6 +34,7 @@ use App\Models\Cliente;
 use App\Models\Estoque;
 use App\Models\Pedido;
 use App\Models\ItemListaPreco;
+use App\Models\ListaPreco;
 use App\Models\PedidoDelivery;
 use App\Models\MotoboyComissao;
 use App\Models\ItemPedidoDelivery;
@@ -43,7 +44,6 @@ use App\Models\Nfe;
 use App\Models\ItemNfe;
 use App\Models\FaturaNfe;
 use App\Models\ImpressoraPedidoProduto;
-use App\Models\ConfigGeral;
 use App\Models\ProdutoVariacao;
 use App\Models\Produto;
 use App\Models\CategoriaProduto;
@@ -534,19 +534,36 @@ class FrontBoxController extends Controller
 
     public function linhaProdutoVendaAdd(Request $request)
     {
-        $product = Produto::findOrFail($request->id);
-        $lista_id = $request->lista_id;
-        $local_id = $request->local_id;
+        $productId = (int) $request->id;
+        $lista_id = $request->lista_id !== null && $request->lista_id !== '' ? (int) $request->lista_id : null;
+        $local_id = $request->local_id !== null && $request->local_id !== '' ? (int) $request->local_id : null;
+        $qtd = (float) __convert_value_bd($request->qtd ?: 1);
+
+        if ($productId <= 0) {
+            return response()->json(['message' => 'Produto inválido para adição.'], 422);
+        }
+
+        if ($qtd <= 0) {
+            return response()->json(['message' => 'Quantidade deve ser maior que zero.'], 422);
+        }
+
+        if (!$local_id || !Localizacao::where('id', $local_id)->exists()) {
+            return response()->json(['message' => 'Local do caixa inválido para adicionar o produto.'], 422);
+        }
+
+        $product = Produto::find($productId);
+        if (!$product) {
+            return response()->json(['message' => 'Produto não encontrado.'], 404);
+        }
+
+        if ($lista_id && !ListaPreco::where('id', $lista_id)->where('empresa_id', $product->empresa_id)->exists()) {
+            return response()->json(['message' => 'Lista de preço inválida para o produto informado.'], 422);
+        }
 
         if($product->variacao_modelo_id){
             return response("produto com variação", 402);
         }
-        $qtd = __convert_value_bd($request->qtd);
-        try{
-            $qtd = (float)$qtd+1;
-        }catch(\Exception $e){
 
-        }
         try {
 
             $product = __tributacaoProdutoLocalVenda($product, $local_id);
@@ -592,7 +609,7 @@ class FrontBoxController extends Controller
             return view('front_box.partials.row_frontBox', 
                 compact('product', 'qtd', 'value_unit', 'sub_total', 'variacao_id', 'variacao'));
         } catch (\Exception $e) {
-            return response()->json($e->getMessage(), 401);
+            return response()->json(['message' => $e->getMessage()], 422);
         }
     }
 

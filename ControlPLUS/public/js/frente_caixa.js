@@ -42,6 +42,14 @@ function getAjaxErrorMessage(err) {
     return "Algo deu errado";
 }
 
+function showSwalMessage(title, text, icon) {
+    return swal({
+        title: title || "",
+        text: text || "",
+        icon: icon || "info",
+    });
+}
+
 function showModal(selectorOrEl) {
     const element =
         typeof selectorOrEl === "string"
@@ -1048,29 +1056,83 @@ function initCodigoUnicoSelect($select) {
 function showCodigoUnicoAlert(message) {
     $("#modal_codigo_unico_alert").removeClass("d-none").text(message);
 }
+
+function resolveListaIdAtual() {
+    const listaAtual = String($("#lista_id").val() || "").trim();
+    if (listaAtual !== "") {
+        return listaAtual;
+    }
+
+    const listaModal = String($("#inp-lista_preco_id").val() || "").trim();
+    if (listaModal !== "") {
+        $("#lista_id").val(listaModal);
+        return listaModal;
+    }
+
+    return "";
+}
+
+function getQuantidadePadraoPdv(defaultValue) {
+    const fallback = defaultValue || 1;
+    const quantidadeAtual = convertMoedaToFloat($("#inp-quantidade").val());
+
+    if (quantidadeAtual > 0) {
+        return quantidadeAtual;
+    }
+
+    $("#inp-quantidade").val(String(fallback));
+    return fallback;
+}
+
 function addProdutos(id) {
-    let qtd = 0;
+    let qtd = 1;
     let agrupar_itens = $("#agrupar_itens").val();
 
     if (agrupar_itens == 1) {
         $(".produto_row").each(function () {
             if (id == $(this).val()) {
-                qtd = $(this).next().next().next().find("input").val();
+                const qtdAtual = convertMoedaToFloat(
+                    $(this).next().next().next().find("input").val(),
+                );
+                qtd = qtdAtual > 0 ? qtdAtual : 1;
             }
         });
     }
 
+    if (qtd <= 0) {
+        beepErro();
+        showSwalMessage(
+            "Atenção",
+            "Informe uma quantidade maior que zero para continuar.",
+            "warning",
+        );
+        return;
+    }
+
     setTimeout(() => {
+        const listaId = resolveListaIdAtual();
+        const localId = String($("#local_id").val() || "").trim();
+
+        if (localId === "") {
+            beepErro();
+            showSwalMessage(
+                "Atenção",
+                "Local do caixa não identificado para adicionar o produto.",
+                "warning",
+            );
+            return;
+        }
+
         $.get(path_url + "api/frenteCaixa/linhaProdutoVendaAdd", {
             id: id,
             qtd: qtd,
-            lista_id: $("#lista_id").val(),
-            local_id: $("#local_id").val(),
+            lista_id: listaId,
+            local_id: localId,
         })
             .done((e) => {
                 $(".leitor_ativado").text("Leitor Ativado");
                 if (e == false) {
-                    swal(
+                    showSwalMessage(
                         "Atenção",
                         "Produto com estoque insuficiente!",
                         "warning",
@@ -1113,11 +1175,14 @@ function addProdutos(id) {
             .fail((e) => {
                 beepErro();
                 PRODUTOID = id;
-                // console.log(e);
                 if (e.status == 402) {
                     buscarVariacoes(id);
                 } else {
-                    swal("Atenção", e.responseJSON, "warning");
+                    showSwalMessage(
+                        "Atenção",
+                        getAjaxErrorMessage(e),
+                        "warning",
+                    );
                 }
             });
     }, 10);
@@ -1126,17 +1191,16 @@ function addProdutos(id) {
 $(".btn-add-item").click(() => {
     console.log("Adicionar item");
     console.clear();
-    let qtd = $("#inp-quantidade").val();
+    let qtd = getQuantidadePadraoPdv(1);
     let value_unit = $("#inp-valor_unitario").val();
     value_unit = convertMoedaToFloat(value_unit);
-    qtd = convertMoedaToFloat(qtd);
     $("#inp-subtotal").val(convertFloatToMoeda(qtd * value_unit));
 
     setTimeout(() => {
         let abertura = $("#abertura").val();
 
         if (abertura) {
-            let qtd = $("#inp-quantidade").val();
+            let qtd = getQuantidadePadraoPdv(1);
             let value_unit = $("#inp-valor_unitario").val();
             let sub_total = $("#inp-subtotal").val();
             let product_id = $("#inp-produto_id").val();
@@ -1201,7 +1265,11 @@ $(".btn-add-item").click(() => {
                             })
                             .fail((e) => {
                                 console.log(e);
-                                swal("Atenção", e.responseJSON, "warning");
+                                showSwalMessage(
+                                    "Atenção",
+                                    getAjaxErrorMessage(e),
+                                    "warning",
+                                );
                             });
                     } else {
                         let nQtd = qtdDup + convertMoedaToFloat(qtd);
@@ -1233,13 +1301,17 @@ $(".btn-add-item").click(() => {
                             .fail((err) => {
                                 console.log(err);
                                 beepErro();
-                                swal("Erro", err.responseJSON, "error");
+                                showSwalMessage(
+                                    "Erro",
+                                    getAjaxErrorMessage(err),
+                                    "error",
+                                );
                             });
                     }
                 }, 100);
             } else {
                 beepErro();
-                swal(
+                showSwalMessage(
                     "Atenção",
                     "Informe corretamente os campos para continuar!",
                     "warning",
@@ -1247,7 +1319,11 @@ $(".btn-add-item").click(() => {
             }
         } else {
             beepErro();
-            swal("Atenção", "Abra o caixa para continuar!", "warning").then(
+            showSwalMessage(
+                "Atenção",
+                "Abra o caixa para continuar!",
+                "warning",
+            ).then(
                 () => {
                     validaCaixa();
                 },
