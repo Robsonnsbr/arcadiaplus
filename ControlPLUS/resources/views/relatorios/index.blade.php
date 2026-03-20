@@ -7,12 +7,78 @@
         margin-right: 5px;
     }
 
+    .relatorio-section-title {
+        margin-top: 0.5rem;
+    }
+
+    .relatorio-section-toggle {
+        align-items: center;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        color: #212529;
+        display: flex;
+        font-size: 1rem;
+        font-weight: 600;
+        justify-content: space-between;
+        padding: 0.9rem 1rem;
+        text-align: left;
+        width: 100%;
+    }
+
+    .relatorio-section-toggle:hover,
+    .relatorio-section-toggle:focus {
+        background: #eef1f4;
+        color: #212529;
+    }
+
 </style>
 @endsection
 @section('content')
 <div class="mt-1">
     <div class="row">
-        <div class="col-12 col-md-6">
+        <div class="col-12 relatorio-section-title" style="order: 10;">
+            <button class="relatorio-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target=".relatorios-financeiros" aria-expanded="false">
+                <span>Relatórios Financeiros</span>
+                <i class="ri-arrow-down-s-line"></i>
+            </button>
+        </div>
+
+        <div class="col-12 relatorio-section-title" style="order: 20;">
+            <button class="relatorio-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target=".relatorios-vendas" aria-expanded="false">
+                <span>Relatórios de Vendas</span>
+                <i class="ri-arrow-down-s-line"></i>
+            </button>
+        </div>
+
+        <div class="col-12 relatorio-section-title" style="order: 30;">
+            <button class="relatorio-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target=".relatorios-compras" aria-expanded="false">
+                <span>Relatórios de Compras</span>
+                <i class="ri-arrow-down-s-line"></i>
+            </button>
+        </div>
+
+        <div class="col-12 relatorio-section-title" style="order: 40;">
+            <button class="relatorio-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target=".relatorios-estoque" aria-expanded="false">
+                <span>Relatórios de Estoque</span>
+                <i class="ri-arrow-down-s-line"></i>
+            </button>
+        </div>
+
+        <div class="col-12 relatorio-section-title" style="order: 50;">
+            <button class="relatorio-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target=".relatorios-fiscais" aria-expanded="false">
+                <span>Relatórios Fiscais</span>
+                <i class="ri-arrow-down-s-line"></i>
+            </button>
+        </div>
+
+        <div class="col-12 relatorio-section-title" style="order: 60;">
+            <button class="relatorio-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target=".relatorios-servicos" aria-expanded="false">
+                <span>Relatórios de Serviços e Outros</span>
+                <i class="ri-arrow-down-s-line"></i>
+            </button>
+        </div>
+        <div class="col-12 col-md-6 collapse relatorios-estoque" style="order: 41;">
             <form method="get" action="{{ route('relatorios.produtos') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -78,7 +144,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-fiscais" style="order: 51;">
             <form method="get" action="{{ route('relatorios.nfe') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -160,7 +226,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 25;">
             <form method="get" action="{{ route('relatorios.clientes') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -204,7 +270,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-compras" style="order: 32;">
             <form method="get" action="{{ route('relatorios.fornecedores') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -248,7 +314,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-fiscais" style="order: 53;">
             <form method="get" action="{{ route('relatorios.cte') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -301,7 +367,7 @@
         </div>
 
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-fiscais" style="order: 52;">
             <form method="get" action="{{ route('relatorios.nfce') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -361,7 +427,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 11;">
             <form method="get" action="{{ route('relatorios.conta_pagar') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -416,7 +482,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 12;">
             <form method="get" action="{{ route('relatorios.conta_receber') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -476,7 +542,7 @@
         </div>
 
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 13;">
             <form method="get" action="{{ route('relatorios.comissao') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -517,7 +583,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-compras" style="order: 31;">
             <form method="get" action="{{ route('relatorios.compras') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -563,7 +629,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 21;">
             <form method="get" action="{{ route('relatorios.vendas') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -640,7 +706,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-fiscais" style="order: 54;">
             <form method="get" action="{{ route('relatorios.mdfe') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -684,7 +750,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 14;">
             <form method="get" action="{{ route('relatorios.taxas') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -724,7 +790,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 15;">
             <form method="get" action="{{ route('relatorios.lucro') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -770,7 +836,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-compras" style="order: 33;">
             <form method="get" action="{{ route('relatorios.despesa-frete') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -812,7 +878,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-estoque" style="order: 42;">
             <form method="get" action="{{ route('relatorios.totaliza-produtos') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -858,7 +924,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-estoque" style="order: 43;">
             <form method="get" action="{{ route('relatorios.estoque') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -915,7 +981,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-estoque" style="order: 44;">
             <form method="get" action="{{ route('relatorios.inventario-custo-medio') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -967,7 +1033,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 24;">
             <form method="get" action="{{ route('relatorios.curva-abc-clientes') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -1000,7 +1066,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 26;">
             <form method="get" action="{{ route('relatorios.entrega-produtos') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -1039,7 +1105,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 23;">
             <form method="get" action="{{ route('relatorios.venda-por-vendedor') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -1087,7 +1153,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-estoque" style="order: 45;">
             <form method="get" action="{{ route('relatorios.inventario') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -1140,7 +1206,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 22;">
             <form method="get" action="{{ route('relatorios.venda-produtos') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -1205,7 +1271,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-estoque" style="order: 47;">
             <form method="get" action="{{ route('relatorios.movimentacao') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -1277,7 +1343,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-servicos" style="order: 61;">
             <form method="get" action="{{ route('relatorios.ordem-servico') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -1325,7 +1391,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 16;">
             <form method="get" action="{{ route('relatorios.tipos-pagamento') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -1372,7 +1438,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-servicos" style="order: 62;">
             <form method="get" action="{{ route('relatorios.reservas') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -1426,7 +1492,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 17;">
             <form method="get" action="{{ route('relatorios.lucro-produto') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
@@ -1478,7 +1544,7 @@
             </form>
         </div>
 
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 collapse relatorios-estoque" style="order: 46;">
             <form method="get" action="{{ route('relatorios.registro-inventario') }}" target="_blank">
                 <div class="card">
                     <div class="card-header">
