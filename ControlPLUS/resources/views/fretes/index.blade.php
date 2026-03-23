@@ -59,7 +59,7 @@
 						</div>
 						@if(__countLocalAtivo() > 1)
 						<div class="col-md-2">
-							{!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+							{!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
 							->attrs(['class' => 'select2'])
 							!!}
 						</div>

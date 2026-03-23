@@ -275,7 +275,6 @@
                         }
                     @endphp
                     <select required class="select2 form-control" data-toggle="select2" name="local_id" id="local_id">
-                        <option value="">Selecione</option>
                         @foreach($locaisProdutoForm as $local)
                         <option
                             @if((string)$localSelecionadoCreate === (string)$local->id) selected @endif

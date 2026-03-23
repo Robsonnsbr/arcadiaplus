@@ -128,7 +128,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -210,7 +210,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -350,7 +350,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -411,7 +411,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -460,7 +460,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -517,7 +517,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -607,7 +607,7 @@
                             </div>
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -688,7 +688,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-3 col-12 mt-2">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -734,7 +734,7 @@
                             </div>
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -768,7 +768,7 @@
                             </div>
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-4 col-12">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -814,7 +814,7 @@
                             </div>
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -906,7 +906,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -964,7 +964,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-4 col-12">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -1017,7 +1017,7 @@
                             </div>
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -1137,7 +1137,7 @@
                             
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -1190,7 +1190,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -1249,7 +1249,7 @@
                             </div>
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -1315,7 +1315,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-5 col-12">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -1375,7 +1375,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -1422,7 +1422,7 @@
 
                             @if(__countLocalAtivo() > 1)
                             <div class="col-md-6 col-12 mt-2">
-                                {!!Form::select('local_id', 'Local', ['' => 'Selecione'] + __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all())
+                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>

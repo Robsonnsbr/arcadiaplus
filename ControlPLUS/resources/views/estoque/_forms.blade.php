@@ -32,7 +32,6 @@
                                 @if($l->local)
 
                                 <select class="form-select" name="local_id[]" required>
-                                    <option value="">Selecione</option>
                                     @foreach(__getLocaisAtivoUsuario() as $localAtivo)
                                     <option @if($l->local_id == $localAtivo->id) selected @endif value="{{ $localAtivo->id }}">{{ $localAtivo->descricao }}</option>
                                     @endforeach
@@ -43,7 +42,6 @@
 
                                 @else
                                 <select class="form-select" name="local_id[]" required>
-                                    <option value="">Selecione</option>
                                     @foreach(__getLocaisAtivoUsuario() as $localAtivo)
                                     <option value="{{ $localAtivo->id }}">{{ $localAtivo->descricao }}</option>
                                     @endforeach
@@ -78,7 +76,6 @@
         <label for="">Local</label>
 
         <select required class="select2" data-toggle="select2" name="local_id">
-            <option value="">Selecione</option>
             @foreach(__getLocaisAtivoUsuario() as $local)
             <option @isset($item) @if($item->local_id == $local->id) selected @endif @endif value="{{ $local->id }}">{{ $local->descricao }}</option>
             @endforeach

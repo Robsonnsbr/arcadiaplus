@@ -17,7 +17,6 @@
         <label for="">Local</label>
 
         <select id="inp-local_id" required class="select2 class-required" data-toggle="select2" name="local_id">
-            <option value="">Selecione</option>
             @foreach(__getLocaisAtivoUsuario() as $local)
             <option @isset($item) @if($item->local_id == $local->id) selected @endif @endif value="{{ $local->id }}">{{ $local->descricao }}</option>
             @endforeach

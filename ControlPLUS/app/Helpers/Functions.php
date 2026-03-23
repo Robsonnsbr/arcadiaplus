@@ -742,27 +742,35 @@ function __getLocalAtivo()
         return 0;
     }
 
-    $usuario_id = Auth::user()->id;
-    $empresa_id = Auth::user()->empresa->empresa_id;
-
-    $localUsuario = Localizacao::where('usuario_localizacaos.usuario_id', $usuario_id)
-        ->where('localizacaos.empresa_id', $empresa_id)
-        ->select('localizacaos.*')
-        ->join('usuario_localizacaos', 'usuario_localizacaos.localizacao_id', '=', 'localizacaos.id')
-        ->where('localizacaos.status', 1)
-        ->orderByRaw("CASE 
-            WHEN BINARY TRIM(localizacaos.descricao) = 'PADRÃO' THEN 0
-            WHEN UPPER(TRIM(localizacaos.descricao)) = 'PADRAO' THEN 1
-            ELSE 2
-        END")
-        ->orderBy('localizacaos.id')
-        ->first();
-
-    if ($localUsuario) {
-        return $localUsuario;
+    $locais = __getLocaisAtivoUsuario();
+    if ($locais->count() > 0) {
+        return $locais->first();
     }
 
-    return __getLocalPadraoEmpresa($empresa_id);
+    return __getLocalPadraoEmpresa(Auth::user()->empresa->empresa_id);
+}
+
+function __ordenarLocaisAtivoUsuarioPorPadrao($locais)
+{
+    if (!$locais || $locais->count() === 0 || !Auth::check()) {
+        return $locais;
+    }
+
+    $localPadraoId = (int)(Auth::user()->local_padrao_id ?? 0);
+    if ($localPadraoId <= 0) {
+        return $locais;
+    }
+
+    $localPadrao = $locais->firstWhere('id', $localPadraoId);
+    if (!$localPadrao) {
+        return $locais;
+    }
+
+    return collect([$localPadrao])
+        ->merge($locais->reject(function ($local) use ($localPadraoId) {
+            return (int)$local->id === $localPadraoId;
+        }))
+        ->values();
 }
 
 function __getLocaisAtivoUsuario()
@@ -781,17 +789,22 @@ function __getLocaisAtivoUsuario()
         ->get();
 
     if ($locais->count() > 0) {
-        return $locais;
+        return __ordenarLocaisAtivoUsuarioPorPadrao($locais);
     }
 
     if (Auth::user()->empresa) {
         $localPadrao = __getLocalPadraoEmpresa(Auth::user()->empresa->empresa_id);
         if ($localPadrao) {
-            return collect([$localPadrao]);
+            return __ordenarLocaisAtivoUsuarioPorPadrao(collect([$localPadrao]));
         }
     }
 
     return collect();
+}
+
+function __getLocaisAtivoUsuarioParaSelect()
+{
+    return __getLocaisAtivoUsuario()->pluck('descricao', 'id')->all();
 }
 
 function __objetoParaEmissao($empresa, $local_id)
