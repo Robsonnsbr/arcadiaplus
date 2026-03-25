@@ -11,6 +11,7 @@ use App\Models\MovimentacaoProduto;
 use App\Models\Estoque;
 use App\Models\Produto;
 use Dompdf\Dompdf;
+use Illuminate\Support\Facades\DB;
 
 class RelatorioController extends Controller
 {
@@ -177,6 +178,7 @@ class RelatorioController extends Controller
     public function estoque(Request $request){
 
         $estoque_minimo = $request->estoque_minimo;
+        $estoque_critico = $request->estoque_critico;
         $start_date = $request->data_inicial;
         if($start_date){
             $start_date = \Carbon\Carbon::createFromFormat('d/m/Y', $start_date)->format('Y-m-d');
@@ -186,10 +188,17 @@ class RelatorioController extends Controller
             $end_date = \Carbon\Carbon::createFromFormat('d/m/Y', $end_date)->format('Y-m-d');
         }
         $categoria_id = $request->categoria_id;
+        $local_id = $request->local_id;
 
         $data = [];
 
-        if($estoque_minimo == 1){
+        if($request->data_inicial || $request->data_final){
+            $estoque_critico = null;
+        }
+
+        if($estoque_critico){
+            $data = $this->getEstoqueCriticoData($request, $local_id, $categoria_id, $estoque_minimo, (int)$estoque_critico);
+        }else if($estoque_minimo == 1){
 
             $produtosComEstoqueMinimo = Produto::where('produtos.empresa_id', $request->empresa_id)
             ->select('produtos.*')
@@ -351,7 +360,7 @@ class RelatorioController extends Controller
             }
         }
         $localizacao = null;
-        $p = view('relatorios.estoque', compact('data', 'start_date', 'end_date', 'estoque_minimo', 'localizacao'))
+        $p = view('relatorios.estoque', compact('data', 'start_date', 'end_date', 'estoque_minimo', 'localizacao', 'estoque_critico'))
         ->with('title', 'Relatório de Estoque');
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
@@ -379,5 +388,65 @@ class RelatorioController extends Controller
 
         $url = env("APP_URL"). "/relatorios_app/".$fileName;
         return response()->json($url, 200);
+    }
+
+    private function getEstoqueCriticoData($request, $local_id, $categoria_id, $estoque_minimo, int $dias)
+    {
+        $limite = now()->subDays($dias)->endOfDay();
+
+        $ultimasMovimentacoes = MovimentacaoProduto::select(
+            'produto_id',
+            DB::raw('MAX(movimentacao_produtos.created_at) as ultima_movimentacao')
+        )
+        ->groupBy('produto_id');
+
+        $estoqueAtual = Estoque::select(
+            'produto_id',
+            DB::raw('SUM(estoques.quantidade) as quantidade_total')
+        )
+        ->when(!empty($local_id), function ($query) use ($local_id) {
+            return $query->where('estoques.local_id', $local_id);
+        })
+        ->groupBy('produto_id');
+
+        $produtos = Produto::where('produtos.empresa_id', $request->empresa_id)
+        ->select(
+            'produtos.*',
+            'estoque_atual.quantidade_total',
+            DB::raw('COALESCE(ultimas_movimentacoes.ultima_movimentacao, produtos.created_at) as ultima_movimentacao')
+        )
+        ->joinSub($estoqueAtual, 'estoque_atual', function ($join) {
+            $join->on('estoque_atual.produto_id', '=', 'produtos.id');
+        })
+        ->leftJoinSub($ultimasMovimentacoes, 'ultimas_movimentacoes', function ($join) {
+            $join->on('ultimas_movimentacoes.produto_id', '=', 'produtos.id');
+        })
+        ->when($categoria_id, function ($query) use ($categoria_id) {
+            return $query->where('produtos.categoria_id', $categoria_id);
+        })
+        ->when($estoque_minimo == 1, function ($query) {
+            return $query->where('produtos.estoque_minimo', '>', 0)
+            ->whereColumn('estoque_atual.quantidade_total', '<=', 'produtos.estoque_minimo');
+        })
+        ->where('estoque_atual.quantidade_total', '>', 0)
+        ->whereRaw('COALESCE(ultimas_movimentacoes.ultima_movimentacao, produtos.created_at) <= ?', [
+            $limite->format('Y-m-d H:i:s')
+        ])
+        ->with('categoria')
+        ->orderBy('ultima_movimentacao')
+        ->get();
+
+        return $produtos->map(function ($produto) {
+            return [
+                'produto' => $produto->nome,
+                'quantidade' => $produto->quantidade_total,
+                'estoque_minimo' => $produto->estoque_minimo,
+                'valor_compra' => $produto->valor_compra,
+                'valor_venda' => $produto->valor_unitario,
+                'categoria' => $produto->categoria ? $produto->categoria->nome : '--',
+                'data_cadastro' => __data_pt($produto->created_at),
+                'ultima_movimentacao' => __data_pt($produto->ultima_movimentacao)
+            ];
+        })->toArray();
     }
 }

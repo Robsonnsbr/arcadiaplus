@@ -933,7 +933,7 @@
         </div>
 
         <div class="col-12 col-md-6 collapse relatorios-estoque" style="order: 43;">
-            <form method="get" action="{{ route('relatorios.estoque') }}" target="_blank">
+            <form method="get" action="{{ route('relatorios.estoque') }}" target="_blank" id="form-relatorio-estoque">
                 <div class="card">
                     <div class="card-header">
                         <h5>Relatório de Estoque</h5>
@@ -942,10 +942,12 @@
                         <div class="row g-2">
                             <div class="col-md-3 col-12">
                                 {!!Form::date('start_date', 'Data inicial')
+                                ->id('relatorio-estoque-start-date')
                                 !!}
                             </div>
                             <div class="col-md-3 col-12">
                                 {!!Form::date('end_date', 'Data final')
+                                ->id('relatorio-estoque-end-date')
                                 !!}
                             </div>
 
@@ -960,6 +962,16 @@
                                 {!!Form::select('estoque_minimo', 'Estoque mínimo',
                                 ['-1' => 'Não', '1' => 'Sim'])
                                 ->attrs(['class' => 'form-select'])
+                                !!}
+                            </div>
+
+                            <div class="col-md-3 col-12">
+                                {!!Form::select('estoque_critico', 'Estoque Crítico', [
+                                '' => 'Selecione',
+                                '30' => '30 dias',
+                                '60' => '60 dias'
+                                ])->attrs(['class' => 'form-select'])
+                                ->id('relatorio-estoque-critico')
                                 !!}
                             </div>
 

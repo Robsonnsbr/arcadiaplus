@@ -111,5 +111,26 @@ $(function(){
             });
             return;
         });
+
+        const $estoqueStartDate = $("#relatorio-estoque-start-date");
+        const $estoqueEndDate = $("#relatorio-estoque-end-date");
+        const $estoqueCritico = $("#relatorio-estoque-critico");
+
+        if ($estoqueCritico.length) {
+            $estoqueCritico.on("change", function () {
+                if ($(this).val()) {
+                    $estoqueStartDate.val("");
+                    $estoqueEndDate.val("");
+                }
+            });
+        }
+
+        if ($estoqueStartDate.length || $estoqueEndDate.length) {
+            $estoqueStartDate.add($estoqueEndDate).on("change", function () {
+                if ($estoqueStartDate.val() || $estoqueEndDate.val()) {
+                    $estoqueCritico.val("");
+                }
+            });
+        }
     }, 100);
 });

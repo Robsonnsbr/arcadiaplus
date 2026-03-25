@@ -16,6 +16,14 @@
 <p style="color: red">Relatório para estoque mínimo</p><br>
 @endif
 
+@php
+    $isEstoqueCritico = !empty($estoque_critico);
+@endphp
+
+@if($isEstoqueCritico)
+<p style="color: red">Relatório para estoque crítico: produtos sem movimentação há mais de <strong>{{ $estoque_critico }}</strong> dias.</p><br>
+@endif
+
 @if($localizacao != null)
 <h5>Local: <strong>{{ $localizacao->descricao }}</strong></h5>
 @endif
@@ -30,6 +38,9 @@
 
             <th>Quantidade</th>
             <th>Estoque mínimo</th>
+            @if($isEstoqueCritico)
+            <th>Última movimentação</th>
+            @endif
             <th>Data de cadastro</th>
         </tr>
     </thead>
@@ -50,6 +61,9 @@
                 {{ number_format((float)$item['quantidade'], __casas_decimais_quantidade(), ',' , '.') }}
             </td>
             <td>{{ $item['estoque_minimo'] }}</td>
+            @if($isEstoqueCritico)
+            <td>{{ $item['ultima_movimentacao'] }}</td>
+            @endif
             <td>{{ $item['data_cadastro'] }}</td>
         </tr>
 

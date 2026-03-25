@@ -1,3 +1,7 @@
+@php
+    $isEstoqueCritico = !empty($estoque_critico);
+@endphp
+
 <table>
     <thead>
         <tr>
@@ -7,6 +11,9 @@
             <th style="width: 120px">VALOR DE VENDA</th>
             <th style="width: 120px">QUANTIDADE</th>
             <th style="width: 120px">ESTOQUE MÍNIMO</th>
+            @if($isEstoqueCritico)
+            <th style="width: 160px">ÚLTIMA MOVIMENTAÇÃO</th>
+            @endif
             <th style="width: 200px">DATA DE CADASTRO</th>
 
         </tr>
@@ -20,6 +27,9 @@
             <td>{{ __moeda($item['valor_venda']) }}</td>
             <td>{{ $item['quantidade'] }}</td>
             <td>{{ $item['estoque_minimo'] }}</td>
+            @if($isEstoqueCritico)
+            <td>{{ $item['ultima_movimentacao'] }}</td>
+            @endif
             <td>{{ $item['data_cadastro'] }}</td>
         </tr>
         @endforeach
