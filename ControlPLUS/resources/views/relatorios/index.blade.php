@@ -314,6 +314,7 @@
             </form>
         </div>
 
+        {{--
         <div class="col-12 col-md-6 collapse relatorios-fiscais" style="order: 53;">
             <form method="get" action="{{ route('relatorios.cte') }}" target="_blank">
                 <div class="card">
@@ -365,6 +366,7 @@
                 </div>
             </form>
         </div>
+        --}}
 
 
         <div class="col-12 col-md-6 collapse relatorios-fiscais" style="order: 52;">
@@ -542,6 +544,7 @@
         </div>
 
 
+        {{--
         <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 13;">
             <form method="get" action="{{ route('relatorios.comissao') }}" target="_blank">
                 <div class="card">
@@ -582,6 +585,7 @@
                 </div>
             </form>
         </div>
+        --}}
 
         <div class="col-12 col-md-6 collapse relatorios-compras" style="order: 31;">
             <form method="get" action="{{ route('relatorios.compras') }}" target="_blank">
@@ -706,6 +710,7 @@
             </form>
         </div>
 
+        {{--
         <div class="col-12 col-md-6 collapse relatorios-fiscais" style="order: 54;">
             <form method="get" action="{{ route('relatorios.mdfe') }}" target="_blank">
                 <div class="card">
@@ -749,6 +754,7 @@
                 </div>
             </form>
         </div>
+        --}}
 
         <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 14;">
             <form method="get" action="{{ route('relatorios.taxas') }}" target="_blank">
@@ -836,6 +842,7 @@
             </form>
         </div>
 
+        {{--
         <div class="col-12 col-md-6 collapse relatorios-compras" style="order: 33;">
             <form method="get" action="{{ route('relatorios.despesa-frete') }}" target="_blank">
                 <div class="card">
@@ -877,6 +884,7 @@
                 </div>
             </form>
         </div>
+        --}}
 
         <div class="col-12 col-md-6 collapse relatorios-estoque" style="order: 42;">
             <form method="get" action="{{ route('relatorios.totaliza-produtos') }}" target="_blank">
@@ -1033,6 +1041,7 @@
             </form>
         </div>
 
+        {{--
         <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 24;">
             <form method="get" action="{{ route('relatorios.curva-abc-clientes') }}" target="_blank">
                 <div class="card">
@@ -1065,7 +1074,9 @@
                 </div>
             </form>
         </div>
+        --}}
 
+        {{--
         <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 26;">
             <form method="get" action="{{ route('relatorios.entrega-produtos') }}" target="_blank">
                 <div class="card">
@@ -1104,6 +1115,7 @@
                 </div>
             </form>
         </div>
+        --}}
 
         <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 23;">
             <form method="get" action="{{ route('relatorios.venda-por-vendedor') }}" target="_blank">
@@ -1343,6 +1355,7 @@
             </form>
         </div>
 
+        {{--
         <div class="col-12 col-md-6 collapse relatorios-servicos" style="order: 61;">
             <form method="get" action="{{ route('relatorios.ordem-servico') }}" target="_blank">
                 <div class="card">
@@ -1390,6 +1403,7 @@
                 </div>
             </form>
         </div>
+        --}}
 
         <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 16;">
             <form method="get" action="{{ route('relatorios.tipos-pagamento') }}" target="_blank">
@@ -1438,6 +1452,7 @@
             </form>
         </div>
 
+        {{--
         <div class="col-12 col-md-6 collapse relatorios-servicos" style="order: 62;">
             <form method="get" action="{{ route('relatorios.reservas') }}" target="_blank">
                 <div class="card">
@@ -1491,6 +1506,7 @@
                 </div>
             </form>
         </div>
+        --}}
 
         <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 17;">
             <form method="get" action="{{ route('relatorios.lucro-produto') }}" target="_blank">
