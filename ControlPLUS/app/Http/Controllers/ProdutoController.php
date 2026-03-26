@@ -1604,6 +1604,9 @@ public function movimentacao($id){
     if($item->tipo_transacao == 'compra'){
         return redirect()->route('compras.show', [$item->codigo_transacao]);
     }
+    if($item->tipo_transacao == 'transferencia_estoque'){
+        return redirect()->route('transferencia-estoque.imprimir', [$item->codigo_transacao]);
+    }
 }
 
 public function removeImagem($id){

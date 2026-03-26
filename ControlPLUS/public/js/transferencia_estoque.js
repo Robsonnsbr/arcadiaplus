@@ -11,21 +11,21 @@ $(function(){
             dataType: "json",
             data: function (params) {
                 let empresa_id = $('#empresa_id').val()
-                let local_saida_id = $('#inp-local_saida_id').val()
-                let local_entrada_id = $('#inp-local_entrada_id').val()
+                let deposito_saida_id = $('#inp-deposito_saida_id').val()
+                let deposito_entrada_id = $('#inp-deposito_entrada_id').val()
                 console.clear();
-                if(!local_saida_id){
+                if(!deposito_saida_id){
                     swal(
                         "Atenção",
-                        "Informe o local de saída",
+                        "Informe o depósito de saída",
                         "warning"
                         );
                     return;
                 }
-                if(!local_entrada_id){
+                if(!deposito_entrada_id){
                     swal(
                         "Atenção",
-                        "Informe o local de entrada",
+                        "Informe o depósito de entrada",
                         "warning"
                         );
                     return;
@@ -34,8 +34,8 @@ $(function(){
                 var query = {
                     pesquisa: params.term,
                     empresa_id: empresa_id,
-                    local_saida_id: local_saida_id,
-                    local_entrada_id: local_entrada_id,
+                    deposito_saida_id: deposito_saida_id,
+                    deposito_entrada_id: deposito_entrada_id,
                 };
                 return query;
             },
@@ -71,23 +71,23 @@ $(function(){
     });
 })
 
-function locaisTransferenciaIguais() {
-    let local_saida_id = $('#inp-local_saida_id').val();
-    let local_entrada_id = $('#inp-local_entrada_id').val();
-    return local_saida_id && local_entrada_id && local_saida_id === local_entrada_id;
+function depositosTransferenciaIguais() {
+    let deposito_saida_id = $('#inp-deposito_saida_id').val();
+    let deposito_entrada_id = $('#inp-deposito_entrada_id').val();
+    return deposito_saida_id && deposito_entrada_id && deposito_saida_id === deposito_entrada_id;
 }
 
-$(document).on('change', '#inp-local_saida_id, #inp-local_entrada_id', function () {
-    if (locaisTransferenciaIguais()) {
-        swal("Atenção", "Local de saída e local de entrada devem ser diferentes.", "warning");
+$(document).on('change', '#inp-deposito_saida_id, #inp-deposito_entrada_id', function () {
+    if (depositosTransferenciaIguais()) {
+        swal("Atenção", "Depósitos de saída e entrada devem ser diferentes.", "warning");
         $(this).val('').trigger('change');
     }
 });
 
 $(document).on('submit', 'form[action*="transferencia-estoque"]', function (e) {
-    if (locaisTransferenciaIguais()) {
+    if (depositosTransferenciaIguais()) {
         e.preventDefault();
-        swal("Atenção", "Local de saída e local de entrada devem ser diferentes.", "warning");
+        swal("Atenção", "Depósitos de saída e entrada devem ser diferentes.", "warning");
     }
 });
 
@@ -145,21 +145,21 @@ $('.btn-add-tr-prod').on("click", function () {
                 dataType: "json",
                 data: function (params) {
                     let empresa_id = $('#empresa_id').val()
-                    let local_saida_id = $('#inp-local_saida_id').val()
-                    let local_entrada_id = $('#inp-local_entrada_id').val()
+                    let deposito_saida_id = $('#inp-deposito_saida_id').val()
+                    let deposito_entrada_id = $('#inp-deposito_entrada_id').val()
                     console.clear();
-                    if(!local_saida_id){
+                    if(!deposito_saida_id){
                         swal(
                             "Atenção",
-                            "Informe o local de saída",
+                            "Informe o depósito de saída",
                             "warning"
                             );
                         return;
                     }
-                    if(!local_entrada_id){
+                    if(!deposito_entrada_id){
                         swal(
                             "Atenção",
-                            "Informe o local de entrada",
+                            "Informe o depósito de entrada",
                             "warning"
                             );
                         return;
@@ -168,8 +168,8 @@ $('.btn-add-tr-prod').on("click", function () {
                     var query = {
                         pesquisa: params.term,
                         empresa_id: empresa_id,
-                        local_saida_id: local_saida_id,
-                        local_entrada_id: local_entrada_id,
+                        deposito_saida_id: deposito_saida_id,
+                        deposito_entrada_id: deposito_entrada_id,
                     };
                     return query;
                 },

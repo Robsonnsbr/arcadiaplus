@@ -24,8 +24,8 @@
 <p style="color: red">Relatório para estoque crítico: produtos sem movimentação há mais de <strong>{{ $estoque_critico }}</strong> dias.</p><br>
 @endif
 
-@if($localizacao != null)
-<h5>Local: <strong>{{ $localizacao->descricao }}</strong></h5>
+@if($deposito != null)
+<h5>Depósito: <strong>{{ $deposito->nome }}@if($deposito->localizacao) ({{ $deposito->localizacao->descricao }})@endif</strong></h5>
 @endif
 <table class="table-sm table-borderless" style="border-bottom: 1px solid rgb(206, 206, 206); margin-bottom:10px;  width: 100%;">
     <thead>

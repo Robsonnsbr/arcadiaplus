@@ -1,8 +1,8 @@
-@extends('layouts.app', ['title' => 'Estoque por localização'])
+@extends('layouts.app', ['title' => 'Estoque por depósito'])
 @section('content')
 <div class="card mt-1">
     <div class="card-header">
-        <h4>Estoque por localização: <strong class="text-primary">{{ $item->nome }}</strong></h4>
+        <h4>Estoque por depósito: <strong class="text-primary">{{ $item->nome }}</strong></h4>
         
         <hr>
     </div>
@@ -17,7 +17,7 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Local</th>
+                            <th>Depósito</th>
                             <th>Quantidade</th>
                         </tr>
                     </thead>

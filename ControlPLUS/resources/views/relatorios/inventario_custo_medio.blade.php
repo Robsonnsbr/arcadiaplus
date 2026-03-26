@@ -12,8 +12,8 @@
 </style>
 @endsection
 
-@if($local)
-<p style="color: red">Local: <strong>{{ $local->nome }}</strong></p><br>
+@if($deposito)
+<p style="color: red">Depósito: <strong>{{ $deposito->nome }}@if($deposito->localizacao) ({{ $deposito->localizacao->descricao }})@endif</strong></p><br>
 @endif
 <p style="color: red">Total de registros: <strong>{{ sizeof($data)}}</strong></p><br>
 

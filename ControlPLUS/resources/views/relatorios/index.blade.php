@@ -982,9 +982,9 @@
                                 !!}
                             </div>
 
-                            @if(__countLocalAtivo() > 1)
+                            @if(count($depositosRelatorioSelect) > 2)
                             <div class="col-md-4 col-12">
-                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
+                                {!!Form::select('deposito_id', 'Depósito', $depositosRelatorioSelect)
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -1035,9 +1035,9 @@
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
-                            @if(__countLocalAtivo() > 1)
+                            @if(count($depositosRelatorioSelect) > 2)
                             <div class="col-md-6 col-12">
-                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
+                                {!!Form::select('deposito_id', 'Depósito', $depositosRelatorioSelect)
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>
@@ -1212,9 +1212,9 @@
                                 !!}
                             </div>
 
-                            @if(__countLocalAtivo() > 1)
+                            @if(count($depositosRelatorioSelect) > 2)
                             <div class="col-md-6 col-12">
-                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
+                                {!!Form::select('deposito_id', 'Depósito', $depositosRelatorioSelect)
                                 ->attrs(['class' => 'form-select'])
                                 !!}
                             </div>

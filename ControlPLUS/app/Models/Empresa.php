@@ -70,6 +70,11 @@ class Empresa extends Model
         return $this->hasMany(Produto::class, 'empresa_id');
     }
 
+    public function depositos()
+    {
+        return $this->hasMany(Deposito::class, 'empresa_id');
+    }
+
     public function naturezasOperacao(){
         return $this->hasMany(NaturezaOperacao::class, 'empresa_id');
     }

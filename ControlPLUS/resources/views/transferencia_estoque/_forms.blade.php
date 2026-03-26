@@ -1,22 +1,38 @@
 <div class="row g-2">
     <div class="col-md-2">
-        <label for="">Local saída</label>
+        <label for="">Depósito de saída</label>
 
-        <select id="inp-local_saida_id" required class="select2 class-required" data-toggle="select2" name="local_saida_id">
+        <select id="inp-deposito_saida_id" required class="select2 class-required" data-toggle="select2" name="deposito_saida_id">
             <option value="">Selecione</option>
-            @foreach(__getLocaisAtivoUsuario() as $local)
-            <option value="{{ $local->id }}">{{ $local->descricao }}</option>
+            @foreach($depositos as $deposito)
+            <option
+                value="{{ $deposito->id }}"
+                @if((int)old('deposito_saida_id') === (int)$deposito->id) selected @endif
+            >
+                {{ $deposito->nome }}
+                @if($deposito->localizacao)
+                - {{ $deposito->localizacao->descricao }}
+                @endif
+            </option>
             @endforeach
         </select>
     </div>
 
     <div class="col-md-2">
-        <label for="">Local entrada</label>
+        <label for="">Depósito de entrada</label>
 
-        <select id="inp-local_entrada_id" required class="select2 class-required" data-toggle="select2" name="local_entrada_id">
+        <select id="inp-deposito_entrada_id" required class="select2 class-required" data-toggle="select2" name="deposito_entrada_id">
             <option value="">Selecione</option>
-            @foreach(__getLocaisAtivoUsuario() as $local)
-            <option value="{{ $local->id }}">{{ $local->descricao }}</option>
+            @foreach($depositos as $deposito)
+            <option
+                value="{{ $deposito->id }}"
+                @if((int)old('deposito_entrada_id') === (int)$deposito->id) selected @endif
+            >
+                {{ $deposito->nome }}
+                @if($deposito->localizacao)
+                - {{ $deposito->localizacao->descricao }}
+                @endif
+            </option>
             @endforeach
         </select>
     </div>

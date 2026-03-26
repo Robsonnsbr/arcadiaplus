@@ -12,7 +12,9 @@ $("tbody .produto_id").select2({
             console.clear();
             var query = {
                 pesquisa: params.term,
-                empresa_id: empresa_id
+                empresa_id: empresa_id,
+                local_id: $('#inp-local_id').length ? $('#inp-local_id').val() : null,
+                deposito_id: $('#inp-deposito_id').length ? $('#inp-deposito_id').val() : null
             };
             return query;
         },
@@ -535,5 +537,4 @@ function modalXml(nome, valor, cfop){
     html += '<h4>CFOP: <strong>' + cfop + '</strong></h4>'
     $('#modal_show_xml .modal-body').html(html)
 }
-
 

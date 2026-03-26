@@ -10,11 +10,16 @@ class RetiradaEstoque extends Model
     use HasFactory;
 
     protected $fillable = [
-        'motivo', 'observacao', 'produto_id', 'empresa_id', 'quantidade', 'local_id'
+        'motivo', 'observacao', 'produto_id', 'empresa_id', 'quantidade', 'local_id', 'deposito_id'
     ];
 
     public function produto(){
         return $this->belongsTo(Produto::class, 'produto_id');
+    }
+
+    public function deposito()
+    {
+        return $this->belongsTo(Deposito::class, 'deposito_id');
     }
 
     public static function motivos(){

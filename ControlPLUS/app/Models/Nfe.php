@@ -19,7 +19,7 @@ class Nfe extends Model
         'natureza_id', 'observacao', 'api', 'aut_xml', 'referencia', 'tpNF', 'finNFe', 'fornecedor_id',
         'caixa_id', 'gerar_conta_receber', 'gerar_conta_pagar', 'chave_importada', 'orcamento', 'ref_orcamento',
         'data_emissao_saida', 'data_emissao_retroativa', 'bandeira_cartao', 'cnpj_cartao', 'cAut_cartao', 'tipo_pagamento',
-        'numero_sequencial', 'crt', 'local_id', 'user_id', 'data_entrega', 'funcionario_id',
+        'numero_sequencial', 'crt', 'local_id', 'deposito_id', 'user_id', 'data_entrega', 'funcionario_id',
         'nome_entrega', 'documento_entrega', 'rua_entrega', 'numero_entrega', 'bairro_entrega', 'cep_entrega', 'complemento_entrega',
         'cidade_id_entrega', 'marca'
     ];
@@ -89,6 +89,11 @@ class Nfe extends Model
     public function localizacao()
     {
         return $this->belongsTo(Localizacao::class, 'local_id');
+    }
+
+    public function deposito()
+    {
+        return $this->belongsTo(Deposito::class, 'deposito_id');
     }
 
     public function natureza()
@@ -376,8 +381,23 @@ class Nfe extends Model
         ];
     }
 
-    protected static function booted()
+    protected static function booted(): void
     {
+        static::saving(function (self $nfe) {
+            if (!$nfe->deposito_id) {
+                return;
+            }
+
+            $localIdDeposito = Deposito::resolveLocalIdByDepositoId((int)$nfe->deposito_id);
+            if (!$localIdDeposito) {
+                throw new \Exception('Depósito inválido para o documento.');
+            }
+
+            if ($nfe->local_id && (int)$nfe->local_id !== (int)$localIdDeposito) {
+                throw new \Exception('Depósito incompatível com o local do documento.');
+            }
+        });
+
         static::updated(function (Nfe $nfe) {
             if ($nfe->isDirty('estado') && $nfe->estado == 'cancelado' && $nfe->getOriginal('estado') != 'cancelado' && $nfe->tpNF == 1) {
                 app(TradeinCreditUtil::class)->estornarPorNfe($nfe);

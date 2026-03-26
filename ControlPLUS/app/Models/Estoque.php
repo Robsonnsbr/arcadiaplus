@@ -10,8 +10,17 @@ class Estoque extends Model
     use HasFactory;
 
     protected $fillable = [ 
-        'produto_id', 'quantidade', 'produto_variacao_id', 'local_id'
+        'produto_id', 'quantidade', 'produto_variacao_id', 'local_id', 'deposito_id'
     ];
+
+    protected static function booted()
+    {
+        static::saving(function (self $estoque) {
+            if (empty($estoque->deposito_id) && !empty($estoque->local_id)) {
+                $estoque->deposito_id = Deposito::resolveDefaultIdByLocalId((int)$estoque->local_id);
+            }
+        });
+    }
 
     public function produto(){
         return $this->belongsTo(Produto::class, 'produto_id');
@@ -19,6 +28,11 @@ class Estoque extends Model
 
     public function local(){
         return $this->belongsTo(Localizacao::class, 'local_id');
+    }
+
+    public function deposito()
+    {
+        return $this->belongsTo(Deposito::class, 'deposito_id');
     }
 
     public function produtoVariacao(){
@@ -34,5 +48,18 @@ class Estoque extends Model
         }
 
         return $this->produto->nome;
+    }
+
+    public function resolveDepositoId(): ?int
+    {
+        if ($this->deposito_id) {
+            return (int)$this->deposito_id;
+        }
+
+        if ($this->local_id) {
+            return Deposito::resolveDefaultIdByLocalId((int)$this->local_id);
+        }
+
+        return null;
     }
 }

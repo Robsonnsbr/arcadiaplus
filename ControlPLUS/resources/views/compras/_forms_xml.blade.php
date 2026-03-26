@@ -1,15 +1,4 @@
-@if(__countLocalAtivo() > 1 && __escolheLocalidade())
-<div class="row mb-2">
-    <div class="col-md-3">
-        <label for="">Local</label>
-        <select id="inp-local_id" required class="select2 class-required" data-toggle="select2" name="local_id">
-            @foreach(__getLocaisAtivoUsuario() as $local)
-            <option @isset($item) @if($item->local_id == $local->id) selected @endif @endif value="{{ $local->id }}">{{ $local->descricao }}</option>
-            @endforeach
-        </select>
-    </div>
-</div>
-@endif
+@include('partials.local_deposito_context', ['item' => $item ?? null, 'caixa' => $caixa ?? null])
 <div class="row">
     <div class="col-md-12">
         @isset($isCompra)

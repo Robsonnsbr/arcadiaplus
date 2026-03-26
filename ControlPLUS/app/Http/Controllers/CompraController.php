@@ -31,6 +31,7 @@ use App\Utils\StatusKeyUtil;
 use Illuminate\Support\Facades\DB;
 use App\Models\ProdutoLocalizacao;
 use App\Models\Localizacao;
+use App\Models\Deposito;
 
 class CompraController extends Controller
 {
@@ -629,6 +630,13 @@ class CompraController extends Controller
                 if(isset($request->local_id)){
                     $local_id = $request->local_id;
                 }
+                $deposito_id = Deposito::resolveIdForLocalId(
+                    $local_id ? (int)$local_id : null,
+                    $request->filled('deposito_id') ? (int)$request->deposito_id : null
+                );
+                if ($request->filled('deposito_id') && !$deposito_id) {
+                    throw new \Exception('Depósito inválido para o local selecionado.');
+                }
                 $request->merge([
                     'emissor_nome' => $config->nome,
                     'emissor_cpf_cnpj' => $config->cpf_cnpj,
@@ -647,6 +655,7 @@ class CompraController extends Controller
                     'valor_frete' => $request->valor_frete ? __convert_value_bd($request->valor_frete) : 0,
                     'caixa_id' => $caixa ? $caixa->id : null,
                     'local_id' => $local_id,
+                    'deposito_id' => $deposito_id,
                     'tipo_pagamento' => isset($request->tipo_pagamento[0]) ? $request->tipo_pagamento[0] : null,
                     'user_id' => \Auth::user()->id
                 ]);
@@ -661,7 +670,7 @@ class CompraController extends Controller
                     if ($request->cadastrar_produto[$i] == 1) {
                         //cadastrar produto
 
-                        $product = $this->cadastrarProduto($request, $i, $caixa->local_id);
+                        $product = $this->cadastrarProduto($request, $i, $local_id);
                     } else {
                         //atualizar produto
                         $product = Produto::findOrFail($request->produto_id[$i]);
@@ -754,12 +763,12 @@ class CompraController extends Controller
                     $product->save();
 
                     if ($product->gerenciar_estoque) {
-                        $this->util->incrementaEstoque($product->id, $quantidade, null);
+                        $this->util->incrementaEstoque($product->id, $quantidade, null, $local_id, $deposito_id);
                         $tipo = 'incremento';
                         $codigo_transacao = $nfe->id;
                         $tipo_transacao = 'compra';
 
-                        $this->util->movimentacaoProduto($product->id, $quantidade, $tipo, $codigo_transacao, $tipo_transacao, \Auth::user()->id, null);
+                        $this->util->movimentacaoProduto($product->id, $quantidade, $tipo, $codigo_transacao, $tipo_transacao, \Auth::user()->id, null, $local_id, $deposito_id);
                     }
                 }
 
@@ -792,7 +801,7 @@ class CompraController extends Controller
                                 'valor_integral' => __convert_value_bd($request->valor_fatura[$i]),
                                 'tipo_pagamento' => $tipoPagamento[$i],
                                 'data_vencimento' => $request->data_vencimento[$i],
-                                'local_id' => $caixa->local_id,
+                                'local_id' => $local_id,
                             ]);
                         }
                     }

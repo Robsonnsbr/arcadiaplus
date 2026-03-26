@@ -6,8 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\TransferenciaEstoque;
 use App\Models\ItemTransferenciaEstoque;
-use App\Models\Localizacao;
+use App\Models\Deposito;
 use App\Models\Estoque;
+use App\Models\MovimentacaoProduto;
 use App\Models\Produto;
 use App\Models\Empresa;
 use App\Models\ProdutoLocalizacao;
@@ -28,14 +29,94 @@ class TransferenciaEstoqueController extends Controller
         $this->middleware('permission:transferencia_estoque_view', ['only' => ['show', 'index']]);
         $this->middleware('permission:transferencia_estoque_delete', ['only' => ['destroy']]);
     }
+
+    private function localIdsAtivosUsuario(): array
+    {
+        if (!function_exists('__getLocaisAtivoUsuario')) {
+            return [];
+        }
+
+        return __getLocaisAtivoUsuario()->pluck('id')
+            ->map(function ($id) {
+                return (int)$id;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function depositosAtivosUsuario(int $empresaId)
+    {
+        $localIds = $this->localIdsAtivosUsuario();
+
+        if (empty($localIds)) {
+            return collect();
+        }
+
+        foreach ($localIds as $localId) {
+            Deposito::ensureDefaultForLocalId((int)$localId);
+        }
+
+        return Deposito::with('localizacao:id,descricao')
+            ->where('empresa_id', $empresaId)
+            ->where('ativo', 1)
+            ->whereIn('local_id', $localIds)
+            ->orderBy('local_id')
+            ->orderByDesc('padrao')
+            ->orderBy('nome')
+            ->get();
+    }
+
+    private function resolveDepositoTransferencia(
+        int $empresaId,
+        ?int $depositoId,
+        ?int $localId,
+        string $label
+    ): Deposito {
+        $depositoResolvidoId = $depositoId ?: Deposito::resolveIdForLocalId($localId, null);
+        if (!$depositoResolvidoId) {
+            throw new \Exception("Depósito de {$label} inválido para a transferência.");
+        }
+
+        $deposito = Deposito::where('id', $depositoResolvidoId)
+            ->where('empresa_id', $empresaId)
+            ->where('ativo', 1)
+            ->first();
+
+        if (!$deposito) {
+            throw new \Exception("Depósito de {$label} inválido para a empresa ativa.");
+        }
+
+        if ($localId && (int)$deposito->local_id !== (int)$localId) {
+            throw new \Exception("Depósito de {$label} incompatível com a unidade informada.");
+        }
+
+        $localIdsPermitidos = $this->localIdsAtivosUsuario();
+        if (!empty($localIdsPermitidos) && !in_array((int)$deposito->local_id, $localIdsPermitidos, true)) {
+            throw new \Exception("Depósito de {$label} fora das unidades permitidas para o usuário.");
+        }
+
+        return $deposito;
+    }
+
+    private function applyDepositoFiltro($query, int $depositoId, int $localId)
+    {
+        return $query->where(function ($q) use ($depositoId, $localId) {
+            $q->where('deposito_id', $depositoId)
+                ->orWhere(function ($legacy) use ($localId) {
+                    $legacy->whereNull('deposito_id')
+                        ->where('local_id', $localId);
+                });
+        });
+    }
     
     public function index(Request $request){
 
-        $locaisCount = Localizacao::where('empresa_id', $request->empresa_id)
-        ->where('status',1)->count();
+        $depositosCount = $this->depositosAtivosUsuario((int)$request->empresa_id)->count();
 
-        if($locaisCount < 2){
-            session()->flash('flash_error', 'É necessário ter ao menos 2 localizações ativas na empresa!');
+        if($depositosCount < 2){
+            session()->flash('flash_error', 'É necessário ter ao menos 2 depósitos ativos para realizar transferências!');
             return redirect()->back();
         }
 
@@ -64,21 +145,18 @@ class TransferenciaEstoqueController extends Controller
     }
 
     public function create(){
-        $locaisCount = Localizacao::where('empresa_id', request()->empresa_id)
-        ->where('status',1)->count();
+        $depositos = $this->depositosAtivosUsuario((int)request()->empresa_id);
 
-        if($locaisCount < 2){
-            session()->flash('flash_error', 'É necessário ter ao menos 2 localizações ativas na empresa!');
+        if($depositos->count() < 2){
+            session()->flash('flash_error', 'É necessário ter ao menos 2 depósitos ativos para realizar transferências!');
             return redirect()->route('transferencia-estoque.index');
         }
-        return view('transferencia_estoque.create');
+        return view('transferencia_estoque.create', compact('depositos'));
     }
 
     public function store(Request $request){
         try{
             $request->validate([
-                'local_saida_id' => 'required|integer|different:local_entrada_id',
-                'local_entrada_id' => 'required|integer|different:local_saida_id',
                 'produto_id' => 'required|array|min:1',
                 'produto_id.*' => 'required|integer',
                 'quantidade' => 'required|array|min:1',
@@ -86,22 +164,21 @@ class TransferenciaEstoqueController extends Controller
             ]);
 
             $empresa_id = (int)$request->empresa_id;
-            $localSaida = Localizacao::where('id', $request->local_saida_id)
-                ->where('empresa_id', $empresa_id)
-                ->where('status', 1)
-                ->first();
-            $localEntrada = Localizacao::where('id', $request->local_entrada_id)
-                ->where('empresa_id', $empresa_id)
-                ->where('status', 1)
-                ->first();
+            $depositoSaida = $this->resolveDepositoTransferencia(
+                $empresa_id,
+                $request->filled('deposito_saida_id') ? (int)$request->deposito_saida_id : null,
+                $request->filled('local_saida_id') ? (int)$request->local_saida_id : null,
+                'saída'
+            );
+            $depositoEntrada = $this->resolveDepositoTransferencia(
+                $empresa_id,
+                $request->filled('deposito_entrada_id') ? (int)$request->deposito_entrada_id : null,
+                $request->filled('local_entrada_id') ? (int)$request->local_entrada_id : null,
+                'entrada'
+            );
 
-            if(!$localSaida || !$localEntrada){
-                session()->flash("flash_error", "Local de saída/entrada inválido para a empresa ativa.");
-                return redirect()->back()->withInput();
-            }
-
-            if((int)$localSaida->id === (int)$localEntrada->id){
-                session()->flash("flash_error", "Local de saída e entrada devem ser diferentes.");
+            if((int)$depositoSaida->id === (int)$depositoEntrada->id){
+                session()->flash("flash_error", "Depósitos de saída e entrada devem ser diferentes.");
                 return redirect()->back()->withInput();
             }
 
@@ -132,16 +209,21 @@ class TransferenciaEstoqueController extends Controller
                 }
 
                 $estoque = Estoque::where('produto_id', $produto->id)
-                    ->where('local_id', $localSaida->id)
+                    ->when(
+                        true,
+                        function ($query) use ($depositoSaida) {
+                            return $this->applyDepositoFiltro($query, (int)$depositoSaida->id, (int)$depositoSaida->local_id);
+                        }
+                    )
                     ->first();
 
                 if($estoque == null){
-                    session()->flash("flash_error", "{$produto->nome} sem estoque no local de saída!");
+                    session()->flash("flash_error", "{$produto->nome} sem estoque no depósito de saída!");
                     return redirect()->back()->withInput();
                 }
 
                 if($estoque->quantidade < $qtd){
-                    session()->flash("flash_error", "{$produto->nome} com estoque insuficiente no local de saída!");
+                    session()->flash("flash_error", "{$produto->nome} com estoque insuficiente no depósito de saída!");
                     return redirect()->back()->withInput();
                 }
 
@@ -152,18 +234,20 @@ class TransferenciaEstoqueController extends Controller
                 ];
             }
 
-            DB::transaction(function () use ($request, $empresa_id, $localSaida, $localEntrada, $itens) {
+            DB::transaction(function () use ($request, $empresa_id, $depositoSaida, $depositoEntrada, $itens) {
                 $item = TransferenciaEstoque::create([
                     'empresa_id' => $empresa_id,
-                    'local_saida_id' => $localSaida->id,
-                    'local_entrada_id' => $localEntrada->id,
+                    'local_saida_id' => $depositoSaida->local_id,
+                    'deposito_saida_id' => $depositoSaida->id,
+                    'local_entrada_id' => $depositoEntrada->local_id,
+                    'deposito_entrada_id' => $depositoEntrada->id,
                     'usuario_id' => Auth::user()->id,
                     'observacao' => $request->observacao ?? '',
                     'codigo_transacao' => Str::random(10)
                 ]);
 
                 foreach($itens as $i){
-                    $itemTransferencia = ItemTransferenciaEstoque::create([
+                    ItemTransferenciaEstoque::create([
                         'transferencia_id' => $item->id,
                         'produto_id' => $i['produto_id'],
                         'quantidade' => $i['quantidade'],
@@ -172,32 +256,51 @@ class TransferenciaEstoqueController extends Controller
 
                     ProdutoLocalizacao::updateOrCreate([
                         'produto_id' => $i['produto_id'], 
-                        'localizacao_id' => $localEntrada->id
+                        'localizacao_id' => $depositoEntrada->local_id
                     ]);
 
                     ProdutoLocalizacao::updateOrCreate([
                         'produto_id' => $i['produto_id'], 
-                        'localizacao_id' => $localSaida->id
+                        'localizacao_id' => $depositoSaida->local_id
                     ]);
 
-                    // Sempre movimenta explicitamente por local.
-                    $this->utilEstoque->incrementaEstoque($i['produto_id'], $i['quantidade'], null, $localEntrada->id);
-                    $this->utilEstoque->reduzEstoque($i['produto_id'], $i['quantidade'], null, $localSaida->id);
+                    $this->utilEstoque->incrementaEstoque(
+                        $i['produto_id'],
+                        $i['quantidade'],
+                        null,
+                        $depositoEntrada->local_id,
+                        $depositoEntrada->id
+                    );
+                    $this->utilEstoque->reduzEstoque(
+                        $i['produto_id'],
+                        $i['quantidade'],
+                        null,
+                        $depositoSaida->local_id,
+                        $depositoSaida->id
+                    );
 
-                    $tipo = 'incremento';
-                    $codigo_transacao = $itemTransferencia->id;
-                    $tipo_transacao = 'alteracao_estoque';
-                    $this->utilEstoque->movimentacaoProduto($i['produto_id'], $i['quantidade'], $tipo, $codigo_transacao, $tipo_transacao, \Auth::user()->id);
+                    $this->utilEstoque->movimentacaoTransferenciaProduto(
+                        $i['produto_id'],
+                        $i['quantidade'],
+                        $item->id,
+                        \Auth::user()->id,
+                        null,
+                        $depositoSaida->local_id,
+                        $depositoSaida->id,
+                        $depositoEntrada->local_id,
+                        $depositoEntrada->id
+                    );
                 }
             });
 
-            $descricaoLog = "Saída de $localSaida->nome para $localEntrada->nome";
+            $descricaoLog = "Saída de {$depositoSaida->nome} para {$depositoEntrada->nome}";
             __createLog($request->empresa_id, 'Transferência de Estoque', 'cadastrar', $descricaoLog);
             session()->flash("flash_success", "Transferência salva!");
 
         }catch(\Exception $e){
             __createLog(request()->empresa_id, 'Transferência de Estoque', 'erro', $e->getMessage());
             session()->flash("flash_error", 'Algo deu errado: '. $e->getMessage());
+            return redirect()->back()->withInput();
         }
         return redirect()->route('transferencia-estoque.index');
 
@@ -208,24 +311,46 @@ class TransferenciaEstoqueController extends Controller
         $item = TransferenciaEstoque::findOrFail($id);
         __validaObjetoEmpresa($item);
         try {
-            $localSaida = Localizacao::where('id', $item->local_saida_id)
-                ->where('empresa_id', $item->empresa_id)
-                ->first();
-            $localEntrada = Localizacao::where('id', $item->local_entrada_id)
-                ->where('empresa_id', $item->empresa_id)
-                ->first();
-            if(!$localSaida || !$localEntrada){
-                throw new \Exception("Local de saída/entrada inválido para a empresa da transferência.");
-            }
+            $depositoSaida = $this->resolveDepositoTransferencia(
+                (int)$item->empresa_id,
+                $item->deposito_saida_id ? (int)$item->deposito_saida_id : null,
+                $item->local_saida_id ? (int)$item->local_saida_id : null,
+                'saída'
+            );
+            $depositoEntrada = $this->resolveDepositoTransferencia(
+                (int)$item->empresa_id,
+                $item->deposito_entrada_id ? (int)$item->deposito_entrada_id : null,
+                $item->local_entrada_id ? (int)$item->local_entrada_id : null,
+                'entrada'
+            );
 
-            foreach($item->itens as $p){
-                $this->utilEstoque->incrementaEstoque($p->produto_id, $p->quantidade, null, $item->local_saida_id);
-                $this->utilEstoque->reduzEstoque($p->produto_id, $p->quantidade, null, $item->local_entrada_id);
+            DB::transaction(function () use ($item, $depositoSaida, $depositoEntrada) {
+                foreach($item->itens as $p){
+                    $this->utilEstoque->incrementaEstoque(
+                        $p->produto_id,
+                        $p->quantidade,
+                        null,
+                        $depositoSaida->local_id,
+                        $depositoSaida->id
+                    );
+                    $this->utilEstoque->reduzEstoque(
+                        $p->produto_id,
+                        $p->quantidade,
+                        null,
+                        $depositoEntrada->local_id,
+                        $depositoEntrada->id
+                    );
 
-            }
-            $item->itens()->delete();
-            $item->delete();
-            $descricaoLog = "Saída de " . $item->local_saida->nome . " para " . $item->local_entrada->nome;
+                }
+                MovimentacaoProduto::where('tipo_transacao', 'transferencia_estoque')
+                    ->where('codigo_transacao', $item->id)
+                    ->delete();
+
+                $item->itens()->delete();
+                $item->delete();
+            });
+
+            $descricaoLog = "Saída de " . $depositoSaida->nome . " para " . $depositoEntrada->nome;
             __createLog($item->empresa_id, 'Transferência de Estoque', 'excluir', $descricaoLog);
 
             session()->flash("flash_success", "Transferência removida com sucesso!");

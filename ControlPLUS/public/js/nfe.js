@@ -163,7 +163,7 @@ function getProdutoSelect2Config() {
                 if($('#inp-local_id').length){
                     let selectedLocalId = $('#inp-local_id').val()
                     if(!selectedLocalId){
-                        swal("Alerta", "Selecione primeiramente o local", "warning")
+                        swal("Alerta", "Selecione primeiramente o local da operação", "warning")
                         return;
                     }
                 }
@@ -174,6 +174,7 @@ function getProdutoSelect2Config() {
                     usuario_id: $('#usuario_id').val(),
                     lista_id: $('#lista_id').val(),
                     local_id: $('#inp-local_id').length ? $('#inp-local_id').val() : null,
+                    deposito_id: $('#inp-deposito_id').length ? $('#inp-deposito_id').val() : null,
                     is_compra: $('#is_compra').length ? $('#is_compra').val() : null,
                 };
             },
@@ -259,6 +260,68 @@ function initDefaultSelect2(scope) {
         });
     });
 }
+
+function syncDepositoByLocalContext() {
+    let $deposito = $('#inp-deposito_id');
+    if (!$deposito.length) return;
+
+    let options = $deposito.data('options');
+    if (!Array.isArray(options)) {
+        options = [];
+    }
+
+    let $local = $('#inp-local_id');
+    let localId = $local.length && $local.val() ? parseInt($local.val(), 10) : null;
+    let selectedDeposito = $deposito.data('selected') || $deposito.val() || '';
+    let selectedDepositoId = selectedDeposito ? parseInt(selectedDeposito, 10) : null;
+
+    let filtered = options.filter((option) => {
+        return !localId || parseInt(option.local_id, 10) === localId;
+    });
+
+    let nextValue = '';
+    if (selectedDepositoId && filtered.some((option) => parseInt(option.id, 10) === selectedDepositoId)) {
+        nextValue = String(selectedDepositoId);
+    } else {
+        let depositoPadrao = filtered.find((option) => !!option.padrao);
+        if (depositoPadrao) {
+            nextValue = String(depositoPadrao.id);
+        } else if (filtered.length > 0) {
+            nextValue = String(filtered[0].id);
+        }
+    }
+
+    if ($deposito.hasClass('select2-hidden-accessible')) {
+        $deposito.select2('destroy');
+    }
+
+    $deposito.html('');
+    $deposito.append(new Option('Selecione', '', false, false));
+
+    filtered.forEach((option) => {
+        let isSelected = nextValue !== '' && String(option.id) === nextValue;
+        let newOption = new Option(option.label, option.id, false, isSelected);
+        $(newOption).attr('data-local-id', option.local_id);
+        $deposito.append(newOption);
+    });
+
+    $deposito.prop('disabled', filtered.length === 0);
+    $deposito.val(nextValue);
+    $deposito.data('selected', nextValue);
+    $deposito.select2({
+        language: "pt-BR",
+        width: "100%",
+        theme: "bootstrap4"
+    });
+}
+
+$(document).on('change', '#inp-local_id', function () {
+    syncDepositoByLocalContext();
+});
+
+$(function () {
+    syncDepositoByLocalContext();
+});
 
 initProdutoSelect2(document);
 

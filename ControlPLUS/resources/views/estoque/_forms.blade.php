@@ -21,7 +21,7 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Local</th>
+                            <th>Depósito</th>
                             <th>Quantidade</th>
                         </tr>
                     </thead>
@@ -73,7 +73,7 @@
     @if(__countLocalAtivo() > 1)
 
     <div class="col-md-3">
-        <label for="">Local</label>
+        <label for="">Depósito</label>
 
         <select required class="select2" data-toggle="select2" name="local_id">
             @foreach(__getLocaisAtivoUsuario() as $local)

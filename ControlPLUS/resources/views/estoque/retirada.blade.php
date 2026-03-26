@@ -43,7 +43,7 @@
 
                 @if(__countLocalAtivo() > 1)
                 <div class="col-md-3">
-                    <label for="">Local</label>
+                    <label for="">Depósito</label>
                     <select required class="select2" data-toggle="select2" name="local_id">
                         @foreach(__getLocaisAtivoUsuario() as $local)
                         <option @isset($item) @if($item->local_id == $local->id) selected @endif @endif value="{{ $local->id }}">{{ $local->descricao }}</option>
@@ -89,7 +89,7 @@
 
                     @if(__countLocalAtivo() > 1)
                     <div class="col-md-2">
-                        {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
+                        {!!Form::select('local_id', 'Depósito', __getLocaisAtivoUsuarioParaSelect())
                         ->attrs(['class' => 'select2'])
                         !!}
                     </div>

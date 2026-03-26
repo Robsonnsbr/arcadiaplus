@@ -54,12 +54,12 @@
                                 Apontamento de Produção
                             </a>
                         @endcan
-                        @canany(['localizacao_create', 'localizacao_delete'])
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-cadastrar-local">
+                        @can('estoque_edit')
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-cadastrar-deposito">
                                 <i class="ri-map-pin-add-line"></i>
-                                Cadastrar Local
+                                Cadastrar Depósito
                             </button>
-                        @endcanany
+                        @endcan
                         @can('estoque_edit')
                             <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#modal-cadastrar-status">
                                 <i class="ri-price-tag-3-line"></i>
@@ -91,7 +91,7 @@
 
                         @if(__countLocalAtivo() > 1)
                         <div class="col-md-2">
-                            {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
+                            {!!Form::select('local_id', 'Depósito', __getLocaisAtivoUsuarioParaSelect())
                             ->attrs(['class' => 'select2'])
                             !!}
                         </div>
@@ -130,77 +130,114 @@
     </div>
 </div>
 
-@canany(['localizacao_create', 'localizacao_delete'])
-<div class="modal fade" id="modal-cadastrar-local" tabindex="-1" aria-hidden="true">
+@can('estoque_edit')
+<div class="modal fade" id="modal-cadastrar-deposito" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Cadastrar Local</h5>
+                <h5 class="modal-title">Cadastrar Depósito</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
-                @can('localizacao_create')
-                    <form id="form-cadastrar-local-estoque" method="post" action="{{ route('estoque.localizacao.store') }}">
-                        @csrf
-                        <label for="descricao_local_estoque" class="form-label">Nome do local</label>
+                <form id="form-cadastrar-deposito-estoque" method="post" action="{{ route('estoque.deposito.store') }}">
+                    @csrf
+                    <div class="mb-2">
+                        <label for="deposito_local_id" class="form-label">Local</label>
+                        <select
+                            id="deposito_local_id"
+                            name="deposito_local_id"
+                            class="form-select @error('deposito_local_id') is-invalid @enderror"
+                            required
+                        >
+                            <option value="">Selecione</option>
+                            @foreach(($locaisDeposito ?? []) as $local)
+                                <option value="{{ $local->id }}" @if((int)old('deposito_local_id') === (int)$local->id) selected @endif>
+                                    {{ $local->descricao }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('deposito_local_id')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="deposito_nome_estoque" class="form-label">Nome do depósito</label>
                         <input
                             type="text"
-                            id="descricao_local_estoque"
-                            name="descricao"
-                            class="form-control @error('descricao') is-invalid @enderror"
-                            value="{{ old('descricao') }}"
+                            id="deposito_nome_estoque"
+                            name="deposito_nome"
+                            class="form-control @error('deposito_nome') is-invalid @enderror"
+                            value="{{ old('deposito_nome') }}"
                             maxlength="150"
                             required
                         >
-                        @error('descricao')
+                        @error('deposito_nome')
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
-                    </form>
-                @endcan
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="deposito_descricao_estoque" class="form-label">Descrição</label>
+                        <textarea
+                            id="deposito_descricao_estoque"
+                            name="deposito_descricao"
+                            class="form-control @error('deposito_descricao') is-invalid @enderror"
+                            rows="2"
+                            maxlength="255"
+                        >{{ old('deposito_descricao') }}</textarea>
+                        @error('deposito_descricao')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </form>
 
                 <div class="table-responsive mt-3">
                     <table class="table table-sm table-striped mb-0">
                         <thead class="table-light">
                             <tr>
+                                <th>Depósito</th>
                                 <th>Local</th>
                                 <th>Tipo</th>
                                 <th class="text-end">Ação</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse(($locaisCadastros ?? []) as $localItem)
+                            @forelse(($depositosCadastros ?? []) as $depositoItem)
                                 <tr>
-                                    <td>{{ $localItem['descricao'] }}</td>
                                     <td>
-                                        @if(!empty($localItem['is_system']))
+                                        <div>{{ $depositoItem['nome'] }}</div>
+                                        @if(!empty($depositoItem['descricao']))
+                                            <small class="text-muted">{{ $depositoItem['descricao'] }}</small>
+                                        @endif
+                                    </td>
+                                    <td>{{ $depositoItem['localizacao'] ?? '--' }}</td>
+                                    <td>
+                                        @if(!empty($depositoItem['is_system']))
                                             <span class="badge bg-secondary">Base</span>
                                         @else
                                             <span class="badge bg-info">Custom</span>
                                         @endif
                                     </td>
                                     <td class="text-end">
-                                        @can('localizacao_delete')
-                                            @if(!empty($localItem['can_delete']))
-                                                <form method="post" action="{{ route('localizacao.destroy', $localItem['id']) }}" class="d-inline">
-                                                    @csrf
-                                                    @method('delete')
-                                                    <button type="submit" class="btn btn-sm btn-danger" title="Excluir local">
-                                                        <i class="ri-delete-bin-line"></i>
-                                                    </button>
-                                                </form>
-                                            @elseif(!empty($localItem['in_use']))
-                                                <span class="text-muted small">Em uso</span>
-                                            @else
-                                                <span class="text-muted small">Protegido</span>
-                                            @endif
+                                        @if(!empty($depositoItem['can_delete']))
+                                            <form method="post" action="{{ route('estoque.deposito.destroy', $depositoItem['id']) }}" class="d-inline">
+                                                @csrf
+                                                @method('delete')
+                                                <button type="submit" class="btn btn-sm btn-danger" title="Excluir depósito">
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </button>
+                                            </form>
+                                        @elseif(!empty($depositoItem['in_use']))
+                                            <span class="text-muted small">Em uso</span>
                                         @else
-                                            <span class="text-muted small">Sem permissão</span>
-                                        @endcan
+                                            <span class="text-muted small">Protegido</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="text-center text-muted">Sem locais cadastrados.</td>
+                                    <td colspan="4" class="text-center text-muted">Sem depósitos cadastrados.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -209,14 +246,12 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                @can('localizacao_create')
-                <button type="submit" form="form-cadastrar-local-estoque" class="btn btn-primary">Salvar</button>
-                @endcan
+                <button type="submit" form="form-cadastrar-deposito-estoque" class="btn btn-primary">Salvar</button>
             </div>
         </div>
     </div>
 </div>
-@endcanany
+@endcan
 
 @can('estoque_edit')
 <div class="modal fade" id="modal-cadastrar-status" tabindex="-1" aria-hidden="true">
@@ -317,7 +352,7 @@
                     <table class="table table-sm table-striped">
                         <thead class="table-light">
                             <tr>
-                                <th>Local</th>
+                                <th>Depósito</th>
                                 <th>Status</th>
                                 <th>Quantidade</th>
                             </tr>
@@ -334,7 +369,7 @@
                     <label class="form-label">Unidades serializadas disponíveis</label>
                     <div class="row g-2 align-items-end mb-2">
                         <div class="col-md-4">
-                            <label class="form-label mb-1">Filtrar local</label>
+                            <label class="form-label mb-1">Filtrar depósito</label>
                             <select class="form-select form-select-sm" id="dist-seriais-local-filtro">
                                 <option value="">Todos</option>
                             </select>
@@ -352,7 +387,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Código</th>
-                                    <th>Local</th>
+                                    <th>Depósito</th>
                                     <th>Status</th>
                                     @can('estoque_edit')
                                     <th class="text-end">Ação</th>
@@ -387,7 +422,7 @@
 
                     <div id="distribuicao-form-quantidade" class="row g-2">
                         <div class="col-md-2">
-                            <label class="form-label">Local origem</label>
+                            <label class="form-label">Depósito de saída</label>
                             <select class="form-select" name="local_origem_id" id="dist-local-origem"></select>
                         </div>
                         <div class="col-md-2">
@@ -399,7 +434,7 @@
                             <input type="number" step="0.0001" min="0.0001" class="form-control" name="quantidade" id="dist-quantidade" value="1">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Local destino</label>
+                            <label class="form-label">Depósito de entrada</label>
                             <select class="form-select" name="local_destino_id" id="dist-local-destino"></select>
                         </div>
                         <div class="col-md-2">
@@ -418,7 +453,7 @@
                             <select class="form-select" name="produto_unico_id" id="dist-serial-id"></select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Local destino</label>
+                            <label class="form-label">Depósito de entrada</label>
                             <select class="form-select" name="local_destino_id" id="dist-serial-local-destino"></select>
                         </div>
                         <div class="col-md-2">
@@ -448,9 +483,15 @@
 @section('js')
 <script type="text/javascript">
     document.addEventListener('DOMContentLoaded', function () {
-        const shouldOpenLocalModal = @json($errors->has('descricao') && auth()->user()->can('localizacao_create'));
-        if (shouldOpenLocalModal) {
-            const modalEl = document.getElementById('modal-cadastrar-local');
+        const shouldOpenDepositoModal = @json(
+            (
+                $errors->has('deposito_local_id')
+                || $errors->has('deposito_nome')
+                || $errors->has('deposito_descricao')
+            ) && auth()->user()->can('estoque_edit')
+        );
+        if (shouldOpenDepositoModal) {
+            const modalEl = document.getElementById('modal-cadastrar-deposito');
             if (modalEl && window.bootstrap) {
                 const modal = new bootstrap.Modal(modalEl);
                 modal.show();

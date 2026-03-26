@@ -24,6 +24,7 @@ use App\Models\Mdfe;
 use App\Models\Funcionario;
 use App\Models\OrdemServico;
 use App\Models\Localizacao;
+use App\Models\Deposito;
 use App\Models\Marca;
 use App\Models\TaxaPagamento;
 use App\Models\Estoque;
@@ -71,8 +72,141 @@ class RelatorioController extends Controller
         ->where('status', 1)->get();
         $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)->get();
         $tiposDespesaFrete = TipoDespesaFrete::where('empresa_id', request()->empresa_id)->get();
+        $depositosRelatorioSelect = $this->depositosRelatorioSelectOptions();
 
-        return view('relatorios.index', compact('funcionarios', 'marcas', 'categorias', 'tiposDespesaFrete'));
+        return view('relatorios.index', compact('funcionarios', 'marcas', 'categorias', 'tiposDespesaFrete', 'depositosRelatorioSelect'));
+    }
+
+    private function relatorioLocalIds(): array
+    {
+        return __getLocaisAtivoUsuario()
+            ->pluck('id')
+            ->map(function ($id) {
+                return (int)$id;
+            })
+            ->all();
+    }
+
+    private function depositosRelatorioSelectOptions(): array
+    {
+        $localIds = $this->relatorioLocalIds();
+        $options = ['' => 'Todos'];
+
+        if (empty($localIds)) {
+            return $options;
+        }
+
+        $depositos = Deposito::with('localizacao:id,descricao')
+            ->where('empresa_id', request()->empresa_id)
+            ->where('ativo', 1)
+            ->whereIn('local_id', $localIds)
+            ->orderBy('nome')
+            ->get();
+
+        foreach ($depositos as $deposito) {
+            $label = $deposito->nome;
+            if ($deposito->localizacao && $deposito->localizacao->descricao) {
+                $label .= ' (' . $deposito->localizacao->descricao . ')';
+            }
+
+            $options[$deposito->id] = $label;
+        }
+
+        return $options;
+    }
+
+    private function resolveRelatorioEstoqueContext(Request $request): array
+    {
+        $localIds = $this->relatorioLocalIds();
+        $localId = $request->filled('local_id') ? (int)$request->local_id : null;
+        $depositoId = $request->filled('deposito_id') ? (int)$request->deposito_id : null;
+        $deposito = null;
+
+        if ($depositoId) {
+            $deposito = Deposito::with('localizacao:id,descricao')
+                ->where('empresa_id', $request->empresa_id)
+                ->where('ativo', 1)
+                ->whereIn('local_id', $localIds)
+                ->whereKey($depositoId)
+                ->firstOrFail();
+
+            $localId = (int)$deposito->local_id;
+        } elseif ($localId && !in_array($localId, $localIds, true)) {
+            abort(404);
+        }
+
+        return [
+            'local_ids' => $localIds,
+            'local_id' => $localId,
+            'deposito_id' => $depositoId,
+            'deposito' => $deposito,
+        ];
+    }
+
+    private function applyRelatorioEstoqueContextToEstoqueQuery($query, ?int $depositoId, array $localIds, string $table = 'estoques')
+    {
+        return $query
+            ->when($depositoId, function ($subQuery) use ($depositoId, $table) {
+                return $subQuery->where($table . '.deposito_id', $depositoId);
+            })
+            ->when(!$depositoId, function ($subQuery) use ($localIds, $table) {
+                return $subQuery->whereIn($table . '.local_id', $localIds);
+            });
+    }
+
+    private function applyRelatorioEstoqueContextToProdutoQuery($query, ?int $depositoId, array $localIds)
+    {
+        return $query->whereExists(function ($sub) use ($depositoId, $localIds) {
+            $sub->selectRaw('1')
+                ->from('estoques')
+                ->whereColumn('estoques.produto_id', 'produtos.id');
+
+            $this->applyRelatorioEstoqueContextToEstoqueQuery($sub, $depositoId, $localIds);
+        });
+    }
+
+    private function estoqueQuantidadePorProdutoMap(?int $depositoId, array $localIds): array
+    {
+        return Estoque::select('produto_id', DB::raw('SUM(quantidade) as quantidade_total'))
+            ->when($depositoId, function ($query) use ($depositoId) {
+                return $query->where('deposito_id', $depositoId);
+            })
+            ->when(!$depositoId, function ($query) use ($localIds) {
+                return $query->whereIn('local_id', $localIds);
+            })
+            ->groupBy('produto_id')
+            ->pluck('quantidade_total', 'produto_id')
+            ->map(function ($quantidade) {
+                return (float)$quantidade;
+            })
+            ->all();
+    }
+
+    private function estoqueQuantidadePorVariacaoMap(?int $depositoId, array $localIds): array
+    {
+        return Estoque::select(
+            'produto_id',
+            'produto_variacao_id',
+            DB::raw('SUM(quantidade) as quantidade_total')
+        )
+            ->whereNotNull('produto_variacao_id')
+            ->when($depositoId, function ($query) use ($depositoId) {
+                return $query->where('deposito_id', $depositoId);
+            })
+            ->when(!$depositoId, function ($query) use ($localIds) {
+                return $query->whereIn('local_id', $localIds);
+            })
+            ->groupBy('produto_id', 'produto_variacao_id')
+            ->get()
+            ->mapWithKeys(function ($item) {
+                return [$item->produto_id . ':' . $item->produto_variacao_id => (float)$item->quantidade_total];
+            })
+            ->all();
+    }
+
+    private function quantidadeVariacaoRelatorio(array $quantidadePorVariacao, int $produtoId, int $variacaoId): float
+    {
+        return (float)($quantidadePorVariacao[$produtoId . ':' . $variacaoId] ?? 0);
     }
 
     public function produtos(Request $request)
@@ -1391,10 +1525,13 @@ class RelatorioController extends Controller
         $estoque_critico = $request->estoque_critico;
         $categoria_id = $request->categoria_id;
         $esportar_excel = $request->esportar_excel;
-        $local_id = $request->local_id;
-
-        $locais = __getLocaisAtivoUsuario();
-        $locais = $locais->pluck(['id']);
+        $contexto = $this->resolveRelatorioEstoqueContext($request);
+        $local_id = $contexto['local_id'];
+        $deposito_id = $contexto['deposito_id'];
+        $deposito = $contexto['deposito'];
+        $localIds = $contexto['local_ids'];
+        $quantidadePorProduto = $this->estoqueQuantidadePorProdutoMap($deposito_id, $localIds);
+        $quantidadePorVariacao = $this->estoqueQuantidadePorVariacaoMap($deposito_id, $localIds);
 
         $data = [];
 
@@ -1403,7 +1540,7 @@ class RelatorioController extends Controller
         }
 
         if($estoque_critico){
-            $data = $this->getEstoqueCriticoData($request, $locais, $local_id, $categoria_id, $estoque_minimo, (int)$estoque_critico);
+            $data = $this->getEstoqueCriticoData($request, $localIds, $local_id, $categoria_id, $estoque_minimo, (int)$estoque_critico, $deposito_id);
         }else if($estoque_minimo == 1){
 
             $produtosComEstoqueMinimo = Produto::where('produtos.empresa_id', $request->empresa_id)
@@ -1414,43 +1551,25 @@ class RelatorioController extends Controller
                     $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
                 });
             })
-            ->when(!empty($local_id), function ($query) use ($local_id) {
-                return $query->whereExists(function ($sub) use ($local_id) {
-                    $sub->selectRaw('1')
-                    ->from('estoques')
-                    ->whereColumn('estoques.produto_id', 'produtos.id')
-                    ->where('estoques.local_id', $local_id);
-                });
-            })
-            ->when(!$local_id, function ($query) use ($locais) {
-                return $query->whereExists(function ($sub) use ($locais) {
-                    $sub->selectRaw('1')
-                    ->from('estoques')
-                    ->whereColumn('estoques.produto_id', 'produtos.id')
-                    ->whereIn('estoques.local_id', $locais);
-                });
-            })
             ->when(!empty($start_date), function ($query) use ($start_date) {
                 return $query->whereDate('produtos.created_at', '>=', $start_date);
             })
             ->when(!empty($end_date), function ($query) use ($end_date,) {
                 return $query->whereDate('produtos.created_at', '<=', $end_date);
             })
-            // ->limit(20)
-            ->where('produtos.estoque_minimo', '>', 0)->get();
+            ->where('produtos.estoque_minimo', '>', 0);
+
+            $produtosComEstoqueMinimo = $this->applyRelatorioEstoqueContextToProdutoQuery($produtosComEstoqueMinimo, $deposito_id, $localIds)->get();
+
             foreach($produtosComEstoqueMinimo as $produto){
-                $estoque = Estoque::where('produto_id', $produto->id)->first();
+                $quantidadeProduto = (float)($quantidadePorProduto[$produto->id] ?? 0);
                 
-                if($estoque == null || $estoque->quantidade <= $produto->estoque_minimo){
+                if($quantidadeProduto <= $produto->estoque_minimo){
 
                     if(sizeof($produto->variacoes) == 0){
-                        $qtd = $estoque ? $estoque->quantidade : '0';
-                        if(!$local_id){
-                            $qtd = $produto->estoqueTotalProduto();
-                        }
                         $linha = [
                             'produto' => $produto->nome,
-                            'quantidade' => $qtd,
+                            'quantidade' => $quantidadeProduto,
                             'estoque_minimo' => $produto->estoque_minimo,
                             'valor_compra' => $produto->valor_compra,
                             'valor_venda' => $produto->valor_unitario,
@@ -1459,11 +1578,10 @@ class RelatorioController extends Controller
                         ];
                         array_push($data, $linha);
                     }else{
-
                         foreach($produto->variacoes as $v){
                             $linha = [
                                 'produto' => $produto->nome . " " . $v->descricao,
-                                'quantidade' => $v->estoque ? $v->estoque->quantidade : '',
+                                'quantidade' => $this->quantidadeVariacaoRelatorio($quantidadePorVariacao, $produto->id, $v->id),
                                 'estoque_minimo' => $produto->estoque_minimo,
                                 'valor_compra' => $produto->valor_compra,
                                 'valor_venda' => $v->valor,
@@ -1473,8 +1591,6 @@ class RelatorioController extends Controller
                             array_push($data, $linha);
                         }
                     }
-
-                    
                 }
             }
         }else if($start_date || $end_date){
@@ -1493,51 +1609,35 @@ class RelatorioController extends Controller
                     $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
                 });
             })
-            ->when(!empty($local_id), function ($query) use ($local_id) {
-                return $query->whereExists(function ($sub) use ($local_id) {
-                    $sub->selectRaw('1')
-                    ->from('estoques')
-                    ->whereColumn('estoques.produto_id', 'produtos.id')
-                    ->where('estoques.local_id', $local_id);
-                });
-            })
-            ->when(!$local_id, function ($query) use ($locais) {
-                return $query->whereExists(function ($sub) use ($locais) {
-                    $sub->selectRaw('1')
-                    ->from('estoques')
-                    ->whereColumn('estoques.produto_id', 'produtos.id')
-                    ->whereIn('estoques.local_id', $locais);
-                });
-            })
             ->where('produtos.empresa_id', $request->empresa_id)
             ->groupBy('produtos.id')
-            ->orderBy('movimentacao_produtos.created_at', 'desc')
-            ->get();
+            ->orderBy('movimentacao_produtos.created_at', 'desc');
+
+            $movimentacoes = $this->applyRelatorioEstoqueContextToProdutoQuery($movimentacoes, $deposito_id, $localIds)->get();
 
             foreach($movimentacoes as $m){
-
                 $produto = $m->produto;
                 if(sizeof($produto->variacoes) == 0){
                     $linha = [
-                        'produto' => $m->produto->nome,
-                        'quantidade' => $m->produto->estoqueTotalProduto(),
-                        'estoque_minimo' => $m->produto->estoque_minimo,
-                        'valor_compra' => $m->produto->valor_compra,
-                        'valor_venda' => $m->produto->valor_unitario,
-                        'categoria' => $m->produto->categoria ? $m->produto->categoria->nome : '--',
-                        'data_cadastro' => __data_pt($m->produto->created_at)
+                        'produto' => $produto->nome,
+                        'quantidade' => (float)($quantidadePorProduto[$produto->id] ?? 0),
+                        'estoque_minimo' => $produto->estoque_minimo,
+                        'valor_compra' => $produto->valor_compra,
+                        'valor_venda' => $produto->valor_unitario,
+                        'categoria' => $produto->categoria ? $produto->categoria->nome : '--',
+                        'data_cadastro' => __data_pt($produto->created_at)
                     ];
                     array_push($data, $linha);
                 }else{
                     foreach($produto->variacoes as $v){
                         $linha = [
-                            'produto' => $m->produto->nome . " " . $v->descricao,
-                            'quantidade' => $v->estoque ? $v->estoque->quantidade : '',
-                            'estoque_minimo' => $m->produto->estoque_minimo,
-                            'valor_compra' => $m->produto->valor_compra,
+                            'produto' => $produto->nome . " " . $v->descricao,
+                            'quantidade' => $this->quantidadeVariacaoRelatorio($quantidadePorVariacao, $produto->id, $v->id),
+                            'estoque_minimo' => $produto->estoque_minimo,
+                            'valor_compra' => $produto->valor_compra,
                             'valor_venda' => $v->valor,
-                            'categoria' => $m->produto->categoria ? $m->produto->categoria->nome : '--',
-                            'data_cadastro' => __data_pt($m->produto->created_at)
+                            'categoria' => $produto->categoria ? $produto->categoria->nome : '--',
+                            'data_cadastro' => __data_pt($produto->created_at)
                         ];
                         array_push($data, $linha);
                     }
@@ -1546,44 +1646,39 @@ class RelatorioController extends Controller
 
         }else{
 
-            $estoque = Estoque::
-            select('estoques.*')
-            ->join('produtos', 'produtos.id', '=', 'estoques.produto_id')
-            ->groupBy('produtos.id')
-            ->when(!empty($local_id), function ($query) use ($local_id) {
-                return $query->where('estoques.local_id', $local_id);
-            })
+            $produtos = Produto::select('produtos.*')
+            ->where('produtos.empresa_id', $request->empresa_id)
             ->when($categoria_id, function ($query) use ($categoria_id) {
                 return $query->where(function($t) use ($categoria_id) 
                 {
                     $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
                 });
-            })
-            ->where('produtos.empresa_id', $request->empresa_id)->get();
+            });
 
-            foreach($estoque as $m){
-                $produto = $m->produto;
+            $produtos = $this->applyRelatorioEstoqueContextToProdutoQuery($produtos, $deposito_id, $localIds)->get();
+
+            foreach($produtos as $produto){
                 if(sizeof($produto->variacoes) == 0){
                     $linha = [
-                        'produto' => $m->produto->nome,
-                        'quantidade' => $m->quantidade,
-                        'estoque_minimo' => $m->produto->estoque_minimo,
-                        'valor_compra' => $m->produto->valor_compra,
-                        'valor_venda' => $m->produto->valor_unitario,
-                        'categoria' => $m->produto->categoria ? $m->produto->categoria->nome : '--',
-                        'data_cadastro' => __data_pt($m->produto->created_at)
+                        'produto' => $produto->nome,
+                        'quantidade' => (float)($quantidadePorProduto[$produto->id] ?? 0),
+                        'estoque_minimo' => $produto->estoque_minimo,
+                        'valor_compra' => $produto->valor_compra,
+                        'valor_venda' => $produto->valor_unitario,
+                        'categoria' => $produto->categoria ? $produto->categoria->nome : '--',
+                        'data_cadastro' => __data_pt($produto->created_at)
                     ];
                     array_push($data, $linha);
                 }else{
                     foreach($produto->variacoes as $v){
                         $linha = [
-                            'produto' => $m->produto->nome . " " . $v->descricao,
-                            'quantidade' => $v->estoque ? $v->estoque->quantidade : '',
-                            'estoque_minimo' => $m->produto->estoque_minimo,
-                            'valor_compra' => $m->produto->valor_compra,
+                            'produto' => $produto->nome . " " . $v->descricao,
+                            'quantidade' => $this->quantidadeVariacaoRelatorio($quantidadePorVariacao, $produto->id, $v->id),
+                            'estoque_minimo' => $produto->estoque_minimo,
+                            'valor_compra' => $produto->valor_compra,
                             'valor_venda' => $v->valor,
-                            'categoria' => $m->produto->categoria ? $m->produto->categoria->nome : '--',
-                            'data_cadastro' => __data_pt($m->produto->created_at)
+                            'categoria' => $produto->categoria ? $produto->categoria->nome : '--',
+                            'data_cadastro' => __data_pt($produto->created_at)
                         ];
                         array_push($data, $linha);
                     }
@@ -1592,28 +1687,21 @@ class RelatorioController extends Controller
         }
 
         if($esportar_excel == -1){
-            $localizacao = null;
-            if($local_id){
-                $localizacao = Localizacao::findOrFail($local_id);
-            }
-            $p = view('relatorios/estoque', compact('data', 'start_date', 'end_date', 'estoque_minimo', 'localizacao', 'estoque_critico'))
+            $p = view('relatorios/estoque', compact('data', 'start_date', 'end_date', 'estoque_minimo', 'deposito', 'estoque_critico'))
             ->with('title', 'Relatório de Estoque');
             $domPdf = new Dompdf(["enable_remote" => true]);
             $domPdf->loadHtml($p);
-
-            // return $p;
 
             $domPdf->setPaper("A4", "landscape");
             $domPdf->render();
             $domPdf->stream("Relatório de estoque.pdf", array("Attachment" => false));
         }else{
-
-            $relatorioEx = new RelatorioEstoqueExport($data, $estoque_critico);
+            $relatorioEx = new RelatorioEstoqueExport($data, $estoque_critico, $deposito);
             return Excel::download($relatorioEx, 'estoque.xlsx');
         }
     }
 
-    private function getEstoqueCriticoData($request, $locais, $local_id, $categoria_id, $estoque_minimo, int $dias)
+    private function getEstoqueCriticoData($request, $locais, $local_id, $categoria_id, $estoque_minimo, int $dias, ?int $deposito_id = null)
     {
         $limite = now()->subDays($dias)->endOfDay();
 
@@ -1621,16 +1709,27 @@ class RelatorioController extends Controller
             'produto_id',
             DB::raw('MAX(movimentacao_produtos.created_at) as ultima_movimentacao')
         )
+        ->when($deposito_id, function ($query) use ($deposito_id) {
+            return $query->where(function ($sub) use ($deposito_id) {
+                $sub->where('movimentacao_produtos.deposito_id', $deposito_id)
+                    ->orWhere('movimentacao_produtos.deposito_origem_id', $deposito_id)
+                    ->orWhere('movimentacao_produtos.deposito_destino_id', $deposito_id);
+            });
+        })
         ->groupBy('produto_id');
 
         $estoqueAtual = Estoque::select(
             'produto_id',
             DB::raw('SUM(estoques.quantidade) as quantidade_total')
         )
-        ->when(!empty($local_id), function ($query) use ($local_id) {
-            return $query->where('estoques.local_id', $local_id);
+        ->when($deposito_id, function ($query) use ($deposito_id) {
+            return $query->where('estoques.deposito_id', $deposito_id);
         })
-        ->when(!$local_id, function ($query) use ($locais) {
+        ->when(!$deposito_id, function ($query) use ($local_id, $locais) {
+            if (!empty($local_id)) {
+                return $query->where('estoques.local_id', $local_id);
+            }
+
             return $query->whereIn('estoques.local_id', $locais);
         })
         ->groupBy('produto_id');
@@ -1810,13 +1909,14 @@ class RelatorioController extends Controller
     public function custoMedio(Request $request){
         $start_date = $request->start_date;
         $end_date = $request->end_date;
-        $local_id = $request->local_id;
         $categoria_id = $request->categoria_id;
         $ordem = $request->ordem;
         $esportar_excel = $request->esportar_excel;
-
-        $locais = __getLocaisAtivoUsuario();
-        $locais = $locais->pluck(['id']);
+        $contexto = $this->resolveRelatorioEstoqueContext($request);
+        $deposito = $contexto['deposito'];
+        $deposito_id = $contexto['deposito_id'];
+        $localIds = $contexto['local_ids'];
+        $quantidadePorProduto = $this->estoqueQuantidadePorProdutoMap($deposito_id, $localIds);
 
         $data = Produto::select('produtos.*')
         ->where('produtos.empresa_id', $request->empresa_id)
@@ -1832,38 +1932,17 @@ class RelatorioController extends Controller
             {
                 $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
             });
-        })
-        ->when(!empty($local_id), function ($query) use ($local_id) {
-            return $query->whereExists(function ($sub) use ($local_id) {
-                $sub->selectRaw('1')
-                ->from('estoques')
-                ->whereColumn('estoques.produto_id', 'produtos.id')
-                ->where('estoques.local_id', $local_id);
-            });
-        })
-        ->when(!$local_id, function ($query) use ($locais) {
-            return $query->whereExists(function ($sub) use ($locais) {
-                $sub->selectRaw('1')
-                ->from('estoques')
-                ->whereColumn('estoques.produto_id', 'produtos.id')
-                ->whereIn('estoques.local_id', $locais);
-            });
-        })
-        // ->limit(10)
-        ->get();
+        });
 
-
-        $local = null;
-        if($local_id){
-            $local = Localizacao::findOrFail($local_id);
-        }
+        $data = $this->applyRelatorioEstoqueContextToProdutoQuery($data, $deposito_id, $localIds)->get();
 
         foreach($data as $item){
             $valor = ItemNfe::where('produto_id', $item->id)
             ->sum('sub_total');
 
-            $item->custo_medio = $valor/($item->estoque && $item->estoque->quantidade > 0 ? $item->estoque->quantidade : 1);
-            $item->quantidade = $item->estoque ? $item->estoque->quantidade : 0;
+            $quantidade = (float)($quantidadePorProduto[$item->id] ?? 0);
+            $item->custo_medio = $valor/($quantidade > 0 ? $quantidade : 1);
+            $item->quantidade = $quantidade;
             $item->categoria_nome = $item->categoria ? $item->categoria->nome : '--';
             $item->nome = $item->nome;
         }
@@ -1877,11 +1956,11 @@ class RelatorioController extends Controller
         });
 
         if($esportar_excel == 1){
-            $relatorioEx = new RelatorioInventarioCustoMedioExport($data, $local);
+            $relatorioEx = new RelatorioInventarioCustoMedioExport($data, $deposito);
             return Excel::download($relatorioEx, 'relatorio_inventario_custo_medio.xlsx');
         }
 
-        $p = view('relatorios/inventario_custo_medio', compact('data', 'local_id', 'local'))
+        $p = view('relatorios/inventario_custo_medio', compact('data', 'deposito'))
         ->with('title', 'Relatório inventário custo médio');
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
@@ -1983,13 +2062,14 @@ class RelatorioController extends Controller
     public function inventario(Request $request){
         $start_date = $request->start_date;
         $end_date = $request->end_date;
-        $local_id = $request->local_id;
         $ordem = $request->ordem;
         $livro = $request->livro;
         $esportar_excel = $request->esportar_excel;
-
-        $locais = __getLocaisAtivoUsuario();
-        $locais = $locais->pluck(['id']);
+        $contexto = $this->resolveRelatorioEstoqueContext($request);
+        $deposito = $contexto['deposito'];
+        $deposito_id = $contexto['deposito_id'];
+        $localIds = $contexto['local_ids'];
+        $quantidadePorProduto = $this->estoqueQuantidadePorProdutoMap($deposito_id, $localIds);
         
         $data = Produto::select('produtos.*')
         ->where('produtos.empresa_id', $request->empresa_id)
@@ -2000,37 +2080,17 @@ class RelatorioController extends Controller
         ->when(!empty($end_date), function ($query) use ($end_date,) {
             return $query->whereDate('produtos.created_at', '<=', $end_date);
         })
+        ;
 
-        ->when(!empty($local_id), function ($query) use ($local_id) {
-            return $query->whereExists(function ($sub) use ($local_id) {
-                $sub->selectRaw('1')
-                ->from('estoques')
-                ->whereColumn('estoques.produto_id', 'produtos.id')
-                ->where('estoques.local_id', $local_id);
-            });
-        })
-        ->when(!$local_id, function ($query) use ($locais) {
-            return $query->whereExists(function ($sub) use ($locais) {
-                $sub->selectRaw('1')
-                ->from('estoques')
-                ->whereColumn('estoques.produto_id', 'produtos.id')
-                ->whereIn('estoques.local_id', $locais);
-            });
-        })
-        // ->limit(10)
-        ->get();
+        $data = $this->applyRelatorioEstoqueContextToProdutoQuery($data, $deposito_id, $localIds)->get();
 
 
-        $local = null;
         $empresa = Empresa::findOrFail($request->empresa_id);
-        if($local_id){
-            $local = Localizacao::findOrFail($local_id);
-        }
 
         foreach($data as $item){
 
             $item->custo_unuitario = $item->valor_compra;
-            $item->quantidade = $item->estoque ? $item->estoque->quantidade : 0;
+            $item->quantidade = (float)($quantidadePorProduto[$item->id] ?? 0);
             $item->sub_total = $item->quantidade * $item->valor_compra;
             $item->nome = $item->nome;
         }
@@ -2044,11 +2104,11 @@ class RelatorioController extends Controller
         });
 
         if($esportar_excel == 1){
-            $relatorioEx = new RelatorioInventarioExport($data, $local, $empresa, $livro);
+            $relatorioEx = new RelatorioInventarioExport($data, $deposito, $empresa, $livro);
             return Excel::download($relatorioEx, 'relatorio_inventario.xlsx');
         }
 
-        $p = view('relatorios/inventario', compact('data', 'local_id', 'local', 'livro', 'empresa'))
+        $p = view('relatorios/inventario', compact('data', 'deposito', 'livro', 'empresa'))
         ->with('title', 'Relatório inventário');
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
@@ -2367,6 +2427,9 @@ class RelatorioController extends Controller
         }
         if($tipoTransacao == 'compra'){
             return 'Compra';
+        }
+        if($tipoTransacao == 'transferencia_estoque'){
+            return 'Transferência de estoque';
         }
         return 'Ajuste';
     }

@@ -707,7 +707,8 @@ Route::middleware(['verificaEmpresa', 'validaPlano', 'validaContrato'])->group(f
     Route::post('/inventarios-delete-item', 'InventarioController@deleteItem')->name('inventarios.delete-item');
 
     Route::resource('estoque', 'EstoqueController');
-    Route::post('estoque/localizacao-store', 'EstoqueController@storeLocalizacao')->name('estoque.localizacao.store');
+    Route::post('estoque/deposito-store', 'EstoqueController@storeDeposito')->name('estoque.deposito.store');
+    Route::delete('estoque/deposito-destroy/{id}', 'EstoqueController@destroyDeposito')->name('estoque.deposito.destroy');
     Route::post('estoque/status-store', 'EstoqueController@storeStatus')->name('estoque.status.store');
     Route::delete('estoque/status-destroy/{id}', 'EstoqueController@destroyStatus')->name('estoque.status.destroy');
     Route::get('estoque/{id}/distribuicao', 'EstoqueController@distribuicao')->name('estoque.distribuicao');

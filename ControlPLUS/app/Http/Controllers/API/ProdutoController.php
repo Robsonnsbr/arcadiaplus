@@ -20,6 +20,7 @@ use App\Models\ItemListaPreco;
 use App\Models\PadraoTributacaoProduto;
 use App\Models\ProdutoVariacao;
 use App\Models\Localizacao;
+use App\Models\Deposito;
 use App\Models\CategoriaAdicional;
 use Illuminate\Http\Request;
 use App\Utils\EstoqueUtil;
@@ -230,9 +231,15 @@ class ProdutoController extends Controller
     }
 
     public function pesquisaComEstoque(Request $request){
+        $depositoSaidaId = $request->filled('deposito_saida_id') ? (int)$request->deposito_saida_id : null;
+        $localSaidaId = $request->filled('local_saida_id') ? (int)$request->local_saida_id : null;
+
+        if ($depositoSaidaId && !$localSaidaId) {
+            $localSaidaId = Deposito::resolveLocalIdByDepositoId($depositoSaidaId);
+        }
+
         $data = Produto::orderBy('nome', 'desc')
         ->select('produtos.*')
-        ->with('estoque')
         ->where('empresa_id', $request->empresa_id)
         ->when(!is_numeric($request->pesquisa), function ($q) use ($request) {
             return $q->where('nome', 'LIKE', "%$request->pesquisa%");
@@ -241,9 +248,43 @@ class ProdutoController extends Controller
             return $q->where('codigo_barras', 'LIKE', "%$request->pesquisa%");
         })
         ->join('estoques', 'estoques.produto_id', '=', 'produtos.id')
-        ->where('estoques.local_id', $request->local_saida_id)
+        ->when($depositoSaidaId || $localSaidaId, function ($query) use ($depositoSaidaId, $localSaidaId) {
+            if ($depositoSaidaId) {
+                return $query->where(function ($q) use ($depositoSaidaId, $localSaidaId) {
+                    $q->where('estoques.deposito_id', $depositoSaidaId);
+                    if ($localSaidaId) {
+                        $q->orWhere(function ($legacy) use ($localSaidaId) {
+                            $legacy->whereNull('estoques.deposito_id')
+                                ->where('estoques.local_id', $localSaidaId);
+                        });
+                    }
+                });
+            }
+
+            return $query->where('estoques.local_id', $localSaidaId);
+        })
         ->distinct('produtos.id')
         ->get();
+
+        foreach ($data as $produto) {
+            $produto->estoque = Estoque::where('produto_id', $produto->id)
+                ->when($depositoSaidaId || $localSaidaId, function ($query) use ($depositoSaidaId, $localSaidaId) {
+                    if ($depositoSaidaId) {
+                        return $query->where(function ($q) use ($depositoSaidaId, $localSaidaId) {
+                            $q->where('deposito_id', $depositoSaidaId);
+                            if ($localSaidaId) {
+                                $q->orWhere(function ($legacy) use ($localSaidaId) {
+                                    $legacy->whereNull('deposito_id')
+                                        ->where('local_id', $localSaidaId);
+                                });
+                            }
+                        });
+                    }
+
+                    return $query->where('local_id', $localSaidaId);
+                })
+                ->first();
+        }
 
         return response()->json($data, 200);
 

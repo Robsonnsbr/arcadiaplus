@@ -8,16 +8,19 @@ class RelatorioEstoqueExport implements FromView
 {	
 	protected $data;
     protected $estoqueCritico;
-	public function __construct($data, $estoqueCritico = null)
+    protected $deposito;
+	public function __construct($data, $estoqueCritico = null, $deposito = null)
     {
         $this->data = $data;
         $this->estoqueCritico = $estoqueCritico;
+        $this->deposito = $deposito;
     }
     public function view(): View
     {
         return view('exports.relatorio_estoque', [
             'data' => $this->data,
-            'estoque_critico' => $this->estoqueCritico
+            'estoque_critico' => $this->estoqueCritico,
+            'deposito' => $this->deposito
         ]);
     }
 }

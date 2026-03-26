@@ -7,19 +7,19 @@ use Maatwebsite\Excel\Concerns\FromView;
 class RelatorioInventarioCustoMedioExport implements FromView
 {
     protected $data;
-    protected $local;
+    protected $deposito;
 
-    public function __construct($data, $local)
+    public function __construct($data, $deposito)
     {
         $this->data = $data;
-        $this->local = $local;
+        $this->deposito = $deposito;
     }
 
     public function view(): View
     {
         return view('exports.relatorio_inventario_custo_medio', [
             'data' => $this->data,
-            'local' => $this->local
+            'deposito' => $this->deposito
         ]);
     }
 }

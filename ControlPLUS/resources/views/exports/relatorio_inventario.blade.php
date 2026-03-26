@@ -2,14 +2,14 @@
 
 <table>
     <thead>
-        @if($local)
+        @if($deposito)
         <tr>
-            <th>LOCAL</th>
-            <th>{{ $local->info }}</th>
+            <th>DEPÓSITO</th>
+            <th>{{ $deposito->nome }}@if($deposito->localizacao) ({{ $deposito->localizacao->descricao }})@endif</th>
         </tr>
         @else
         <tr>
-            <th>LOCAL</th>
+            <th>EMPRESA</th>
             <th>{{ $empresa->info }}</th>
         </tr>
         @endif

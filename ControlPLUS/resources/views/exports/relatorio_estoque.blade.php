@@ -4,6 +4,12 @@
 
 <table>
     <thead>
+        @if(!empty($deposito))
+        <tr>
+            <th>DEPÓSITO</th>
+            <th>{{ $deposito->nome }}@if($deposito->localizacao) ({{ $deposito->localizacao->descricao }})@endif</th>
+        </tr>
+        @endif
         <tr>
             <th style="width: 300px">PRODUTO</th>
             <th style="width: 200px">CATEGORIA</th>

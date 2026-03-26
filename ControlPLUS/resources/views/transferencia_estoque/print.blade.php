@@ -2,7 +2,7 @@
 @section('content')
 
 <h4>
-    Local de saída: <strong>{{ $item->local_saida->descricao }}</strong> - Local de entrada: <strong>{{ $item->local_entrada->descricao }}</strong>
+    Depósito de saída: <strong>{{ optional($item->deposito_saida)->nome ?? optional($item->local_saida)->descricao }}</strong> - Depósito de entrada: <strong>{{ optional($item->deposito_entrada)->nome ?? optional($item->local_entrada)->descricao }}</strong>
 </h4>
 <h4 style="margin-top: -20px">Data: <strong>{{ __data_pt($item->created_at) }}</strong></h4>
 <h4 style="margin-top: -20px">Total de itens: <strong>{{ sizeof($item->itens) }}</strong></h4>

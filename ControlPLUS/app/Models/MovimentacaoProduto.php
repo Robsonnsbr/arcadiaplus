@@ -10,7 +10,16 @@ class MovimentacaoProduto extends Model
     use HasFactory;
 
     protected $fillable = [ 
-        'produto_id', 'quantidade', 'tipo', 'codigo_transacao', 'tipo_transacao', 'produto_variacao_id', 'user_id', 
+        'produto_id',
+        'quantidade',
+        'tipo',
+        'codigo_transacao',
+        'tipo_transacao',
+        'produto_variacao_id',
+        'deposito_id',
+        'deposito_origem_id',
+        'deposito_destino_id',
+        'user_id',
         'estoque_atual'
     ];
 
@@ -26,6 +35,21 @@ class MovimentacaoProduto extends Model
         return $this->belongsTo(ProdutoVariacao::class, 'produto_variacao_id');
     }
 
+    public function deposito()
+    {
+        return $this->belongsTo(Deposito::class, 'deposito_id');
+    }
+
+    public function depositoOrigem()
+    {
+        return $this->belongsTo(Deposito::class, 'deposito_origem_id');
+    }
+
+    public function depositoDestino()
+    {
+        return $this->belongsTo(Deposito::class, 'deposito_destino_id');
+    }
+
     public function tipoTransacao(){
         if($this->tipo_transacao == 'venda_nfe'){
             return 'Venda NFe';
@@ -33,6 +57,8 @@ class MovimentacaoProduto extends Model
             return 'Venda NFCe';
         }else if($this->tipo_transacao == 'compra'){
             return 'Compra';
+        }else if($this->tipo_transacao == 'transferencia_estoque'){
+            return 'Transferência de estoque';
         }else{
             return 'Alteração de estoque';
         }

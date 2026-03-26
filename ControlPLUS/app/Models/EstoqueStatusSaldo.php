@@ -18,9 +18,19 @@ class EstoqueStatusSaldo extends Model
         'produto_id',
         'produto_variacao_id',
         'local_id',
+        'deposito_id',
         'status_key',
         'quantidade',
     ];
+
+    protected static function booted()
+    {
+        static::saving(function (self $saldo) {
+            if (empty($saldo->deposito_id) && !empty($saldo->local_id)) {
+                $saldo->deposito_id = Deposito::resolveDefaultIdByLocalId((int)$saldo->local_id);
+            }
+        });
+    }
 
     public function produto()
     {
@@ -30,5 +40,23 @@ class EstoqueStatusSaldo extends Model
     public function local()
     {
         return $this->belongsTo(Localizacao::class, 'local_id');
+    }
+
+    public function deposito()
+    {
+        return $this->belongsTo(Deposito::class, 'deposito_id');
+    }
+
+    public function resolveDepositoId(): ?int
+    {
+        if ($this->deposito_id) {
+            return (int)$this->deposito_id;
+        }
+
+        if ($this->local_id) {
+            return Deposito::resolveDefaultIdByLocalId((int)$this->local_id);
+        }
+
+        return null;
     }
 }

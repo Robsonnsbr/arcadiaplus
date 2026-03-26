@@ -6,6 +6,7 @@ use App\Models\Cidade;
 use App\Models\Fornecedor;
 use App\Models\Cliente;
 use App\Models\ProdutoFornecedor;
+use App\Models\Deposito;
 use App\Models\Empresa;
 use App\Models\ProdutoUnico;
 use App\Models\FaturaNfe;
@@ -556,6 +557,13 @@ class NfeController extends Controller
                 if(isset($request->local_id)){
                     $local_id = $request->local_id;
                 }
+                $deposito_id = Deposito::resolveIdForLocalId(
+                    $local_id ? (int)$local_id : null,
+                    $request->filled('deposito_id') ? (int)$request->deposito_id : null
+                );
+                if ($request->filled('deposito_id') && !$deposito_id) {
+                    throw new \Exception('Depósito inválido para o local selecionado.');
+                }
                 $valor_produto =  number_format($request->valor_produtos, 2);
 
                 if($caixa != null){
@@ -580,6 +588,7 @@ class NfeController extends Controller
                     'valor_frete' => $request->valor_frete ? __convert_value_bd($request->valor_frete) : 0,
                     'caixa_id' => $caixa ? $caixa->id : null,
                     'local_id' => $local_id,
+                    'deposito_id' => $deposito_id,
                     // 'numero' => $request->numero ?? 0,
                     'tipo_pagamento' => $request->tipo_pagamento[0],
                     'user_id' => \Auth::user()->id,
@@ -732,10 +741,10 @@ class NfeController extends Controller
                         if (isset($request->is_compra)) {
 
                             $this->util->incrementaEstoque($product->id, __convert_value_bd($request->quantidade[$i]), 
-                                $variacao_id, $local_id);
+                                $variacao_id, $local_id, $deposito_id);
                         } else {
                             $this->util->reduzEstoque($product->id, __convert_value_bd($request->quantidade[$i]), 
-                                $variacao_id, $local_id);
+                                $variacao_id, $local_id, $deposito_id);
                         }
                     }
 
@@ -745,12 +754,12 @@ class NfeController extends Controller
                             $tipo = 'incremento';
                             $codigo_transacao = $nfe->id;
                             $tipo_transacao = 'compra';
-                            $this->util->movimentacaoProduto($product->id, __convert_value_bd($request->quantidade[$i]), $tipo, $codigo_transacao, $tipo_transacao, \Auth::user()->id, $variacao_id);
+                            $this->util->movimentacaoProduto($product->id, __convert_value_bd($request->quantidade[$i]), $tipo, $codigo_transacao, $tipo_transacao, \Auth::user()->id, $variacao_id, $local_id, $deposito_id);
                         } else {
                             $tipo = 'reducao';
                             $codigo_transacao = $nfe->id;
                             $tipo_transacao = 'venda_nfe';
-                            $this->util->movimentacaoProduto($product->id, __convert_value_bd($request->quantidade[$i]), $tipo, $codigo_transacao, $tipo_transacao, \Auth::user()->id, $variacao_id);
+                            $this->util->movimentacaoProduto($product->id, __convert_value_bd($request->quantidade[$i]), $tipo, $codigo_transacao, $tipo_transacao, \Auth::user()->id, $variacao_id, $local_id, $deposito_id);
                         }
                     }
                 }
@@ -1134,12 +1143,22 @@ public function update(Request $request, $id)
 
         DB::transaction(function () use ($request, $id) {
             $item = Nfe::findOrFail($id);
+            $localIdAnterior = $item->local_id ? (int)$item->local_id : null;
+            $depositoIdAnterior = $item->deposito_id ? (int)$item->deposito_id : null;
             $transportadora_id = $request->transportadora_id;
             if ($request->transportadora_id == null) {
                 $transportadora_id = $this->cadastrarTransportadora($request);
             }
             $config = Empresa::find($request->empresa_id);
             $tipoPagamento = $request->tipo_pagamento;
+            $local_id = $request->filled('local_id') ? (int)$request->local_id : $localIdAnterior;
+            $deposito_id = Deposito::resolveIdForLocalId(
+                $local_id,
+                $request->filled('deposito_id') ? (int)$request->deposito_id : $depositoIdAnterior
+            );
+            if ($request->filled('deposito_id') && !$deposito_id) {
+                throw new \Exception('Depósito inválido para o local selecionado.');
+            }
 
             $request->merge([
                 'emissor_nome' => $config->nome,
@@ -1154,6 +1173,8 @@ public function update(Request $request, $id)
                 'valor_produtos' => __convert_value_bd($request->valor_total) ?? 0,
                 'valor_frete' => $request->valor_frete ? __convert_value_bd($request->valor_frete) : 0,
                 'tipo_pagamento' => $request->tipo_pagamento[0],
+                'local_id' => $local_id,
+                'deposito_id' => $deposito_id,
             ]);
 
             $item->fill($request->all())->save();
@@ -1169,9 +1190,9 @@ public function update(Request $request, $id)
                 $product = $x->produto;
                 if ($product->gerenciar_estoque && $item->orcamento == 0) {
                     if (isset($request->is_compra)) {
-                        $this->util->reduzEstoque($product->id, $x->quantidade, $x->variacao_id, $item->local_id);
+                        $this->util->reduzEstoque($product->id, $x->quantidade, $x->variacao_id, $localIdAnterior, $depositoIdAnterior);
                     } else {
-                        $this->util->incrementaEstoque($product->id, $x->quantidade, $x->variacao_id, $item->local_id);
+                        $this->util->incrementaEstoque($product->id, $x->quantidade, $x->variacao_id, $localIdAnterior, $depositoIdAnterior);
                     }
                 }
             }
@@ -1258,9 +1279,9 @@ public function update(Request $request, $id)
 
                 if ($product->gerenciar_estoque && $item->orcamento == 0 && $item->natureza->movimentar_estoque == 1) {
                     if (isset($request->is_compra)) {
-                        $this->util->incrementaEstoque($product->id, __convert_value_bd($request->quantidade[$i]), $variacao_id, $item->local_id);
+                        $this->util->incrementaEstoque($product->id, __convert_value_bd($request->quantidade[$i]), $variacao_id, $item->local_id, $item->deposito_id);
                     } else {
-                        $this->util->reduzEstoque($product->id, __convert_value_bd($request->quantidade[$i]), $variacao_id, $item->local_id);
+                        $this->util->reduzEstoque($product->id, __convert_value_bd($request->quantidade[$i]), $variacao_id, $item->local_id, $item->deposito_id);
                     }
                 }
             }
@@ -1395,9 +1416,9 @@ public function destroy($id)
             foreach ($item->itens as $i) {
                 if ($i->produto->gerenciar_estoque) {
                     if ($item->tpNF == 1) {
-                        $this->util->incrementaEstoque($i->produto_id, $i->quantidade, $i->variacao_id, $item->local_id);
+                        $this->util->incrementaEstoque($i->produto_id, $i->quantidade, $i->variacao_id, $item->local_id, $item->deposito_id);
                     }else{
-                        $this->util->reduzEstoque($i->produto_id, $i->quantidade, $i->variacao_id, $item->local_id);
+                        $this->util->reduzEstoque($i->produto_id, $i->quantidade, $i->variacao_id, $item->local_id, $item->deposito_id);
                     }
                 }
 

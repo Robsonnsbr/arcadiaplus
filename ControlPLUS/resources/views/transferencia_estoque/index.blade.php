@@ -45,8 +45,8 @@
                             <thead class="table-dark">
                                 <tr>
                                     <th>#</th>
-                                    <th>Local de saída</th>
-                                    <th>Local de entrada</th>
+                                    <th>Depósito de saída</th>
+                                    <th>Depósito de entrada</th>
                                     <th>Data</th>
                                     <th>Usuário</th>
                                     <th>Observação</th>
@@ -58,8 +58,8 @@
                                 @forelse($data as $item)
                                 <tr>
                                     <td data-label="#"> {{ $item->codigo_transacao }}</td>
-                                    <td data-label="Local de saída">{{ $item->local_saida->descricao }}</td>
-                                    <td data-label="Local de entrada">{{ $item->local_entrada->descricao }}</td>
+                                    <td data-label="Depósito de saída">{{ optional($item->deposito_saida)->nome ?? optional($item->local_saida)->descricao }}</td>
+                                    <td data-label="Depósito de entrada">{{ optional($item->deposito_entrada)->nome ?? optional($item->local_entrada)->descricao }}</td>
                                     <td data-label="Data">{{ __data_pt($item->created_at) }}</td>
                                     <td data-label="Usuário">{{ $item->usuario->name }}</td>
                                     <td data-label="Observação">{{ $item->observacao }}</td>
@@ -100,5 +100,3 @@
     </div>
 </div>
 @endsection
-
-

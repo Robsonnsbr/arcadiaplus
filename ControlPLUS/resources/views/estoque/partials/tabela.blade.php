@@ -14,7 +14,7 @@
                 <th>Valor de venda</th>
                 <th>Unidade</th>
                 @if(__countLocalAtivo() > 1)
-                <th>Local</th>
+                <th>Depósito</th>
                 @endif
                 <th>Ações</th>
             </tr>
@@ -57,7 +57,7 @@
                 </td>
                 <td data-label="Unidade">{{ $item->produto->unidade }}</td>
                 @if(__countLocalAtivo() > 1)
-                <td data-label="Local">{{ $item->local ? $item->local->descricao : '--' }}</td>
+                <td data-label="Depósito">{{ $item->local ? $item->local->descricao : '--' }}</td>
                 @endif
                 <td>
                     <form style="width: 240px;" action="{{ route('estoque.destroy', $item->id) }}" method="post" id="form-{{$item->id}}">

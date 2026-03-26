@@ -1,9 +1,9 @@
 <table>
     <thead>
-        @if($local)
+        @if($deposito)
         <tr>
-            <th>LOCAL</th>
-            <th>{{ $local->nome }}</th>
+            <th>DEPÓSITO</th>
+            <th>{{ $deposito->nome }}@if($deposito->localizacao) ({{ $deposito->localizacao->descricao }})@endif</th>
         </tr>
         @endif
         <tr>

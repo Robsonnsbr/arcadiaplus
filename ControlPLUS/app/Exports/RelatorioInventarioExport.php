@@ -7,14 +7,14 @@ use Maatwebsite\Excel\Concerns\FromView;
 class RelatorioInventarioExport implements FromView
 {
     protected $data;
-    protected $local;
+    protected $deposito;
     protected $empresa;
     protected $livro;
 
-    public function __construct($data, $local, $empresa, $livro)
+    public function __construct($data, $deposito, $empresa, $livro)
     {
         $this->data = $data;
-        $this->local = $local;
+        $this->deposito = $deposito;
         $this->empresa = $empresa;
         $this->livro = $livro;
     }
@@ -23,7 +23,7 @@ class RelatorioInventarioExport implements FromView
     {
         return view('exports.relatorio_inventario', [
             'data' => $this->data,
-            'local' => $this->local,
+            'deposito' => $this->deposito,
             'empresa' => $this->empresa,
             'livro' => $this->livro
         ]);

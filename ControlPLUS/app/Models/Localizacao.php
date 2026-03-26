@@ -45,6 +45,11 @@ class Localizacao extends Model
         return $this->hasMany(UsuarioLocalizacao::class, 'localizacao_id');
     }
 
+    public function depositos()
+    {
+        return $this->hasMany(Deposito::class, 'local_id');
+    }
+
     public function getEnderecoAttribute()
     {
         return "$this->rua, $this->numero - $this->bairro";
