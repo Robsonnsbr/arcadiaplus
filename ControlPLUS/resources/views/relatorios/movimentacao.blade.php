@@ -8,64 +8,39 @@
 <p>Data final de filtro: <strong>{{ __data_pt($end_date , 0) }}</strong></p>
 @endif
 
-<table class="table-sm table-borderless" style="border-bottom: 1px solid rgb(206, 206, 206); margin-bottom:10px;  width: 100%;">
+<table class="table-sm table-borderless" style="border-bottom: 1px solid rgb(206, 206, 206); margin-bottom:10px; width: 100%;">
 	<thead>
 		<tr>
-			<th style="width: 250px;">Produto</th>
-			<th>Qtd. vendida</th>
-			<th>Qtd. comprada</th>
-			<th>Vl. venda</th>
-			<th>Vl. compra</th>
-			<th>Sub. venda</th>
-			<th>Sub. compra</th>
-			@if(__countLocalAtivo() > 1)
-			<th>Local</th>
-			@endif
+			<th>Tipo</th>
+			<th>Quantidade</th>
+			<th>Data</th>
+			<th>Movimentação</th>
+			<th style="width: 280px;">Produto</th>
+			<th>Categoria</th>
+			<th>Código</th>
+			<th>Estoque Atual</th>
 		</tr>
 	</thead>
 	<tbody>
-		@php 
-		$somaQtdCompra = 0;
-		$somaQtdSaida = 0;
-		$somaValorCompra = 0;
-		$somaValorVenda = 0;
-		@endphp
-		@foreach($data as $key => $item)
-
-		@php 
-		$somaQtdCompra += $item['qtd_compra'];
-		$somaQtdSaida += $item['qtd_saida'];
-		$somaValorCompra += $item['subtotal_compra'];
-		$somaValorVenda += $item['subtotal_venda'];
-		@endphp
-
 		@if(sizeof($data) == 0)
 		<tr>
 			<td colspan="8">Nenhum registro</td>
 		</tr>
 		@endif
 
+		@foreach($data as $key => $item)
 		<tr class="@if($key%2 == 0) pure-table-odd @endif">
-			<td>{{ $item['nome_produto'] }}</td>
-			<td>{{ $item['qtd_saida'] }}</td>
-			<td>{{ $item['qtd_compra'] }}</td>
-			<td>R$ {{ __moeda($item['vl_venda']) }}</td>
-			<td>R$ {{ __moeda($item['vl_compra']) }}</td>
-			<td>R$ {{ __moeda($item['subtotal_venda']) }}</td>
-			<td>R$ {{ __moeda($item['subtotal_compra']) }}</td>
+			<td>{{ $item['tipo'] }}</td>
+			<td>{{ $item['quantidade'] }}</td>
+			<td>{{ __data_pt($item['data']) }}</td>
+			<td>{{ $item['movimentacao'] }}</td>
+			<td class="text-left">{{ $item['produto'] }}</td>
+			<td>{{ $item['categoria'] }}</td>
+			<td>{{ $item['codigo'] }}</td>
+			<td>{{ $item['estoque_atual'] }}</td>
 		</tr>
 		@endforeach
 	</tbody>
-	<tfoot>
-		<tr>
-			<td></td>
-			<td><label style="color: #49526B">{{ $somaQtdSaida }}</label></td>
-			<td><label style="color: #e8012d">{{ $somaQtdCompra }}</label></td>
-			<td colspan="2"></td>
-			<td><label style="color: #49526B">R$ {{ __moeda($somaValorVenda) }}</label></td>
-			<td><label style="color: #e8012d">R$ {{ __moeda($somaValorCompra) }}</label></td>
-		</tr>
-	</tfoot>
 </table>
 
 @endsection

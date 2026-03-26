@@ -1330,26 +1330,6 @@
                                 ->id('produto2')
                                 !!}
                             </div>
-
-                            <div class="col-md-3 col-12">
-                                {!!Form::select('ordem', 'Ordem', ['' => 'Alfabética', 'mais_vendidos' => 'Mais Vendidos', 'mais_comprados' => 'Mais Comprados', 'menos_vendidos' => 'Menos Vendidos', 'menos_comprados' => 'Menos Comprados'])
-                                ->attrs(['class' => 'form-select'])
-                                !!}
-                            </div>
-
-                            @if(__countLocalAtivo() > 1)
-                            <div class="col-md-5 col-12">
-                                {!!Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())
-                                ->attrs(['class' => 'form-select'])
-                                !!}
-                            </div>
-                            @endif
-
-                            <div class="col-md-4 col-12">
-                                {!!Form::select('fiscal', 'Fiscal', ['' => 'Selecione', -1 => 'Não', 1 => 'Sim'])
-                                ->attrs(['class' => 'form-select'])
-                                !!}
-                            </div>
                             <div class="col-md-4 col-12">
                                 {!!Form::select('esportar_excel', 'Exportar excel',
                                 ['-1' => 'Não', '1' => 'Sim'])

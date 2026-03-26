@@ -2282,155 +2282,65 @@ class RelatorioController extends Controller
     }
 
     public function movimentacao(Request $request){
-        $locais = __getLocaisAtivoUsuario();
-        $locais = $locais->pluck(['id']);
-
         $start_date = $request->start_date;
         $end_date = $request->end_date;
-        $local_id = $request->local_id;
         $marca_id = $request->marca_id;
         $categoria_id = $request->categoria_id;
         $produto_id = $request->produto_id;
-        $ordem = $request->ordem;
-        $fiscal = $request->fiscal;
         $esportar_excel = $request->esportar_excel;
-
-        $produtos = Produto::where('status', 1)->where('empresa_id', $request->empresa_id)
-        ->when(!empty($categoria_id), function ($query) use ($categoria_id) {
-            return $query->where(function($t) use ($categoria_id) 
-            {
-                $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
+        $movimentacoes = MovimentacaoProduto::with([
+            'produto.categoria',
+            'produtoVariacao'
+        ])
+        ->when(!empty($start_date), function ($query) use ($start_date) {
+            return $query->whereDate('movimentacao_produtos.created_at', '>=', $start_date);
+        })
+        ->when(!empty($end_date), function ($query) use ($end_date) {
+            return $query->whereDate('movimentacao_produtos.created_at', '<=', $end_date);
+        })
+        ->whereHas('produto', function ($query) use ($request, $produto_id, $marca_id, $categoria_id) {
+            $query->where('empresa_id', $request->empresa_id)
+            ->when(!empty($produto_id), function ($subQuery) use ($produto_id) {
+                return $subQuery->where('produtos.id', $produto_id);
+            })
+            ->when(!empty($marca_id), function ($subQuery) use ($marca_id) {
+                return $subQuery->where('marca_id', $marca_id);
+            })
+            ->when(!empty($categoria_id), function ($subQuery) use ($categoria_id) {
+                return $subQuery->where(function($t) use ($categoria_id) {
+                    $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
+                });
             });
         })
-        ->select('produtos.*')
-        ->orderBy('nome')
-        ->when(!empty($produto_id), function ($query) use ($produto_id) {
-            return $query->where('produtos.id', $produto_id);
-        })
-        ->when(!empty($marca_id), function ($query) use ($marca_id) {
-            return $query->where('marca_id', $marca_id);
-        })
-        ->when(!empty($local_id), function ($query) use ($local_id) {
-            return $query->whereExists(function ($sub) use ($local_id) {
-                $sub->selectRaw('1')
-                ->from('estoques')
-                ->whereColumn('estoques.produto_id', 'produtos.id')
-                ->where('estoques.local_id', $local_id);
-            });
-        })
-        ->when(!$local_id, function ($query) use ($locais) {
-            return $query->whereExists(function ($sub) use ($locais) {
-                $sub->selectRaw('1')
-                ->from('estoques')
-                ->whereColumn('estoques.produto_id', 'produtos.id')
-                ->whereIn('estoques.local_id', $locais);
-            });
-        })
-        // ->limit(200)
+        ->orderBy('movimentacao_produtos.created_at', 'desc')
         ->get();
 
-        $data = [];
-        foreach($produtos as $p){
-            $countNfeSaida = ItemNfe::select('item_nfves.*')
-            ->join('nves', 'nves.id', '=', 'item_nves.nfe_id')
-            ->where('nves.tpNF', 1)->where('item_nves.produto_id', $p->id)
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('nves.created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date,) {
-                return $query->whereDate('nves.created_at', '<=', $end_date);
-            })
-            ->when(!empty($fiscal), function ($query) use ($fiscal) {
-                if($fiscal == 1){
-                    return $query->where('nves.estado', 'aprovado');
-                }else{
-                    return $query->where('nves.estado', '!=', 'aprovado');
-                }
-            })
-            ->sum('item_nves.quantidade');
-
-            $countNfce = ItemNfce::select('item_nfces.*')
-            ->join('nfces', 'nfces.id', '=', 'item_nfces.nfce_id')
-            ->where('item_nfces.produto_id', $p->id)
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('nfces.created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date,) {
-                return $query->whereDate('nfces.created_at', '<=', $end_date);
-            })
-            ->when(!empty($fiscal), function ($query) use ($fiscal) {
-                if($fiscal == 1){
-                    return $query->where('nfces.estado', 'aprovado');
-                }else{
-                    return $query->where('nfces.estado', '!=', 'aprovado');
-                }
-            })
-            ->sum('item_nfces.quantidade');
-
-            $countNfeEntrada = ItemNfe::select('item_nfves.*')
-            ->join('nves', 'nves.id', '=', 'item_nves.nfe_id')
-            ->where('nves.tpNF', 0)->where('item_nves.produto_id', $p->id)
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('nves.created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date,) {
-                return $query->whereDate('nves.created_at', '<=', $end_date);
-            })
-            ->when(!empty($fiscal), function ($query) use ($fiscal) {
-                if($fiscal == 1){
-                    return $query->where('nves.estado', 'aprovado');
-                }else{
-                    return $query->where('nves.estado', '!=', 'aprovado');
-                }
-            })
-            ->sum('item_nves.quantidade');
-
-            $descricao = $p->nome;
-
-            $itemParaNome = ItemNfe::where('produto_id', $p->id)
-            ->first();
-
-            if($itemParaNome){
-                $descricao = $itemParaNome->descricao();
+        $data = $movimentacoes
+        ->map(function ($item) {
+            $nomeProduto = optional($item->produto)->nome ?? '--';
+            if($item->produtoVariacao && $item->produtoVariacao->descricao){
+                $nomeProduto .= ' ' . $item->produtoVariacao->descricao;
             }
 
-            if($countNfeEntrada > 0 || ($countNfce + $countNfeSaida) > 0){
-                $data[] = [
-                    'nome_produto' => $descricao,
-                    'qtd_compra' => $countNfeEntrada,
-                    'qtd_saida' => $countNfce + $countNfeSaida,
-                    'vl_venda' => $p->valor_unitario,
-                    'vl_compra' => $p->valor_compra,
-                    'subtotal_venda' => $p->valor_unitario * ($countNfce + $countNfeSaida),
-                    'subtotal_compra' => $p->valor_compra * $countNfeEntrada,
-                ];
-            }
-        }
-
-        if($ordem){
-            usort($data, function($a, $b) use($ordem){
-                if($ordem == 'mais_vendidos'){
-                    return $a['qtd_saida'] < $b['qtd_saida'] ? 1 : -1;
-                }
-                if($ordem == 'mais_comprados'){
-                    return $a['qtd_compra'] < $b['qtd_compra'] ? 1 : -1;
-                }
-
-                if($ordem == 'menos_vendidos'){
-                    return $a['qtd_saida'] > $b['qtd_saida'] ? 1 : -1;
-                }
-                if($ordem == 'menos_comprados'){
-                    return $a['qtd_compra'] > $b['qtd_compra'] ? 1 : -1;
-                }
-            });
-        }
+            return [
+                'tipo' => $item->tipo == 'incremento' ? 'Entrada' : 'Saída',
+                'quantidade' => $item->quantidade,
+                'data' => $item->created_at,
+                'movimentacao' => $this->movimentacaoTipoTransacaoLabel($item->tipo_transacao),
+                'produto' => $nomeProduto,
+                'categoria' => optional(optional($item->produto)->categoria)->nome ?? '--',
+                'codigo' => $item->codigo_transacao,
+                'estoque_atual' => $item->estoque_atual,
+            ];
+        })
+        ->values()
+        ->all();
 
         if($esportar_excel == 1){
             $relatorioEx = new RelatorioMovimentacaoExport($data, $start_date, $end_date);
             return Excel::download($relatorioEx, 'relatorio_movimentacao.xlsx');
         }
 
-        // dd($data);
         $p = view('relatorios/movimentacao')
         ->with('data', $data)
         ->with('start_date', $start_date)
@@ -2445,6 +2355,20 @@ class RelatorioController extends Controller
         $domPdf->setPaper("A4", "landscape");
         $domPdf->render();
         $domPdf->stream("Movimentação.pdf", array("Attachment" => false));
+    }
+
+    private function movimentacaoTipoTransacaoLabel($tipoTransacao)
+    {
+        if($tipoTransacao == 'venda_nfe'){
+            return 'Venda NF-e';
+        }
+        if($tipoTransacao == 'venda_nfce'){
+            return 'Venda NFC-e';
+        }
+        if($tipoTransacao == 'compra'){
+            return 'Compra';
+        }
+        return 'Ajuste';
     }
 
     public function ordemServico(Request $request)

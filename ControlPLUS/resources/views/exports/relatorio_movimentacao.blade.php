@@ -1,10 +1,3 @@
-@php
-$somaQtdCompra = 0;
-$somaQtdSaida = 0;
-$somaValorCompra = 0;
-$somaValorVenda = 0;
-@endphp
-
 <table>
     <thead>
         @if($start_date)
@@ -29,52 +22,34 @@ $somaValorVenda = 0;
 <table>
     <thead>
         <tr>
+            <th>TIPO</th>
+            <th>QUANTIDADE</th>
+            <th>DATA</th>
+            <th>MOVIMENTAÇÃO</th>
             <th>PRODUTO</th>
-            <th>QTD. VENDIDA</th>
-            <th>QTD. COMPRADA</th>
-            <th>VL. VENDA</th>
-            <th>VL. COMPRA</th>
-            <th>SUB. VENDA</th>
-            <th>SUB. COMPRA</th>
-            @if(__countLocalAtivo() > 1)
-            <th>LOCAL</th>
-            @endif
+            <th>CATEGORIA</th>
+            <th>CÓDIGO</th>
+            <th>ESTOQUE ATUAL</th>
         </tr>
     </thead>
     <tbody>
-        @foreach($data as $item)
-        @php
-        $somaQtdCompra += $item['qtd_compra'];
-        $somaQtdSaida += $item['qtd_saida'];
-        $somaValorCompra += $item['subtotal_compra'];
-        $somaValorVenda += $item['subtotal_venda'];
-        @endphp
+        @if(sizeof($data) == 0)
         <tr>
-            <td>{{ $item['nome_produto'] }}</td>
-            <td>{{ $item['qtd_saida'] }}</td>
-            <td>{{ $item['qtd_compra'] }}</td>
-            <td>{{ __moeda($item['vl_venda']) }}</td>
-            <td>{{ __moeda($item['vl_compra']) }}</td>
-            <td>{{ __moeda($item['subtotal_venda']) }}</td>
-            <td>{{ __moeda($item['subtotal_compra']) }}</td>
-            @if(__countLocalAtivo() > 1)
-            <td></td>
-            @endif
+            <td colspan="8">Nenhum registro</td>
+        </tr>
+        @endif
+
+        @foreach($data as $item)
+        <tr>
+            <td>{{ $item['tipo'] }}</td>
+            <td>{{ $item['quantidade'] }}</td>
+            <td>{{ __data_pt($item['data']) }}</td>
+            <td>{{ $item['movimentacao'] }}</td>
+            <td>{{ $item['produto'] }}</td>
+            <td>{{ $item['categoria'] }}</td>
+            <td>{{ $item['codigo'] }}</td>
+            <td>{{ $item['estoque_atual'] }}</td>
         </tr>
         @endforeach
     </tbody>
-    <tfoot>
-        <tr>
-            <td>TOTAIS</td>
-            <td>{{ $somaQtdSaida }}</td>
-            <td>{{ $somaQtdCompra }}</td>
-            <td></td>
-            <td></td>
-            <td>{{ __moeda($somaValorVenda) }}</td>
-            <td>{{ __moeda($somaValorCompra) }}</td>
-            @if(__countLocalAtivo() > 1)
-            <td></td>
-            @endif
-        </tr>
-    </tfoot>
 </table>
