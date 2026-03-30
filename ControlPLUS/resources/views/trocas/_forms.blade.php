@@ -22,7 +22,7 @@
 <input type="hidden" id="abertura" value="{{ $abertura }}" name="">
 <input type="hidden" id="valor_total_old" value="{{ $item->total }}">
 <input type="hidden" id="venda_id" value="{{ isset($item) ? $item->id : '' }}">
-<input type="hidden" id="tipo" value="{{ isset($item->troco) ? 'nfce' : 'nfe' }}">
+<input type="hidden" id="tipo" name="tipo" value="{{ isset($item->troco) ? 'nfce' : 'nfe' }}">
 <input type="hidden" id="lista_id" value="" name="lista_id">
 <input type="hidden" id="local_id" value="{{ $caixa->localizacao->id }}">
 

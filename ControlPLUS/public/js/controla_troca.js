@@ -86,6 +86,7 @@ $("#form-troca").on("submit", function (e) {
 	json.empresa_id = $('#empresa_id').val()
 	json.usuario_id = $('#usuario_id').val()
 	json.venda_id = $('#venda_id').val()
+	json.tipo = $('#tipo').val()
 
 	console.log(json)
 
@@ -110,6 +111,11 @@ $("#form-troca").on("submit", function (e) {
 		});
 
 	}).fail((err) => {
+		let message = err.responseJSON || err.responseText || "Não foi possível finalizar a troca."
+		if(typeof message !== "string"){
+			message = JSON.stringify(message)
+		}
+		swal("Erro", message, "error")
 		console.log(err)
 	})
 })

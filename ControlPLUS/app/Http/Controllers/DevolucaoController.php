@@ -24,7 +24,7 @@ class DevolucaoController extends Controller
         $this->middleware('permission:devolucao_edit', ['only' => ['edit', 'update']]);
         $this->middleware('permission:devolucao_view', ['only' => ['show', 'index']]);
         $this->middleware('permission:devolucao_delete', ['only' => ['destroy']]);
-    }
+        }
 
     private function setNumeroSequencial(){
         $docs = Nfe::where('empresa_id', request()->empresa_id)
@@ -200,31 +200,31 @@ class DevolucaoController extends Controller
                     $prod->vFCPST = '';
                     $prod->vICMSSubstituto = '';
                     if(isset($arr[0]->modBCST)){
-                        $prod->modBCST = (int)$arr[0]->modBCST;  
+                        $prod->modBCST = (int)$arr[0]->modBCST;
                     }
                     if(isset($arr[0]->pMVAST)){
-                        $prod->pMVAST = (float)$arr[0]->pMVAST;  
+                        $prod->pMVAST = (float)$arr[0]->pMVAST;
                     }
                     if(isset($arr[0]->vBCST)){
-                        $prod->vBCST = (float)$arr[0]->vBCST;  
+                        $prod->vBCST = (float)$arr[0]->vBCST;
                     }
                     if(isset($arr[0]->pICMSST)){
-                        $prod->pICMSST = (float)$arr[0]->pICMSST;  
+                        $prod->pICMSST = (float)$arr[0]->pICMSST;
                     }
                     if(isset($arr[0]->vICMSST)){
-                        $prod->vICMSST = (float)$arr[0]->vICMSST;  
+                        $prod->vICMSST = (float)$arr[0]->vICMSST;
                     }
                     if(isset($arr[0]->vBCFCPST)){
-                        $prod->vBCFCPST = (float)$arr[0]->vBCFCPST;  
+                        $prod->vBCFCPST = (float)$arr[0]->vBCFCPST;
                     }
                     if(isset($arr[0]->pFCPST)){
-                        $prod->pFCPST = (float)$arr[0]->pFCPST;  
+                        $prod->pFCPST = (float)$arr[0]->pFCPST;
                     }
                     if(isset($arr[0]->vFCPST)){
-                        $prod->vFCPST = (float)$arr[0]->vFCPST;  
+                        $prod->vFCPST = (float)$arr[0]->vFCPST;
                     }
                     if(isset($arr[0]->vICMSSubstituto)){
-                        $prod->vICMSSubstituto = (float)$arr[0]->vICMSSubstituto;  
+                        $prod->vICMSSubstituto = (float)$arr[0]->vICMSSubstituto;
                     }
 
                 }
@@ -385,7 +385,7 @@ class DevolucaoController extends Controller
             }
             // dd($transporta);
 
-            return view('devolucao.import_xml', compact('dadosXml', 'transportadoras', 'cidades', 'naturezas', 'fornecedor', 
+            return view('devolucao.import_xml', compact('dadosXml', 'transportadoras', 'cidades', 'naturezas', 'fornecedor',
                 'numeroNfe', 'caixa', 'transporta'));
         } else {
             session()->flash('flash_error', 'XML inválido!');
@@ -645,7 +645,7 @@ private function cadastrarProduto($request, $i, $local_id)
     ]);
 
     ProdutoLocalizacao::updateOrCreate([
-        'produto_id' => $p->id, 
+        'produto_id' => $p->id,
         'localizacao_id' => $local_id
     ]);
     return $p;
@@ -751,7 +751,7 @@ public function update(Request $request, $id)
                 ]);
 
             }
-            
+
             if($tiposPagamento && sizeof($tiposPagamento) > 0){
                 $nfe->fatura()->delete();
 

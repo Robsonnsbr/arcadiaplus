@@ -35,7 +35,8 @@ class TrocaController extends Controller
         $end_date = $request->get('end_date');
         $cliente_id = $request->get('cliente_id');
 
-        $data = Troca::where('trocas.empresa_id', $request->empresa_id)
+        $data = Troca::with(['nfce.cliente', 'nfe.cliente'])
+        ->where('trocas.empresa_id', $request->empresa_id)
         ->select('trocas.*')
         ->leftJoin('nfces', 'nfces.id', '=', 'trocas.nfce_id')
         ->leftJoin('nves', 'nves.id', '=', 'trocas.nfe_id')
