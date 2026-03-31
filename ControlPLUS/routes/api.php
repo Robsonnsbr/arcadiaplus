@@ -99,7 +99,6 @@ Route::middleware(['validNfce'])->group(function () {
 
 Route::post('/nfce/gerarVenda', 'NFCeController@gerarVenda');
 Route::post('/nfce/gerarNfce', 'NFCeController@gerarNfce');
-
 Route::middleware(['validaCTe'])->group(function () {
     Route::group(['prefix' => 'cte'], function () {
         Route::post('/emitir', 'CTeController@emitir');

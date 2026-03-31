@@ -39,6 +39,7 @@ use App\Exports\RelatorioCteExport;
 use App\Exports\RelatorioMdfeExport;
 use App\Exports\RelatorioContaPagarExport;
 use App\Exports\RelatorioContaReceberExport;
+use App\Exports\RelatorioPedidosFaturadosExport;
 use App\Exports\RelatorioComissaoExport;
 use App\Exports\RelatorioComprasExport;
 use App\Exports\RelatorioDespesaFretesExport;
@@ -786,6 +787,71 @@ class RelatorioController extends Controller
         $domPdf->setPaper("A4", "landscape");
         $domPdf->render();
         $domPdf->stream("Relatório de Contas a Receber.pdf", array("Attachment" => false));
+    }
+
+    public function pedidosFaturados(Request $request)
+    {
+        $start_date = $request->start_date;
+        $end_date = $request->end_date;
+        $status = $request->status;
+        $cliente_id = $request->cliente;
+        $esportar_excel = $request->esportar_excel;
+
+        $data = DB::table('conta_recebers as cr')
+        ->join('clientes as c', 'c.id', '=', 'cr.cliente_id')
+        ->leftJoin('cidades as ci', 'ci.id', '=', 'c.cidade_id')
+        ->leftJoin('nves as nv', 'nv.id', '=', 'cr.nfe_id')
+        ->where('cr.empresa_id', $request->empresa_id)
+        ->whereNotNull('cr.cliente_id')
+        ->when(!empty($start_date), function ($query) use ($start_date) {
+            return $query->whereDate('cr.data_vencimento', '>=', $start_date);
+        })
+        ->when(!empty($end_date), function ($query) use ($end_date) {
+            return $query->whereDate('cr.data_vencimento', '<=', $end_date);
+        })
+        ->when($cliente_id, function ($query) use ($cliente_id) {
+            return $query->where('cr.cliente_id', $cliente_id);
+        })
+        ->when(!empty($status), function ($query) use ($status) {
+            if ($status == -1) {
+                return $query->whereRaw('COALESCE(cr.valor_recebido, 0) < cr.valor_integral');
+            }
+            return $query->whereRaw('COALESCE(cr.valor_recebido, 0) >= cr.valor_integral');
+        })
+        ->select([
+            'cr.id as codigo',
+            'c.razao_social as cliente',
+            DB::raw("COALESCE(ci.nome, '') as cidade"),
+            DB::raw("COALESCE(ci.uf, '') as estado"),
+            'nv.id as numero_nfe',
+            'nv.created_at as data_venda',
+            'cr.valor_integral as valor_previsto',
+            DB::raw('COALESCE(cr.valor_recebido, 0) as valor_recebido'),
+            DB::raw('GREATEST(cr.valor_integral - COALESCE(cr.valor_recebido, 0), 0) as valor_a_receber'),
+            'cr.data_vencimento',
+            'cr.data_recebimento as data_pagamento',
+            DB::raw("CASE WHEN COALESCE(cr.valor_recebido, 0) >= cr.valor_integral THEN 'Sim' ELSE 'Não' END as quitado"),
+        ])
+        ->orderBy('cr.data_vencimento', 'desc')
+        ->orderBy('cr.id', 'desc')
+        ->get();
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioPedidosFaturadosExport($data, $start_date, $end_date, $status);
+            return Excel::download($relatorioEx, 'relatorio_pedidos_faturados.xlsx');
+        }
+
+        $p = view('relatorios/pedidos_faturados', compact('data', 'start_date', 'end_date', 'status'))
+        ->with('title', 'Relatório de Pedidos Faturados (Contas a Receber)');
+
+        $domPdf = new Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($p);
+
+        $pdf = ob_get_clean();
+
+        $domPdf->setPaper("A4", "landscape");
+        $domPdf->render();
+        $domPdf->stream("Relatório de Pedidos Faturados.pdf", array("Attachment" => false));
     }
 
     public function comissao(Request $request)

@@ -1126,6 +1126,7 @@ Route::middleware(['verificaEmpresa', 'validaPlano', 'validaContrato'])->group(f
 
     Route::group(['prefix' => 'relatorios'], function () {
         Route::get('/', 'RelatorioController@index')->name('relatorios.index');
+        Route::get('relatorio-pedidos-faturados', 'RelatorioController@pedidosFaturados')->name('relatorios.pedidos-faturados');
         Route::get('relatorio-produtos', 'RelatorioController@produtos')->name('relatorios.produtos');
         Route::get('relatorio-clientes', 'RelatorioController@clientes')->name('relatorios.clientes');
         Route::get('relatorio-fornecedores', 'RelatorioController@fornecedores')->name('relatorios.fornecedores');
