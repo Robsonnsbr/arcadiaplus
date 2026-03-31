@@ -262,7 +262,7 @@ class RelatorioController extends Controller
             }
         })
         ->when(!empty($categoria_id), function ($query) use ($categoria_id) {
-            return $query->where(function($t) use ($categoria_id) 
+            return $query->where(function($t) use ($categoria_id)
             {
                 $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
             });
@@ -849,7 +849,7 @@ class RelatorioController extends Controller
         }
 
         $p = view('relatorios/pedidos_faturados', compact('data', 'start_date', 'end_date', 'status'))
-        ->with('title', 'Relatório de Pedidos Faturados (Contas a Receber)');
+        ->with('title', 'Relatório de Pedidos Faturados');
 
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
@@ -1277,7 +1277,7 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
         $locais = __getLocaisAtivoUsuario();
         $locais = $locais->pluck(['id']);
-        
+
         if ($data_final && $data_final) {
             $data_inicial = $this->parseDate($data_inicial);
             $data_final = $this->parseDate($data_final);
@@ -1553,7 +1553,7 @@ class RelatorioController extends Controller
         for($aux = 0; $aux < $dias; $aux++){
             $itensNfe = ItemNfe::
             select(\DB::raw('sum(sub_total) as subtotal, sum(quantidade) as soma_quantidade, item_nves.produto_id as produto_id, avg(item_nves.valor_unitario) as media, item_nves.valor_unitario as valor_unitario'))
-            ->whereBetween('item_nves.created_at', 
+            ->whereBetween('item_nves.created_at',
                 [
                     $dataAtual . " 00:00:00",
                     $dataAtual . " 23:59:59"
@@ -1565,7 +1565,7 @@ class RelatorioController extends Controller
             ->where('produtos.empresa_id', $request->empresa_id)
             ->when(!empty($categoria_id), function ($query) use ($categoria_id) {
                 return $query->join('categoria_produtos', 'categoria_produtos.id', '=', 'produtos.categoria_id')
-                ->where(function($t) use ($categoria_id) 
+                ->where(function($t) use ($categoria_id)
                 {
                     $t->where('produtos.categoria_id', $categoria_id)->orWhere('produtos.sub_categoria_id', $categoria_id);
                 });
@@ -1589,7 +1589,7 @@ class RelatorioController extends Controller
 
             $itensNfce = ItemNfce::
             select(\DB::raw('sum(sub_total) as subtotal, sum(quantidade) as soma_quantidade, item_nfces.produto_id as produto_id, avg(item_nfces.valor_unitario) as media, item_nfces.valor_unitario as valor_unitario'))
-            ->whereBetween('item_nfces.created_at', 
+            ->whereBetween('item_nfces.created_at',
                 [
                     $dataAtual . " 00:00:00",
                     $dataAtual . " 23:59:59"
@@ -1603,7 +1603,7 @@ class RelatorioController extends Controller
                 // return $query->join('categoria_produtos', 'categoria_produtos.id', '=', 'produtos.categoria_id')
                 // ->where('produtos.categoria_id', $categoria_id);
                 return $query->join('categoria_produtos', 'categoria_produtos.id', '=', 'produtos.categoria_id')
-                ->where(function($t) use ($categoria_id) 
+                ->where(function($t) use ($categoria_id)
                 {
                     $t->where('produtos.categoria_id', $categoria_id)->orWhere('produtos.sub_categoria_id', $categoria_id);
                 });
@@ -1679,12 +1679,12 @@ class RelatorioController extends Controller
                 ];
                 array_push($data, $temp);
             }else{
-                $data[$indiceAdicionado]['quantidade'] += $i->soma_quantidade; 
-                $data[$indiceAdicionado]['subtotal'] += $i->subtotal; 
-                $data[$indiceAdicionado]['media'] = ($data[$indiceAdicionado]['media'] + $i->media) / 2; 
+                $data[$indiceAdicionado]['quantidade'] += $i->soma_quantidade;
+                $data[$indiceAdicionado]['subtotal'] += $i->subtotal;
+                $data[$indiceAdicionado]['media'] = ($data[$indiceAdicionado]['media'] + $i->media) / 2;
             }
         }
-        
+
         usort($data, function($a, $b) use ($ordem){
             if($ordem == 'asc') return $a['quantidade'] > $b['quantidade'] ? 1 : 0;
             else if($ordem == 'desc') return $a['quantidade'] < $b['quantidade'] ? 1 : 0;
@@ -1738,7 +1738,7 @@ class RelatorioController extends Controller
             $produtosComEstoqueMinimo = Produto::where('produtos.empresa_id', $request->empresa_id)
             ->select('produtos.*')
             ->when($categoria_id, function ($query) use ($categoria_id) {
-                return $query->where(function($t) use ($categoria_id) 
+                return $query->where(function($t) use ($categoria_id)
                 {
                     $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
                 });
@@ -1755,7 +1755,7 @@ class RelatorioController extends Controller
 
             foreach($produtosComEstoqueMinimo as $produto){
                 $quantidadeProduto = (float)($quantidadePorProduto[$produto->id] ?? 0);
-                
+
                 if($quantidadeProduto <= $produto->estoque_minimo){
 
                     if(sizeof($produto->variacoes) == 0){
@@ -1796,7 +1796,7 @@ class RelatorioController extends Controller
             })
             ->join('produtos', 'produtos.id', '=', 'movimentacao_produtos.produto_id')
             ->when($categoria_id, function ($query) use ($categoria_id) {
-                return $query->where(function($t) use ($categoria_id) 
+                return $query->where(function($t) use ($categoria_id)
                 {
                     $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
                 });
@@ -1841,7 +1841,7 @@ class RelatorioController extends Controller
             $produtos = Produto::select('produtos.*')
             ->where('produtos.empresa_id', $request->empresa_id)
             ->when($categoria_id, function ($query) use ($categoria_id) {
-                return $query->where(function($t) use ($categoria_id) 
+                return $query->where(function($t) use ($categoria_id)
                 {
                     $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
                 });
@@ -1939,7 +1939,7 @@ class RelatorioController extends Controller
             $join->on('ultimas_movimentacoes.produto_id', '=', 'produtos.id');
         })
         ->when($categoria_id, function ($query) use ($categoria_id) {
-            return $query->where(function($t) use ($categoria_id) 
+            return $query->where(function($t) use ($categoria_id)
             {
                 $t->where('produtos.categoria_id', $categoria_id)->orWhere('produtos.sub_categoria_id', $categoria_id);
             });
@@ -2120,7 +2120,7 @@ class RelatorioController extends Controller
             return $query->whereDate('produtos.created_at', '<=', $end_date);
         })
         ->when(!empty($categoria_id), function ($query) use ($categoria_id) {
-            return $query->where(function($t) use ($categoria_id) 
+            return $query->where(function($t) use ($categoria_id)
             {
                 $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
             });
@@ -2230,7 +2230,7 @@ class RelatorioController extends Controller
                 $item->valor_unitario = $item->produto->valor_compra;
 
                 $item->quantidade = $item->estoque_atual;
-                $item->sub_total = $item->produto->valor_compra * $item->quantidade;                
+                $item->sub_total = $item->produto->valor_compra * $item->quantidade;
             }
         }
 
@@ -2262,7 +2262,7 @@ class RelatorioController extends Controller
         $deposito_id = $contexto['deposito_id'];
         $localIds = $contexto['local_ids'];
         $quantidadePorProduto = $this->estoqueQuantidadePorProdutoMap($deposito_id, $localIds);
-        
+
         $data = Produto::select('produtos.*')
         ->where('produtos.empresa_id', $request->empresa_id)
         ->where('gerenciar_estoque', 1)
@@ -2496,7 +2496,7 @@ class RelatorioController extends Controller
         $domPdf->setPaper("A4");
         $domPdf->render();
         $domPdf->stream("Entrega de Produtos.pdf", array("Attachment" => false));
-    }    
+    }
 
     private function agrupaArrayCurva($nfe, $nfce){
         $clientes = [];
@@ -2931,7 +2931,7 @@ class RelatorioController extends Controller
             return $query->whereDate('item_nves.created_at', '<=', $end_date);
         })
         ->when(!empty($categoria_id), function ($query) use ($categoria_id) {
-            return $query->where(function($t) use ($categoria_id) 
+            return $query->where(function($t) use ($categoria_id)
             {
                 $t->where('produtos.categoria_id', $categoria_id)->orWhere('produtos.sub_categoria_id', $categoria_id);
             });
@@ -2955,7 +2955,7 @@ class RelatorioController extends Controller
             return $query->whereDate('item_nfces.created_at', '<=', $end_date);
         })
         ->when(!empty($categoria_id), function ($query) use ($categoria_id) {
-            return $query->where(function($t) use ($categoria_id) 
+            return $query->where(function($t) use ($categoria_id)
             {
                 $t->where('produtos.categoria_id', $categoria_id)->orWhere('produtos.sub_categoria_id', $categoria_id);
             });

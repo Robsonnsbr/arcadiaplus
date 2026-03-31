@@ -496,7 +496,7 @@
                 <form method="get" action="{{ route('relatorios.pedidos-faturados') }}" target="_blank">
                     <div class="card">
                         <div class="card-header">
-                            <h5>Relatório de Pedidos Faturados (Contas a Receber)</h5>
+                            <h5>Relatório de Pedidos Faturados</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -548,11 +548,16 @@
                                     {!! Form::date('end_date', 'Data final') !!}
                                 </div>
                                 <div class="col-md-4 col-12">
-                                    {!! Form::select('caixa_id', 'Caixa', ['' => 'Selecione'] + $caixas->mapWithKeys(function ($item) {
-                                        return [
-                                            $item->id => $item->usuario && $item->usuario->email ? $item->usuario->email : 'Caixa ' . $item->id,
-                                        ];
-                                    })->all())->attrs([
+                                    {!! Form::select(
+                                        'caixa_id',
+                                        'Caixa',
+                                        ['' => 'Selecione'] +
+                                            $caixas->mapWithKeys(function ($item) {
+                                                    return [
+                                                        $item->id => $item->usuario && $item->usuario->email ? $item->usuario->email : 'Caixa ' . $item->id,
+                                                    ];
+                                                })->all(),
+                                    )->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
