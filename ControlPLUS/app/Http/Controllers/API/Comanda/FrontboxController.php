@@ -341,7 +341,8 @@ public function sangriaStore(Request $request){
             'caixa_id' => $caixa->id,
             'valor' => $valor,
             'observacao' => $request->observacao ?? '',
-            'conta_empresa_id' => null
+            'conta_empresa_id' => null,
+            'funcionario_id' => $funcionario->id
         ]);
 
         return response()->json("ok", 200);
@@ -373,7 +374,8 @@ public function suprimentoStore(Request $request){
             'valor' => $valor,
             'tipo_pagamento' => $request->tipo_pagamento,
             'observacao' => $request->observacao ?? '',
-            'conta_empresa_id' => null
+            'conta_empresa_id' => null,
+            'funcionario_id' => $funcionario->id
         ]);
 
         return response()->json("ok", 200);

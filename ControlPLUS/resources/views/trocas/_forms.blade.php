@@ -446,6 +446,9 @@
                                 <h4 class="h-valor_pagar text-muted">Valor à pagar: <strong class="text-success valor_pagar">R$ {{ __moeda(0) }}</strong></h4>
                                 <h4 class="h-valor_restante d-none">Valor restante: <strong class="text-warning valor_restante">R$ {{ __moeda(0) }}</strong></h4>
                                 <h5>Data da venda: <strong class="text-danger">{{ __data_pt($item->created_at) }}</strong></h5>
+                                <div class="mt-2">
+                                    {!! Form::text('observacao', 'Motivo/Observação')->attrs(['maxlength' => 200]) !!}
+                                </div>
                                 <!-- <h4>VALOR DE DIFERENÇA: <strong class="text-danger valor_diferenca">R$ {{ __moeda(0) }}</strong></h4> -->
                             </div>
                         </div> <!-- end card-body-->

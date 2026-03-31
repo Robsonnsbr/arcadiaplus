@@ -10,11 +10,16 @@ class SangriaCaixa extends Model
     use HasFactory;
 
     protected $fillable = [
-        'caixa_id', 'valor', 'observacao', 'conta_empresa_id'
+        'caixa_id', 'valor', 'observacao', 'conta_empresa_id', 'funcionario_id'
     ];
 
     public function contaEmpresa()
     {
         return $this->belongsTo(ContaEmpresa::class, 'conta_empresa_id');
+    }
+
+    public function funcionario()
+    {
+        return $this->belongsTo(Funcionario::class, 'funcionario_id');
     }
 }

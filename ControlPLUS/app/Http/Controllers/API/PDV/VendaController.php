@@ -735,16 +735,19 @@ public function storeSangria(Request $request){
             return response()->json("Sangria desabilitada nas configurações do PDV.", 403);
         }
 
+        $caixa = Caixa::findOrFail($request->caixa_id);
         $data = [
             'caixa_id' => $request->caixa_id,
             'valor' => __convert_value_bd($request->valor),
             'observacao' => $request->observacao ?? '',
             'conta_empresa_id' => $request->conta_id ?? null,
+            'funcionario_id' => $request->funcionario_id
+                ? Funcionario::where('empresa_id', $request->empresa_id)->where('id', $request->funcionario_id)->value('id')
+                : Funcionario::where('empresa_id', $request->empresa_id)->where('usuario_id', $caixa->usuario_id)->value('id'),
         ];
         $item = SangriaCaixa::create($data);
 
         if($request->conta_id){
-            $caixa = Caixa::findOrFail($request->caixa_id);
             $data = [
                 'conta_id' => $caixa->conta_empresa_id,
                 'descricao' => "Sangria de caixa",
@@ -779,17 +782,20 @@ public function storeSuprimento(Request $request){
             return response()->json("Suprimentos desabilitados nas configurações do PDV.", 403);
         }
 
+        $caixa = Caixa::findOrFail($request->caixa_id);
         $data = [
             'caixa_id' => $request->caixa_id,
             'valor' => __convert_value_bd($request->valor),
             'observacao' => $request->observacao ?? '',
             'conta_empresa_id' => $request->conta_id ?? null,
-            'tipo_pagamento' => $request->tipo_pagamento
+            'tipo_pagamento' => $request->tipo_pagamento,
+            'funcionario_id' => $request->funcionario_id
+                ? Funcionario::where('empresa_id', $request->empresa_id)->where('id', $request->funcionario_id)->value('id')
+                : Funcionario::where('empresa_id', $request->empresa_id)->where('usuario_id', $caixa->usuario_id)->value('id'),
         ];
         $item = SuprimentoCaixa::create($data);
 
         if($request->conta_id){
-            $caixa = Caixa::findOrFail($request->caixa_id);
             $data = [
                 'conta_id' => $caixa->conta_empresa_id,
                 'descricao' => "Suprimento de caixa",

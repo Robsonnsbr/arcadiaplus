@@ -12,6 +12,7 @@ use App\Models\Reserva;
 use App\Models\ComissaoVenda;
 use App\Models\ContaPagar;
 use App\Models\ContaReceber;
+use App\Models\Caixa;
 use App\Models\Fornecedor;
 use App\Models\Acomodacao;
 use App\Models\ItemNfe;
@@ -58,6 +59,7 @@ use App\Exports\RelatorioInventarioExport;
 use App\Exports\RelatorioTaxasExport;
 use App\Exports\RelatorioVendaProdutosExport;
 use App\Exports\RelatorioMovimentacaoExport;
+use App\Exports\RelatorioOperacoesPdvExport;
 use App\Exports\RelatorioVendasPdvExport;
 use App\Exports\RelatorioRegistroInventarioExport;
 use App\Exports\RelatorioEstoqueExport;
@@ -73,10 +75,14 @@ class RelatorioController extends Controller
         // ->where('categoria_id', null)
         ->where('status', 1)->get();
         $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)->get();
+        $caixas = Caixa::with('usuario:id,email')
+        ->where('empresa_id', request()->empresa_id)
+        ->orderBy('id', 'desc')
+        ->get();
         $tiposDespesaFrete = TipoDespesaFrete::where('empresa_id', request()->empresa_id)->get();
         $depositosRelatorioSelect = $this->depositosRelatorioSelectOptions();
 
-        return view('relatorios.index', compact('funcionarios', 'marcas', 'categorias', 'tiposDespesaFrete', 'depositosRelatorioSelect'));
+        return view('relatorios.index', compact('funcionarios', 'marcas', 'categorias', 'caixas', 'tiposDespesaFrete', 'depositosRelatorioSelect'));
     }
 
     private function relatorioLocalIds(): array
@@ -853,6 +859,125 @@ class RelatorioController extends Controller
         $domPdf->setPaper("A4", "landscape");
         $domPdf->render();
         $domPdf->stream("Relatório de Pedidos Faturados.pdf", array("Attachment" => false));
+    }
+
+    public function operacoesPdv(Request $request)
+    {
+        $start_date = $request->start_date;
+        $end_date = $request->end_date;
+        $caixa_id = $request->caixa_id;
+        $funcionario_id = $request->funcionario_id;
+        $esportar_excel = $request->esportar_excel;
+
+        $trocasQuery = DB::table('trocas as t')
+        ->leftJoin('caixas as c', 'c.id', '=', 't.caixa_id')
+        ->leftJoin('users as uc', 'uc.id', '=', 'c.usuario_id')
+        ->leftJoin('funcionarios as f', 'f.id', '=', 't.funcionario_id')
+        ->leftJoin('users as uf', 'uf.id', '=', 'f.usuario_id')
+        ->where('t.empresa_id', $request->empresa_id)
+        ->when(!empty($start_date), function ($query) use ($start_date) {
+            return $query->whereDate('t.created_at', '>=', $start_date);
+        })
+        ->when(!empty($end_date), function ($query) use ($end_date) {
+            return $query->whereDate('t.created_at', '<=', $end_date);
+        })
+        ->when(!empty($caixa_id), function ($query) use ($caixa_id) {
+            return $query->where('t.caixa_id', $caixa_id);
+        })
+        ->when(!empty($funcionario_id), function ($query) use ($funcionario_id) {
+            return $query->where('t.funcionario_id', $funcionario_id);
+        })
+        ->select([
+            't.created_at as data',
+            DB::raw("'Devolução de Mercadoria' as tipo_operacao"),
+            DB::raw("COALESCE(uc.email, CONCAT('Caixa ', c.id), '--') as caixa"),
+            DB::raw("COALESCE(uf.email, f.nome, '--') as realizador"),
+            DB::raw("CASE WHEN t.observacao IS NULL OR t.observacao = '' THEN '--' ELSE t.observacao END as motivo"),
+            't.valor_troca as valor',
+            't.id as operacao_id',
+        ]);
+
+        $sangriasQuery = DB::table('sangria_caixas as s')
+        ->join('caixas as c', 'c.id', '=', 's.caixa_id')
+        ->leftJoin('users as uc', 'uc.id', '=', 'c.usuario_id')
+        ->leftJoin('funcionarios as f', 'f.id', '=', 's.funcionario_id')
+        ->leftJoin('users as uf', 'uf.id', '=', 'f.usuario_id')
+        ->where('c.empresa_id', $request->empresa_id)
+        ->when(!empty($start_date), function ($query) use ($start_date) {
+            return $query->whereDate('s.created_at', '>=', $start_date);
+        })
+        ->when(!empty($end_date), function ($query) use ($end_date) {
+            return $query->whereDate('s.created_at', '<=', $end_date);
+        })
+        ->when(!empty($caixa_id), function ($query) use ($caixa_id) {
+            return $query->where('s.caixa_id', $caixa_id);
+        })
+        ->when(!empty($funcionario_id), function ($query) use ($funcionario_id) {
+            return $query->where('s.funcionario_id', $funcionario_id);
+        })
+        ->select([
+            's.created_at as data',
+            DB::raw("'Sangria' as tipo_operacao"),
+            DB::raw("COALESCE(uc.email, CONCAT('Caixa ', c.id), '--') as caixa"),
+            DB::raw("COALESCE(uf.email, f.nome, '--') as realizador"),
+            DB::raw("CASE WHEN s.observacao IS NULL OR s.observacao = '' THEN '--' ELSE s.observacao END as motivo"),
+            's.valor as valor',
+            's.id as operacao_id',
+        ]);
+
+        $suprimentosQuery = DB::table('suprimento_caixas as s')
+        ->join('caixas as c', 'c.id', '=', 's.caixa_id')
+        ->leftJoin('users as uc', 'uc.id', '=', 'c.usuario_id')
+        ->leftJoin('funcionarios as f', 'f.id', '=', 's.funcionario_id')
+        ->leftJoin('users as uf', 'uf.id', '=', 'f.usuario_id')
+        ->where('c.empresa_id', $request->empresa_id)
+        ->when(!empty($start_date), function ($query) use ($start_date) {
+            return $query->whereDate('s.created_at', '>=', $start_date);
+        })
+        ->when(!empty($end_date), function ($query) use ($end_date) {
+            return $query->whereDate('s.created_at', '<=', $end_date);
+        })
+        ->when(!empty($caixa_id), function ($query) use ($caixa_id) {
+            return $query->where('s.caixa_id', $caixa_id);
+        })
+        ->when(!empty($funcionario_id), function ($query) use ($funcionario_id) {
+            return $query->where('s.funcionario_id', $funcionario_id);
+        })
+        ->select([
+            's.created_at as data',
+            DB::raw("'Suprimento' as tipo_operacao"),
+            DB::raw("COALESCE(uc.email, CONCAT('Caixa ', c.id), '--') as caixa"),
+            DB::raw("COALESCE(uf.email, f.nome, '--') as realizador"),
+            DB::raw("CASE WHEN s.observacao IS NULL OR s.observacao = '' THEN '--' ELSE s.observacao END as motivo"),
+            's.valor as valor',
+            's.id as operacao_id',
+        ]);
+
+        $data = DB::query()
+        ->fromSub(
+            $trocasQuery->unionAll($sangriasQuery)->unionAll($suprimentosQuery),
+            'operacoes'
+        )
+        ->orderBy('data', 'desc')
+        ->orderBy('operacao_id', 'desc')
+        ->get();
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioOperacoesPdvExport($data, $start_date, $end_date);
+            return Excel::download($relatorioEx, 'relatorio_operacoes_pdv.xlsx');
+        }
+
+        $p = view('relatorios/operacoes_pdv', compact('data', 'start_date', 'end_date'))
+        ->with('title', 'Relatório de Operações do PDV');
+
+        $domPdf = new Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($p);
+
+        $pdf = ob_get_clean();
+
+        $domPdf->setPaper("A4", "landscape");
+        $domPdf->render();
+        $domPdf->stream("Relatório de Operações do PDV.pdf", array("Attachment" => false));
     }
 
     public function comissao(Request $request)

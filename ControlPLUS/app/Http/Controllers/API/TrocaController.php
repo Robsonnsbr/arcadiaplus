@@ -9,6 +9,7 @@ use App\Models\Nfe;
 use App\Models\Troca;
 use App\Models\Produto;
 use App\Models\Caixa;
+use App\Models\Funcionario;
 use App\Models\ItemTroca;
 use App\Models\Cliente;
 use App\Models\CreditoCliente;
@@ -47,16 +48,26 @@ class TrocaController extends Controller
                 $item->cliente_id = $request->cliente_id;
             }
 
-            $caixa = Caixa::where('usuario_id', $request->usuario_id)
+            $usuarioId = $request->usuario_id ?: (function_exists('get_id_user') ? get_id_user() : null);
+
+            $caixa = Caixa::where('usuario_id', $usuarioId)
             ->where('status', 1)
             ->first();
+
+            $funcionario = null;
+            if($usuarioId){
+                $funcionario = Funcionario::where('empresa_id', $request->empresa_id)
+                ->where('usuario_id', $usuarioId)
+                ->first();
+            }
 
             $troca = Troca::create([
                 'empresa_id' => $request->empresa_id,
                 'nfce_id' => $request->tipo == 'nfce' ? $item->id : null,
                 'nfe_id' => $request->tipo == 'nfe' ? $item->id : null,
-                'caixa_id' => $caixa->id,
-                'observacao' => '',
+                'caixa_id' => $caixa ? $caixa->id : null,
+                'funcionario_id' => $funcionario ? $funcionario->id : null,
+                'observacao' => $request->observacao ? $request->observacao : '',
                 'numero_sequencial' => $this->getLastNumero($request->empresa_id),
                 'codigo' => Str::random(8),
                 'valor_troca' => __convert_value_bd($request->valor_total),

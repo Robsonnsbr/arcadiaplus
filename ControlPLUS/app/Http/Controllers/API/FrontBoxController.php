@@ -2120,7 +2120,8 @@ public function storeSuprimento(Request $request){
                 'valor' => __convert_value_bd($request->valor),
                 'observacao' => $request->observacao ?? '',
                 'tipo_pagamento' => $request->tipo_pagamento,
-                'conta_empresa_id' => null
+                'conta_empresa_id' => null,
+                'funcionario_id' => Funcionario::where('empresa_id', $caixa->empresa_id)->where('usuario_id', $request->usuario_id)->value('id')
             ]);
             return response()->json($suprimento, 200);
         }else{
@@ -2146,7 +2147,8 @@ public function storeSangria(Request $request){
                 'caixa_id' => $caixa->id,
                 'valor' => __convert_value_bd($request->valor),
                 'observacao' => $request->observacao ?? '',
-                'conta_empresa_id' => null
+                'conta_empresa_id' => null,
+                'funcionario_id' => Funcionario::where('empresa_id', $caixa->empresa_id)->where('usuario_id', $request->usuario_id)->value('id')
             ]);
             return response()->json($sangria, 200);
         }else{

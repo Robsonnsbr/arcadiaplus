@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Caixa;
+use App\Models\Funcionario;
 use App\Models\Nfce;
 use App\Models\Nfe;
 use App\Models\Empresa;
@@ -41,7 +42,8 @@ class SangriaController extends Controller
                     'caixa_id' => $request->caixa_id,
                     'valor' => __convert_value_bd($request->valor),
                     'observacao' => $request->observacao ?? '',
-                    'conta_empresa_id' => $request->conta_empresa_sangria_id ?? null
+                    'conta_empresa_id' => $request->conta_empresa_sangria_id ?? null,
+                    'funcionario_id' => Funcionario::where('empresa_id', $caixa->empresa_id)->where('usuario_id', Auth::id())->value('id')
                 ]);
 
                 if($request->conta_empresa_sangria_id){

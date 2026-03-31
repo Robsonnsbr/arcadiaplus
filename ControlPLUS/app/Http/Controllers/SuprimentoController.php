@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Caixa;
+use App\Models\Funcionario;
 use App\Models\Nfce;
 use App\Models\Nfe;
 use App\Models\SangriaCaixa;
@@ -15,6 +16,7 @@ use PhpParser\Node\Expr\FuncCall;
 use Svg\Tag\Rect;
 use App\Utils\ContaEmpresaUtil;
 use Dompdf\Dompdf;
+use Illuminate\Support\Facades\Auth;
 
 class SuprimentoController extends Controller
 {
@@ -42,7 +44,8 @@ class SuprimentoController extends Controller
                 'valor' => __convert_value_bd($request->valor),
                 'observacao' => $request->observacao ?? '',
                 'tipo_pagamento' => $request->tipo_pagamento,
-                'conta_empresa_id' => $request->conta_empresa_suprimento_id ?? null
+                'conta_empresa_id' => $request->conta_empresa_suprimento_id ?? null,
+                'funcionario_id' => $caixa ? Funcionario::where('empresa_id', $caixa->empresa_id)->where('usuario_id', Auth::id())->value('id') : null
             ]);
 
             if($request->conta_empresa_sangria_id){

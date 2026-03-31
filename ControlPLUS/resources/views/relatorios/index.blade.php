@@ -533,6 +533,50 @@
                 </form>
             </div>
 
+            <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 14;">
+                <form method="get" action="{{ route('relatorios.operacoes-pdv') }}" target="_blank">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Relatório de Operações do PDV</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 col-12">
+                                    {!! Form::date('start_date', 'Data inicial') !!}
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    {!! Form::date('end_date', 'Data final') !!}
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    {!! Form::select('caixa_id', 'Caixa', ['' => 'Selecione'] + $caixas->mapWithKeys(function ($item) {
+                                        return [
+                                            $item->id => $item->usuario && $item->usuario->email ? $item->usuario->email : 'Caixa ' . $item->id,
+                                        ];
+                                    })->all())->attrs([
+                                        'class' => 'form-select',
+                                    ]) !!}
+                                </div>
+
+                                <div class="col-md-8 col-12 mt-2">
+                                    {!! Form::select('funcionario_id', 'Realizador')->attrs(['class' => 'form-select funcionario'])->id('funcionario-operacoes-pdv') !!}
+                                </div>
+
+                                <div class="col-md-4 col-12 mt-2">
+                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                        'class' => 'form-select',
+                                    ]) !!}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-dark w-100">
+                                <i class="ri-printer-line"></i> Gerar relatório
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
 
             {{--
         <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 13;">
