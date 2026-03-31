@@ -680,6 +680,42 @@
                 </form>
             </div>
 
+            <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 22;">
+                <form method="get" action="{{ route('relatorios.vendas-pdv') }}" target="_blank">
+                    <input type="hidden" name="empresa_id" value="{{ request()->empresa_id }}">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Relatório de Vendas PDV</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 col-12">
+                                    {!! Form::date('start_date', 'Data inicial') !!}
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    {!! Form::date('end_date', 'Data final') !!}
+                                </div>
+
+                                <div class="col-md-4 col-12">
+                                    {!! Form::select('funcionario_id', 'Vendedor')->attrs(['class' => 'form-select funcionario'])->id('funcionario-vendas-pdv') !!}
+                                </div>
+
+                                <div class="col-md-4 col-12 mt-2">
+                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                        'class' => 'form-select',
+                                    ]) !!}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-dark w-100">
+                                <i class="ri-printer-line"></i> Gerar relatório
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
             {{--
         <div class="col-12 col-md-6 collapse relatorios-fiscais" style="order: 54;">
             <form method="get" action="{{ route('relatorios.mdfe') }}" target="_blank">

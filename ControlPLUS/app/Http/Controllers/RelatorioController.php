@@ -58,6 +58,7 @@ use App\Exports\RelatorioInventarioExport;
 use App\Exports\RelatorioTaxasExport;
 use App\Exports\RelatorioVendaProdutosExport;
 use App\Exports\RelatorioMovimentacaoExport;
+use App\Exports\RelatorioVendasPdvExport;
 use App\Exports\RelatorioRegistroInventarioExport;
 use App\Exports\RelatorioEstoqueExport;
 use App\Exports\RelatorioVendasExport;
@@ -2498,6 +2499,88 @@ class RelatorioController extends Controller
             return 'Transferência de estoque';
         }
         return 'Ajuste';
+    }
+
+    public function vendasPdv(Request $request)
+    {
+        $start_date = $request->start_date ?? $request->data_inicio;
+        $end_date = $request->end_date ?? $request->data_fim;
+        $empresa_id = $request->empresa_id ?: request()->empresa_id;
+        $funcionario_id = $request->funcionario_id ?? $request->vendedor_id;
+        $esportar_excel = $request->esportar_excel;
+
+        $faturasSub = DB::table('fatura_nfces')
+        ->select(
+            'nfce_id',
+            DB::raw('SUM(valor) as valor_pago_fatura')
+        )
+        ->groupBy('nfce_id');
+
+        $tefSub = DB::table('registro_tefs')
+        ->where('estado', 'aprovado')
+        ->select(
+            'nfce_id',
+            DB::raw('SUM(CAST(valor_total AS DECIMAL(12,2))) as valor_pago_tef')
+        )
+        ->groupBy('nfce_id');
+
+        $data = DB::table('nfces as n')
+        ->leftJoin('clientes as c', 'c.id', '=', 'n.cliente_id')
+        ->leftJoin('funcionarios as f', 'f.id', '=', 'n.funcionario_id')
+        ->leftJoin('empresas as e', 'e.id', '=', 'n.empresa_id')
+        ->leftJoin('caixas as cx', 'cx.id', '=', 'n.caixa_id')
+        ->leftJoinSub($faturasSub, 'fat', function ($join) {
+            $join->on('fat.nfce_id', '=', 'n.id');
+        })
+        ->leftJoinSub($tefSub, 'tef', function ($join) {
+            $join->on('tef.nfce_id', '=', 'n.id');
+        })
+        ->where('n.empresa_id', $empresa_id)
+        ->when(!empty($start_date), function ($query) use ($start_date) {
+            return $query->whereDate('n.created_at', '>=', $start_date);
+        })
+        ->when(!empty($end_date), function ($query) use ($end_date) {
+            return $query->whereDate('n.created_at', '<=', $end_date);
+        })
+        ->when(!empty($funcionario_id), function ($query) use ($funcionario_id) {
+            return $query->where('n.funcionario_id', $funcionario_id);
+        })
+        ->select([
+            'n.estado as status',
+            'n.created_at as data',
+            'n.id as codigo',
+            'e.nome as empresa',
+            'f.nome as vendedor',
+            DB::raw("CASE WHEN cx.id IS NOT NULL THEN CONCAT('Caixa ', cx.id) ELSE '--' END as caixa"),
+            DB::raw("COALESCE(c.razao_social, n.cliente_nome, 'Consumidor final') as cliente"),
+            DB::raw('COALESCE(n.desconto, 0) as desconto'),
+            DB::raw('CASE
+                WHEN COALESCE(fat.valor_pago_fatura, 0) > 0 THEN fat.valor_pago_fatura
+                WHEN COALESCE(tef.valor_pago_tef, 0) > 0 THEN tef.valor_pago_tef
+                ELSE 0
+            END as valor_pago'),
+            'n.total as valor_total',
+        ])
+        ->orderBy('n.created_at', 'desc')
+        ->orderBy('n.id', 'desc')
+        ->get();
+
+        if($esportar_excel == 1){
+            $relatorioEx = new RelatorioVendasPdvExport($data, $start_date, $end_date);
+            return Excel::download($relatorioEx, 'relatorio_vendas_pdv.xlsx');
+        }
+
+        $p = view('relatorios/vendas_pdv', compact('data', 'start_date', 'end_date'))
+        ->with('title', 'Relatório de Vendas PDV');
+
+        $domPdf = new Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($p);
+
+        $pdf = ob_get_clean();
+
+        $domPdf->setPaper("A4", "landscape");
+        $domPdf->render();
+        $domPdf->stream("Relatório de Vendas PDV.pdf", array("Attachment" => false));
     }
 
     public function ordemServico(Request $request)
