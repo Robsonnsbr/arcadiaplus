@@ -69,7 +69,9 @@ def convert_identifiers(s):
 
     def replace_backtick(m):
         name = m.group(1)
-        if name.lower() in pg_reserved:
+        # Colunas com letras maiúsculas ou palavras reservadas precisam de aspas duplas
+        # para preservar o case no PostgreSQL
+        if name.lower() in pg_reserved or name != name.lower():
             return f'"{name}"'
         return name
 

@@ -47,7 +47,7 @@ class ManifestoController extends Controller
             return $query->whereDate('data_emissao', '<=', $end_date);
         })
         ->when($tpNf !== null, function ($q) use ($tpNf) {
-            return $q->where('tpNf', $tpNf);
+            return $q->where('tpNF', $tpNf);
         });
 
         $data = $query->orderBy('data_emissao', 'desc')
