@@ -6,10 +6,17 @@ import { compassStorage } from "../../compass/storage";
 import { PDFParse } from "pdf-parse";
 import { learningService } from "../../learning/service";
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY || "placeholder",
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
+  }
+  return openai;
+}
 
 export function registerChatRoutes(app: Express): void {
   app.get("/api/conversations", async (req: Request, res: Response) => {
@@ -273,7 +280,7 @@ export function registerChatRoutes(app: Express): void {
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      const stream = await openai.chat.completions.create({
+      const stream = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         messages: chatMessages,
         stream: true,
@@ -416,7 +423,7 @@ Responda de forma clara, objetiva e prática. Use exemplos quando apropriado.`
       
       messages.push({ role: "user", content: message });
       
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         messages,
         max_tokens: 2048,
