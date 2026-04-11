@@ -78,7 +78,12 @@ def convert_identifiers(s):
 
 def convert_insert(line):
     line = convert_identifiers(line)
+    # Converte escape de aspas simples do MySQL \' para padrão SQL ''
     line = re.sub(r"\\'", "''", line)
+    # Converte \" (escape MySQL de aspas duplas em JSON) para " puro
+    # O PostgreSQL com standard_conforming_strings=on não interpreta \"
+    line = line.replace('\\"', '"')
+    # Fix bit literals
     line = re.sub(r",b'(\d)'", r",\1", line)
     line = re.sub(r"\(b'(\d)'", r"(\1", line)
     return line
@@ -127,7 +132,10 @@ def main():
             continue
 
         if re.match(r'\s*DROP TABLE IF EXISTS', line, re.IGNORECASE):
-            result_lines.append(convert_identifiers(line))
+            line = convert_identifiers(line)
+            # Adiciona CASCADE para remover dependências (FK constraints)
+            line = re.sub(r'(DROP TABLE IF EXISTS \S+);', r'\1 CASCADE;', line)
+            result_lines.append(line)
             i += 1
             continue
 
