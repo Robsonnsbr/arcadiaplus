@@ -1564,6 +1564,113 @@
                 </form>
             </div>
 
+            {{-- RELATÓRIO DE CASHBACK --}}
+            <div class="col-12 relatorio-section-title" style="order: 70;">
+                <button class="relatorio-section-toggle" type="button" data-bs-toggle="collapse"
+                    data-bs-target=".relatorios-cashback" aria-expanded="false">
+                    <span>Relatórios de Cashback</span>
+                    <i class="ri-arrow-down-s-line"></i>
+                </button>
+            </div>
+
+            <div class="col-12 col-md-6 collapse relatorios-cashback" style="order: 71;">
+                <form method="get" action="{{ route('relatorios.cashback') }}" target="_blank">
+                    <input type="hidden" name="empresa_id" value="{{ request()->empresa_id ?? auth()->user()->empresa_id ?? '' }}">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Relatório de Cashback</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 col-12">
+                                    {!! Form::date('start_date', 'Data inicial') !!}
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    {!! Form::date('end_date', 'Data final') !!}
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    {!! Form::select('status', 'Status', ['' => 'Todos', '1' => 'Ativo', '2' => 'Utilizado', '0' => 'Expirado'])->attrs(['class' => 'form-select']) !!}
+                                </div>
+                                <div class="col-md-6 col-12 mt-2">
+                                    {!! Form::select('cliente_id', 'Cliente') !!}
+                                </div>
+                                <div class="col-md-6 col-12 mt-2">
+                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-dark w-100">
+                                <i class="ri-printer-line"></i> Gerar relatório
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-12 col-md-6 collapse relatorios-cashback" style="order: 72;">
+                <form method="get" action="{{ route('relatorios.cashback-por-produto') }}" target="_blank">
+                    <input type="hidden" name="empresa_id" value="{{ request()->empresa_id ?? auth()->user()->empresa_id ?? '' }}">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Controle de Cashback por Produto</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 col-12">
+                                    {!! Form::date('start_date', 'Data inicial') !!}
+                                </div>
+                                <div class="col-md-6 col-12">
+                                    {!! Form::date('end_date', 'Data final') !!}
+                                </div>
+                                <div class="col-md-6 col-12 mt-2">
+                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-dark w-100">
+                                <i class="ri-printer-line"></i> Gerar relatório
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-12 col-md-6 collapse relatorios-financeiros" style="order: 18;">
+                <form method="get" action="{{ route('relatorios.lancamentos-financeiros') }}" target="_blank">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Relatório Financeiro de Lançamentos</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 col-12">
+                                    {!! Form::date('start_date', 'Data inicial') !!}
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    {!! Form::date('end_date', 'Data final') !!}
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    {!! Form::select('tipo', 'Tipo', ['' => 'Todos', 'receber' => 'Contas a Receber', 'pagar' => 'Contas a Pagar'])->attrs(['class' => 'form-select']) !!}
+                                </div>
+                                <div class="col-md-4 col-12 mt-2">
+                                    {!! Form::select('status', 'Status', ['' => 'Todos', '1' => 'Quitados', '-1' => 'Pendentes'])->attrs(['class' => 'form-select']) !!}
+                                </div>
+                                <div class="col-md-4 col-12 mt-2">
+                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-dark w-100">
+                                <i class="ri-printer-line"></i> Gerar relatório
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
         </div>
     </div>
 @endsection

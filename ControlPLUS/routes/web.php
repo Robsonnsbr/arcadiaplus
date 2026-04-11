@@ -1158,6 +1158,9 @@ Route::middleware(['verificaEmpresa', 'validaPlano', 'validaContrato'])->group(f
         Route::get('reservas', 'RelatorioController@reservas')->name('relatorios.reservas');
         Route::get('lucro-produto', 'RelatorioController@lucroProduto')->name('relatorios.lucro-produto');
         Route::get('registro-inventario', 'RelatorioController@registroInventario')->name('relatorios.registro-inventario');
+        Route::get('cashback', 'RelatorioController@cashback')->name('relatorios.cashback');
+        Route::get('cashback-por-produto', 'RelatorioController@cashbackPorProduto')->name('relatorios.cashback-por-produto');
+        Route::get('lancamentos-financeiros', 'RelatorioController@lancamentosFinanceiros')->name('relatorios.lancamentos-financeiros');
     });
 
     Route::resource('config-geral', 'ConfigGeralController');

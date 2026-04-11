@@ -58,6 +58,27 @@ O workflow `Start application` executa `bash start.sh`, que:
 | financeiro@superstoreeletronicos.com.br | adm |
 | luan@superstoreeletronicos.com.br | Luan Rosa |
 
+## Novos Relatórios Implementados
+
+Três relatórios adicionados ao módulo de relatórios (`RelatorioController`):
+
+1. **Relatório de Cashback** (`relatorios/cashback`) — filtra por período, status (Ativo/Utilizado/Expirado) e cliente.
+2. **Controle de Cashback por Produto** (`relatorios/cashback-por-produto`) — agrupado por produto via JOIN `cash_back_clientes → pre_vendas → item_pre_vendas → produtos`.
+3. **Relatório Financeiro de Lançamentos** (`relatorios/lancamentos-financeiros`) — combina contas a receber e a pagar com filtros de tipo, status e período.
+
+Cada relatório suporta exportação PDF (DomPDF) e exportação Excel (Laravel Excel).
+
+Arquivos criados:
+- `app/Exports/RelatorioCashbackExport.php`
+- `app/Exports/RelatorioCashbackPorProdutoExport.php`
+- `app/Exports/RelatorioLancamentosFinanceirosExport.php`
+- `resources/views/relatorios/cashback.blade.php`
+- `resources/views/relatorios/cashback_por_produto.blade.php`
+- `resources/views/relatorios/lancamentos_financeiros.blade.php`
+- `resources/views/exports/cashback.blade.php`
+- `resources/views/exports/cashback_por_produto.blade.php`
+- `resources/views/exports/lancamentos_financeiros.blade.php`
+
 ## Key Notes
 
 - MySQL 8.0 instalado via Nix (`mysql80`)

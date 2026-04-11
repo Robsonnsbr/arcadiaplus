@@ -64,6 +64,10 @@ use App\Exports\RelatorioVendasPdvExport;
 use App\Exports\RelatorioRegistroInventarioExport;
 use App\Exports\RelatorioEstoqueExport;
 use App\Exports\RelatorioVendasExport;
+use App\Exports\RelatorioCashbackExport;
+use App\Exports\RelatorioCashbackPorProdutoExport;
+use App\Exports\RelatorioLancamentosFinanceirosExport;
+use App\Models\CashBackCliente;
 use Illuminate\Support\Facades\DB;
 
 class RelatorioController extends Controller
@@ -3013,5 +3017,194 @@ class RelatorioController extends Controller
         $domPdf->setPaper("A4", "landscape");
         $domPdf->render();
         $domPdf->stream("Relatório de Lucro por Produto.pdf", array("Attachment" => false));
+    }
+
+    public function cashback(Request $request)
+    {
+        $start_date    = $request->start_date;
+        $end_date      = $request->end_date;
+        $status        = $request->status;
+        $cliente_id    = $request->cliente_id;
+        $esportar_excel = $request->esportar_excel;
+
+        $data = CashBackCliente::where('empresa_id', $request->empresa_id)
+            ->when(!empty($start_date), function ($q) use ($start_date) {
+                return $q->whereDate('created_at', '>=', $start_date);
+            })
+            ->when(!empty($end_date), function ($q) use ($end_date) {
+                return $q->whereDate('created_at', '<=', $end_date);
+            })
+            ->when($status !== null && $status !== '', function ($q) use ($status) {
+                return $q->where('status', $status);
+            })
+            ->when(!empty($cliente_id), function ($q) use ($cliente_id) {
+                return $q->where('cliente_id', $cliente_id);
+            })
+            ->with('cliente')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        if ($esportar_excel == 1) {
+            $relatorioEx = new RelatorioCashbackExport($data);
+            return Excel::download($relatorioEx, 'relatorio_cashback.xlsx');
+        }
+
+        $p = view('relatorios.cashback', compact('data'))
+            ->with('title', 'Relatório de Cashback');
+
+        $domPdf = new Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($p);
+        $pdf = ob_get_clean();
+        $domPdf->setPaper("A4", "landscape");
+        $domPdf->render();
+        $domPdf->stream("Relatório de Cashback.pdf", array("Attachment" => false));
+    }
+
+    public function cashbackPorProduto(Request $request)
+    {
+        $start_date    = $request->start_date;
+        $end_date      = $request->end_date;
+        $esportar_excel = $request->esportar_excel;
+
+        $data = DB::table('cash_back_clientes as cb')
+            ->join('pre_vendas as pv', function ($join) {
+                $join->on('pv.id', '=', 'cb.venda_id')
+                     ->where('cb.tipo', '=', 'venda');
+            })
+            ->join('item_pre_vendas as ipv', 'ipv.pre_venda_id', '=', 'pv.id')
+            ->join('produtos as p', 'p.id', '=', 'ipv.produto_id')
+            ->where('cb.empresa_id', $request->empresa_id)
+            ->when(!empty($start_date), function ($q) use ($start_date) {
+                return $q->whereDate('cb.created_at', '>=', $start_date);
+            })
+            ->when(!empty($end_date), function ($q) use ($end_date) {
+                return $q->whereDate('cb.created_at', '<=', $end_date);
+            })
+            ->groupBy('p.id', 'p.nome', 'p.codigo_barras')
+            ->selectRaw('
+                p.nome        AS nome_produto,
+                p.codigo_barras,
+                COUNT(DISTINCT cb.id)   AS qtd_vendas,
+                SUM(ipv.quantidade)     AS qtd_itens,
+                SUM(pv.valor_total)     AS valor_total_vendido,
+                SUM(cb.valor_credito)   AS total_cashback,
+                AVG(cb.valor_percentual) AS perc_medio
+            ')
+            ->orderBy('total_cashback', 'desc')
+            ->get();
+
+        if ($esportar_excel == 1) {
+            $relatorioEx = new RelatorioCashbackPorProdutoExport($data);
+            return Excel::download($relatorioEx, 'relatorio_cashback_por_produto.xlsx');
+        }
+
+        $p = view('relatorios.cashback_por_produto', compact('data'))
+            ->with('title', 'Controle de Cashback por Produto');
+
+        $domPdf = new Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($p);
+        $pdf = ob_get_clean();
+        $domPdf->setPaper("A4", "landscape");
+        $domPdf->render();
+        $domPdf->stream("Controle de Cashback por Produto.pdf", array("Attachment" => false));
+    }
+
+    public function lancamentosFinanceiros(Request $request)
+    {
+        $start_date     = $request->start_date;
+        $end_date       = $request->end_date;
+        $status         = $request->status;
+        $tipo           = $request->tipo;
+        $categoria_id   = $request->categoria_id;
+        $esportar_excel = $request->esportar_excel;
+
+        $receber = ContaReceber::where('empresa_id', $request->empresa_id)
+            ->when(!empty($start_date), function ($q) use ($start_date) {
+                return $q->whereDate('data_vencimento', '>=', $start_date);
+            })
+            ->when(!empty($end_date), function ($q) use ($end_date) {
+                return $q->whereDate('data_vencimento', '<=', $end_date);
+            })
+            ->when(!empty($status), function ($q) use ($status) {
+                if ($status == -1) {
+                    return $q->where('status', '!=', 1);
+                }
+                return $q->where('status', $status);
+            })
+            ->when(!empty($categoria_id), function ($q) use ($categoria_id) {
+                return $q->where('categoria_conta_id', $categoria_id);
+            })
+            ->with('cliente', 'categoria')
+            ->get();
+
+        $pagar = ContaPagar::where('empresa_id', $request->empresa_id)
+            ->when(!empty($start_date), function ($q) use ($start_date) {
+                return $q->whereDate('data_vencimento', '>=', $start_date);
+            })
+            ->when(!empty($end_date), function ($q) use ($end_date) {
+                return $q->whereDate('data_vencimento', '<=', $end_date);
+            })
+            ->when(!empty($status), function ($q) use ($status) {
+                if ($status == -1) {
+                    return $q->where('status', '!=', 1);
+                }
+                return $q->where('status', $status);
+            })
+            ->when(!empty($categoria_id), function ($q) use ($categoria_id) {
+                return $q->where('categoria_conta_id', $categoria_id);
+            })
+            ->with('fornecedor', 'categoria')
+            ->get();
+
+        $lancamentos = collect();
+
+        if ($tipo !== 'pagar') {
+            foreach ($receber as $item) {
+                $lancamentos->push([
+                    'tipo'           => 'receber',
+                    'descricao'      => $item->descricao,
+                    'pessoa'         => $item->cliente ? $item->cliente->razao_social : null,
+                    'categoria'      => $item->categoria ? $item->categoria->nome : null,
+                    'data_vencimento'=> $item->data_vencimento,
+                    'valor'          => $item->valor_integral,
+                    'status'         => $item->status,
+                ]);
+            }
+        }
+
+        if ($tipo !== 'receber') {
+            foreach ($pagar as $item) {
+                $lancamentos->push([
+                    'tipo'           => 'pagar',
+                    'descricao'      => $item->descricao,
+                    'pessoa'         => $item->fornecedor ? $item->fornecedor->razao_social : null,
+                    'categoria'      => $item->categoria ? $item->categoria->nome : null,
+                    'data_vencimento'=> $item->data_vencimento,
+                    'valor'          => $item->valor_integral,
+                    'status'         => $item->status,
+                ]);
+            }
+        }
+
+        $data = $lancamentos->sortBy('data_vencimento')->values()->all();
+
+        $total_receber = $receber->sum('valor_integral');
+        $total_pagar   = $pagar->sum('valor_integral');
+        $saldo         = $total_receber - $total_pagar;
+
+        if ($esportar_excel == 1) {
+            $relatorioEx = new RelatorioLancamentosFinanceirosExport($data, $total_receber, $total_pagar, $saldo);
+            return Excel::download($relatorioEx, 'relatorio_lancamentos_financeiros.xlsx');
+        }
+
+        $p = view('relatorios.lancamentos_financeiros', compact('data', 'total_receber', 'total_pagar', 'saldo'))
+            ->with('title', 'Relatório Financeiro de Lançamentos');
+
+        $domPdf = new Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($p);
+        $pdf = ob_get_clean();
+        $domPdf->setPaper("A4", "landscape");
+        $domPdf->render();
+        $domPdf->stream("Relatório Financeiro de Lançamentos.pdf", array("Attachment" => false));
     }
 }
