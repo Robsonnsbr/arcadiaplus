@@ -43,7 +43,7 @@ class FrontBoxController extends Controller
     public function __construct(EstoqueUtil $util)
     {
         $this->util = $util;
-        $this->middleware('permission:pdv_create', ['only' => ['create', 'store']]);
+        $this->middleware('permission:pdv_create', ['only' => ['create', 'store', 'storeMultiplosPagamentos']]);
         $this->middleware('permission:pdv_edit', ['only' => ['edit', 'update']]);
         $this->middleware('permission:pdv_view', ['only' => ['show', 'index']]);
         $this->middleware('permission:pdv_delete', ['only' => ['destroy']]);
@@ -377,6 +377,29 @@ class FrontBoxController extends Controller
     public function store(Request $request)
     {
         //
+    }
+
+    /**
+     * Processa venda com múltiplos pagamentos (rota web alternativa à API).
+     */
+    public function storeMultiplosPagamentos(Request $request)
+    {
+        $apiController = app(\App\Http\Controllers\API\FrontBoxController::class);
+        $response = $apiController->store($request);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return $response;
+        }
+
+        $responseData = json_decode($response->getContent(), true);
+
+        if (isset($responseData['error'])) {
+            return redirect()->route('frontbox.create')
+                ->with('error', $responseData['error']);
+        }
+
+        return redirect()->route('frontbox.index')
+            ->with('success', 'Venda realizada com sucesso!');
     }
 
     /**

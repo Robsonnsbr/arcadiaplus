@@ -1023,6 +1023,7 @@ Route::middleware(['verificaEmpresa', 'validaPlano', 'validaContrato'])->group(f
     Route::resource('frontbox', 'FrontBoxController');
     Route::get('/frontbox-mesas', 'FrontBoxController@mesas')->name('frontbox.mesas');
     Route::get('/frontbox-teste', 'FrontBoxController@teste')->name('frontbox.teste');
+    Route::post('/pdv/multiplos-pagamentos', 'FrontBoxController@storeMultiplosPagamentos')->name('pdv.multiplos-pagamentos');
 
     Route::resource('trocas', 'TrocaController');
     Route::get('/trocas/imprimir/{codigo}', 'TrocaController@imprimir')->name('trocas.imprimir');
