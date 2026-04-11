@@ -21,6 +21,7 @@ class TradeinController extends Controller
         $this->middleware('permission:tradein_view', ['only' => ['index', 'edit']]);
         $this->middleware('permission:tradein_view|pdv_view', ['only' => ['modalForm']]);
         $this->middleware('permission:tradein_edit|pdv_edit', ['only' => ['update']]);
+        $this->middleware('permission:tradein_delete', ['only' => ['destroy']]);
         $this->middleware('permission:pdv_edit', ['only' => ['storeWeb']]);
         $this->middleware('permission:pdv_view', ['only' => ['status', 'creditBalance']]);
         $this->middleware('permission:pdv_edit', ['only' => ['accept', 'reject', 'cancel', 'creditDebit']]);
@@ -388,8 +389,19 @@ class TradeinController extends Controller
             ], 200);
         }
 
-        session()->flash('flash_success', 'Avaliacao atualizada.');
-        return redirect()->route('tradein.edit', ['id' => $tradein->id, 'empresa_id' => $request->empresa_id]);
+        session()->flash('flash_success', 'Avaliação atualizada com sucesso.');
+        return redirect()->route('tradein.index', ['empresa_id' => $request->empresa_id]);
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $tradein = Tradein::where('empresa_id', $request->empresa_id)->findOrFail($id);
+        __validaObjetoEmpresa($tradein);
+
+        $tradein->delete();
+
+        session()->flash('flash_success', 'Trade-in excluído com sucesso.');
+        return redirect()->route('tradein.index', ['empresa_id' => $request->empresa_id]);
     }
 
     public function status(Request $request, $id)

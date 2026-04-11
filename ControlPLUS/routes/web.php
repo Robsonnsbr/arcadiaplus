@@ -736,6 +736,7 @@ Route::middleware(['verificaEmpresa', 'validaPlano', 'validaContrato'])->group(f
     Route::post('trade-in/{id}/accept', 'TradeinController@accept')->name('tradein.accept');
     Route::post('trade-in/{id}/reject', 'TradeinController@reject')->name('tradein.reject');
     Route::post('trade-in/{id}/cancel', 'TradeinController@cancel')->name('tradein.cancel');
+    Route::delete('trade-in/{id}', 'TradeinController@destroy')->name('tradein.destroy');
     Route::get('trade-in/{id}/termo.pdf', 'TradeinController@termoPdf')->name('tradein.termo-pdf');
 
     Route::resource('produtos', 'ProdutoController');

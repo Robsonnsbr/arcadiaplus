@@ -53,7 +53,23 @@
                                         <td><span class="badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
                                         <td>{{ __data_pt($tradein->created_at, 1) }}</td>
                                         <td class="text-end">
-                                            <a href="{{ route('tradein.edit', $tradein->id) }}" class="btn btn-sm btn-primary">Avaliar</a>
+                                            @can('tradein_edit')
+                                            <a href="{{ route('tradein.edit', ['id' => $tradein->id, 'empresa_id' => request()->empresa_id]) }}"
+                                               class="btn btn-sm btn-primary">
+                                                {{ $tradein->status === \App\Models\Tradein::STATUS_COMPLETED ? 'Alterar' : 'Avaliar' }}
+                                            </a>
+                                            @endcan
+                                            @can('tradein_delete')
+                                            <form method="POST" action="{{ route('tradein.destroy', ['id' => $tradein->id, 'empresa_id' => request()->empresa_id]) }}"
+                                                  style="display:inline;"
+                                                  onsubmit="return confirm('Tem certeza que deseja excluir este trade-in?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </button>
+                                            </form>
+                                            @endcan
                                         </td>
                                     </tr>
                                 @endforeach

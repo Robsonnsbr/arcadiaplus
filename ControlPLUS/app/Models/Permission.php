@@ -113,6 +113,7 @@ class Permission extends \Spatie\Permission\Models\Permission
 
             array('name' => 'tradein_view', 'description' => 'Visualiza Trade-in'),
             array('name' => 'tradein_edit', 'description' => 'Edita Trade-in'),
+            array('name' => 'tradein_delete', 'description' => 'Exclui Trade-in'),
 
             array('name' => 'pre_venda_view', 'description' => 'Visualiza pré venda'),
             array('name' => 'pre_venda_create', 'description' => 'Cria pré venda'),
