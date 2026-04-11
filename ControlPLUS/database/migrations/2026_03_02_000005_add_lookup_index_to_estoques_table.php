@@ -41,15 +41,11 @@ return new class extends Migration
 
     private function indexExists(string $table, string $index): bool
     {
-        $result = DB::selectOne(
-            'SELECT COUNT(1) AS total
-             FROM information_schema.statistics
-             WHERE table_schema = DATABASE()
-               AND table_name = ?
-               AND index_name = ?',
+        $result = DB::select(
+            "SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ? LIMIT 1",
             [$table, $index]
         );
 
-        return $result && (int)$result->total > 0;
+        return !empty($result);
     }
 };

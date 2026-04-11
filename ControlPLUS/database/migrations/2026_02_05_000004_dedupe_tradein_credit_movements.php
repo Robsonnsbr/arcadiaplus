@@ -23,7 +23,7 @@ return new class extends Migration
             )
             ->where('tipo', 'credit')
             ->groupBy('empresa_id', 'origem_tipo', 'origem_id', 'tipo')
-            ->having('total', '>', 1)
+            ->havingRaw('COUNT(*) > 1')
             ->get();
 
         foreach ($creditGroups as $group) {
@@ -55,7 +55,7 @@ return new class extends Migration
             )
             ->where('tipo', 'debit')
             ->groupBy('empresa_id', 'cliente_id', 'origem_tipo', 'origem_id', 'tipo')
-            ->having('total', '>', 1)
+            ->havingRaw('COUNT(*) > 1')
             ->get();
 
         foreach ($debitGroups as $group) {

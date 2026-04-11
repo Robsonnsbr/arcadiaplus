@@ -258,28 +258,21 @@ return new class extends Migration
 
     private function indexExists(string $table, string $index): bool
     {
-        $database = DB::getDatabaseName();
+        $result = DB::select(
+            "SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ? LIMIT 1",
+            [$table, $index]
+        );
 
-        $exists = DB::table('information_schema.statistics')
-            ->where('table_schema', $database)
-            ->where('table_name', $table)
-            ->where('index_name', $index)
-            ->exists();
-
-        return (bool)$exists;
+        return !empty($result);
     }
 
     private function foreignKeyExists(string $table, string $constraint): bool
     {
-        $database = DB::getDatabaseName();
+        $result = DB::select(
+            "SELECT 1 FROM information_schema.table_constraints WHERE table_name = ? AND constraint_name = ? AND constraint_type = 'FOREIGN KEY' LIMIT 1",
+            [$table, $constraint]
+        );
 
-        $exists = DB::table('information_schema.table_constraints')
-            ->where('table_schema', $database)
-            ->where('table_name', $table)
-            ->where('constraint_name', $constraint)
-            ->where('constraint_type', 'FOREIGN KEY')
-            ->exists();
-
-        return (bool)$exists;
+        return !empty($result);
     }
 };

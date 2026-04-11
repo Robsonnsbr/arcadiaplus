@@ -1,46 +1,49 @@
-# Superstore - AI-Powered Business Operating System
+# ControlPLUS - Sistema de Gestão Empresarial
 
 ## Overview
 
-Superstore is an AI-powered Business Operating System (BOS) by Arcádia Technology. It integrates ERP, CRM, Fiscal management, BI, and autonomous agent-based automation into a single platform.
+ControlPLUS is a Laravel 10 PHP ERP/management system (Superstore). The `arcadiasuite/` directory is a separate companion app that is currently not being run.
 
-## Project Structure
+## Active Application
 
-- `arcadiasuite/` — Main application (React + Express + Python services)
-  - `client/` — React 19 + TypeScript frontend (Vite build)
-  - `server/` — Express.js backend with Socket.IO
-  - `server/python/` — FastAPI Python microservices
-  - `shared/` — Drizzle ORM schemas
-  - `db/` — PostgreSQL database connection
+**ControlPLUS** — Laravel 10 PHP ERP running at port 5000.
 
 ## Tech Stack
 
-- **Frontend**: React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Vite
-- **Backend**: Express.js, Socket.IO, Passport.js (session auth)
-- **Database**: PostgreSQL via Drizzle ORM
-- **Python Services**: FastAPI (ports 8003-8005)
-- **Communication Engine**: Node/TypeScript service (port 8006)
+- **Framework**: Laravel 10 (PHP 8.2)
+- **Frontend**: Bootstrap 5 + Vite (pre-built assets)
+- **Database**: PostgreSQL (schema: `controlplus`)
+- **ORM**: Eloquent
 
-## Architecture
+## Project Structure
 
-- Port 5000: Main Express server (API + Vite frontend in dev, static files in prod)
-- Port 8003: Contabil Python service (FastAPI)
-- Port 8004: BI Engine Python service (FastAPI)
-- Port 8005: Automation Engine Python service (FastAPI)
-- Port 8006: Communication Engine (Node.js)
+- `ControlPLUS/` — Active Laravel application
+  - `app/` — Models, Controllers, Services
+  - `resources/views/` — Blade templates
+  - `public/build/` — Pre-built Vite assets
+  - `database/migrations/` — Laravel migrations
+  - `.env` — Environment config (DB, app settings)
 
-## Setup
+## Setup & Run
 
-- Dependencies: `cd arcadiasuite && npm install`
-- Database: `cd arcadiasuite && npx drizzle-kit push`
-- Dev: `cd arcadiasuite && npm run dev`
-- Build: `cd arcadiasuite && npm run build`
-- Start (prod): `cd arcadiasuite && npm run start`
+```bash
+cd ControlPLUS
+composer install
+php artisan key:generate
+php artisan migrate --force
+npm install && npm run build
+php artisan serve --host=0.0.0.0 --port=5000
+```
+
+## Database
+
+- Connection: PostgreSQL at `helium:5432`
+- Database: `heliumdb`
+- Schema: `controlplus` (isolated from arcadiasuite)
+- Credentials: stored in `.env`
 
 ## Key Notes
 
-- OpenAI API key uses `AI_INTEGRATIONS_OPENAI_API_KEY` env var (falls back to `OPENAI_API_KEY`)
-- All OpenAI clients use `|| "placeholder"` fallback so server starts without API key
-- PHP/Laravel (Plus ERP) is a separate legacy component not configured in this environment
-- Python 3.11 required for python services
-- `SESSION_SECRET` env var should be set for production
+- Migration files were adapted for PostgreSQL compatibility (MySQL-specific ENUM/index syntax replaced)
+- Frontend assets are pre-built (not using Vite dev server)
+- `arcadiasuite/` companion app is NOT being run

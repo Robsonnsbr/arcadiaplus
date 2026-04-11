@@ -218,14 +218,7 @@ return new class extends Migration
 
     private function expandMovimentacaoTipoTransacaoEnum(): void
     {
-        if (!Schema::hasTable('movimentacao_produtos')) {
-            return;
-        }
-
-        DB::statement("
-            ALTER TABLE movimentacao_produtos
-            MODIFY tipo_transacao ENUM('venda_nfe', 'venda_nfce', 'compra', 'alteracao_estoque', 'transferencia_estoque') NOT NULL
-        ");
+        // No-op for PostgreSQL: enum columns are stored as VARCHAR, no ALTER needed
     }
 
     private function shrinkMovimentacaoTipoTransacaoEnum(): void
@@ -237,11 +230,7 @@ return new class extends Migration
         DB::table('movimentacao_produtos')
             ->where('tipo_transacao', 'transferencia_estoque')
             ->update(['tipo_transacao' => 'alteracao_estoque']);
-
-        DB::statement("
-            ALTER TABLE movimentacao_produtos
-            MODIFY tipo_transacao ENUM('venda_nfe', 'venda_nfce', 'compra', 'alteracao_estoque') NOT NULL
-        ");
+        // No ALTER COLUMN needed for PostgreSQL
     }
 
     private function dropDepositoContextFromTransferencias(): void
@@ -332,24 +321,13 @@ return new class extends Migration
 
     private function indexExists(string $table, string $index): bool
     {
-        $database = DB::getDatabaseName();
-
-        return DB::table('information_schema.statistics')
-            ->where('table_schema', $database)
-            ->where('table_name', $table)
-            ->where('index_name', $index)
-            ->exists();
+        $result = DB::select("SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ? LIMIT 1", [$table, $index]);
+        return !empty($result);
     }
 
     private function foreignKeyExists(string $table, string $constraint): bool
     {
-        $database = DB::getDatabaseName();
-
-        return DB::table('information_schema.table_constraints')
-            ->where('table_schema', $database)
-            ->where('table_name', $table)
-            ->where('constraint_name', $constraint)
-            ->where('constraint_type', 'FOREIGN KEY')
-            ->exists();
+        $result = DB::select("SELECT 1 FROM information_schema.table_constraints WHERE table_name = ? AND constraint_name = ? AND constraint_type = 'FOREIGN KEY' LIMIT 1", [$table, $constraint]);
+        return !empty($result);
     }
 };

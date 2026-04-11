@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "php-8.2", "web", "python-3.11"]
+modules = ["nodejs-20", "php-8.2", "web", "python-3.11", "postgresql-16"]
 [agent]
 expertMode = true
 
@@ -22,13 +22,13 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd arcadiasuite && npm run dev"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd ControlPLUS && php artisan serve --host=0.0.0.0 --port=5000"
+waitForPort = 5000
 
 [[ports]]
 localPort = 5000
@@ -52,5 +52,5 @@ externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["bash", "-c", "cd arcadiasuite && npm run start"]
+run = ["bash", "-c", "cd ControlPLUS && php artisan serve --host=0.0.0.0 --port=5000"]
 build = ["bash", "-c", "cd arcadiasuite && npm run build"]
