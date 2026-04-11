@@ -1,5 +1,9 @@
 # ControlPLUS - Sistema de Gestão Empresarial
 
+## Preferências do Usuário
+
+- Idioma de comunicação: **Português do Brasil (pt-BR)**
+
 ## Overview
 
 ControlPLUS is a Laravel 10 PHP ERP/management system (Superstore). The `arcadiasuite/` directory is a separate companion app that is currently not being run.
