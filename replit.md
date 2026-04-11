@@ -6,27 +6,28 @@
 
 ## Overview
 
-ControlPLUS is a Laravel 10 PHP ERP/management system (Superstore). The `arcadiasuite/` directory is a separate companion app that is currently not being run.
+ControlPLUS é um ERP/sistema de gestão Laravel 10 PHP (Superstore). O diretório `arcadiasuite/` é um app separado que **não está sendo executado**.
 
 ## Active Application
 
-**ControlPLUS** — Laravel 10 PHP ERP running at port 5000.
+**ControlPLUS** — Laravel 10 PHP ERP rodando na porta 5000.
 
 ## Tech Stack
 
 - **Framework**: Laravel 10 (PHP 8.2)
-- **Frontend**: Bootstrap 5 + Vite (pre-built assets)
+- **Frontend**: Bootstrap 5 + Vite (assets pré-compilados em `public/build/`)
 - **Database**: PostgreSQL (schema: `controlplus`)
 - **ORM**: Eloquent
 
 ## Project Structure
 
-- `ControlPLUS/` — Active Laravel application
+- `ControlPLUS/` — Aplicação Laravel ativa
   - `app/` — Models, Controllers, Services
-  - `resources/views/` — Blade templates
-  - `public/build/` — Pre-built Vite assets
-  - `database/migrations/` — Laravel migrations
-  - `.env` — Environment config (DB, app settings)
+  - `resources/views/` — Templates Blade
+  - `public/build/` — Assets Vite pré-compilados
+  - `database/migrations/` — Migrations Laravel
+  - `database/dump.sql` — Dump original MySQL (11.608 linhas, 306 tabelas, 50 INSERTs)
+  - `.env` — Configurações de ambiente (DB, app)
 
 ## Setup & Run
 
@@ -41,13 +42,49 @@ php artisan serve --host=0.0.0.0 --port=5000
 
 ## Database
 
-- Connection: PostgreSQL at `helium:5432`
+- Connection: PostgreSQL em `helium:5432`
 - Database: `heliumdb`
-- Schema: `controlplus` (isolated from arcadiasuite)
-- Credentials: stored in `.env`
+- Schema: `controlplus` (isolado do arcadiasuite)
+- Credentials: armazenadas em `.env`
+- **306 tabelas importadas** com todos os dados de produção
+- 5.570 cidades, 2 empresas, 4 usuários importados
+
+### Usuários do sistema (importados do dump)
+
+| Email | Papel |
+|-------|-------|
+| controlplus@master.com | master |
+| superstore@bcprime.inf.br | superstore |
+| financeiro@superstoreeletronicos.com.br | adm |
+| luan@superstoreeletronicos.com.br | Luan Rosa |
+
+## Database Import (MySQL → PostgreSQL)
+
+O dump original (`database/dump.sql`) é formato MySQL 8.0. Para recriar o banco:
+
+1. Rodar o conversor Python: `python3 scripts/convert_dump.py`
+2. Importar: `PGPASSWORD=password psql -h helium -U postgres -d heliumdb -f /tmp/dump_pg_v2.sql`
+3. Atualizar sequences: ver script PL/pgSQL em `.local/sequences.sql`
+4. Rodar migrations: `php artisan migrate --force`
+
+### Conversões MySQL → PostgreSQL aplicadas
+
+- Backticks → sem aspas (ou aspas duplas para palavras reservadas)
+- `AUTO_INCREMENT` → `SERIAL`/`BIGSERIAL`
+- `BIGINT UNSIGNED` → `BIGINT`
+- `TINYINT(1)` → `SMALLINT`
+- `DATETIME` → `TIMESTAMP`
+- `LONGTEXT`/`MEDIUMTEXT` → `TEXT`
+- `ENUM(...)` → `VARCHAR(255)`
+- `\'` (escape MySQL) → `''` (escape PostgreSQL padrão)
+- `COLLATE utf8mb4_unicode_ci` → removido
+- `ENGINE=InnoDB` → removido
+- Foreign Keys removidas do CREATE TABLE (para permitir importação fora de ordem)
+- `session_replication_role = replica` durante importação
 
 ## Key Notes
 
-- Migration files were adapted for PostgreSQL compatibility (MySQL-specific ENUM/index syntax replaced)
-- Frontend assets are pre-built (not using Vite dev server)
-- `arcadiasuite/` companion app is NOT being run
+- Arquivos de migration adaptados para compatibilidade PostgreSQL
+- Assets frontend pré-compilados (não usa Vite dev server)
+- `arcadiasuite/` não está sendo executado
+- Sequências PostgreSQL atualizadas após importação do dump
