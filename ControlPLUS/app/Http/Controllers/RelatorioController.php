@@ -1246,7 +1246,6 @@ class RelatorioController extends Controller
         ->when(!empty($end_date), function ($query) use ($end_date) {
             return $query->whereDate('created_at', '<=', $end_date);
         })
-        ->where('nves.empresa_id', $request->empresa_id)
         ->limit($total_resultados ?? 1000000)
         ->when($local_id, function ($query) use ($local_id) {
             return $query->where('local_id', $local_id);
@@ -1254,6 +1253,7 @@ class RelatorioController extends Controller
         ->when(!$local_id, function ($query) use ($locais) {
             return $query->whereIn('local_id', $locais);
         })
+        ->with(['fornecedor', 'itens.produto', 'itens.produtoVariacao'])
         ->get();
 
         if($esportar_excel == 1){
