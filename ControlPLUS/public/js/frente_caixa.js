@@ -2536,12 +2536,11 @@ function calcTotalPayment() {
         console.log("dif", dif);
 
         let diferenca = parseFloat(dif.toFixed(2));
-        // console.log("diferenca", diferenca)
-        if (diferenca == 0) {
+        if (diferenca == 0 && troco == 0) {
             $(".btn-modal-multiplo").prop("disabled", false);
         }
 
-        if (diferenca <= 10) {
+        if (diferenca <= 10 && troco == 0) {
             $("#btn-pag_row").removeAttr("disabled");
         }
     }, 100);
@@ -3649,6 +3648,20 @@ function validarDadosCartaoCredito(json) {
 }
 
 $(document).on("click", ".btn-modal-multiplo", function (e) {
+    var somaMultiplo = 0;
+    $(".valor_integral").each(function () {
+        somaMultiplo += convertMoedaToFloat($(this).val());
+    });
+    var totalEsperado = parseFloat((total_venda + parseFloat(VALORACRESCIMO) - parseFloat(DESCONTO)).toFixed(2));
+    var somaArredondada = parseFloat(somaMultiplo.toFixed(2));
+    if (somaArredondada !== totalEsperado) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        toastr.error("A soma das formas de pagamento deve ser igual ao total da venda.");
+        showModal("#pagamento_multiplo");
+        return false;
+    }
+
     const linhasTipo = $("input[name='tipo_pagamento_row[]']");
     const linhasBandeira = $("input[name='bandeira_cartao_row[]']");
     for (let i = 0; i < linhasTipo.length; i++) {
