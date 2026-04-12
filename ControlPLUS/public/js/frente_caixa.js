@@ -2532,7 +2532,7 @@ function calcTotalPayment() {
             $("#inp-troco").val(troco);
         }
 
-        let dif = total_venda - total + troco;
+        let dif = t - total + troco;
         console.log("dif", dif);
 
         let diferenca = parseFloat(dif.toFixed(2));
