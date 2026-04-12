@@ -658,6 +658,7 @@
         @endif
 
         @yield('js')
+        @stack('scripts')
 
         <script type="text/javascript">
             toastr.options = {

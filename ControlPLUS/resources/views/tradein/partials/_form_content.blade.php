@@ -9,7 +9,7 @@
     $observacaoGeral = $snapshot['observacao_geral'] ?? ($tradein->observacao_tecnico ?? '');
 
     for ($i = count($pecas); $i < 5; $i++) {
-        $pecas[] = ['descricao' => '', 'valor' => null];
+        $pecas[] = ['descricao' => '', 'valor' => null, 'produto_id' => null];
     }
 
     $valorAparelhoBase = $cabecalho['valor_aparelho'] ?? null;
@@ -94,23 +94,41 @@
         <table class="table table-sm table-bordered align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th style="width: 65%">Peça</th>
-                    <th style="width: 35%">Valor</th>
+                    <th style="width: 40%">Peça / Descrição</th>
+                    <th style="width: 35%">Produto do catálogo (opcional)</th>
+                    <th style="width: 25%">Valor</th>
                 </tr>
             </thead>
             <tbody>
                 @for($i = 0; $i < 5; $i++)
                     @php
                         $pecaDescricao = old("pecas.$i.descricao", $pecas[$i]['descricao'] ?? '');
+                        $pecaProdutoId = old("pecas.$i.produto_id", $pecas[$i]['produto_id'] ?? null);
                         $pecaValorRaw = old("pecas.$i.valor");
                         if ($pecaValorRaw === null) {
                             $valorBase = $pecas[$i]['valor'] ?? null;
                             $pecaValorRaw = $valorBase !== null && $valorBase !== '' ? __moeda($valorBase) : '';
                         }
+                        $pecaProdutoNome = '';
+                        if ($pecaProdutoId) {
+                            $pecaProdutoObj = \App\Models\Produto::find($pecaProdutoId);
+                            $pecaProdutoNome = $pecaProdutoObj ? $pecaProdutoObj->nome : '';
+                        }
                     @endphp
                     <tr>
                         <td>
                             <input type="text" class="form-control form-control-sm" name="pecas[{{ $i }}][descricao]" value="{{ $pecaDescricao }}" placeholder="Peça {{ $i + 1 }}">
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm select2-peca-produto"
+                                    name="pecas[{{ $i }}][produto_id]"
+                                    data-placeholder="Buscar produto..."
+                                    data-allow-clear="true"
+                                    style="width:100%">
+                                @if($pecaProdutoId && $pecaProdutoNome)
+                                    <option value="{{ $pecaProdutoId }}" selected>{{ $pecaProdutoNome }}</option>
+                                @endif
+                            </select>
                         </td>
                         <td>
                             <input type="text" class="form-control form-control-sm moeda" name="pecas[{{ $i }}][valor]" value="{{ $pecaValorRaw }}" placeholder="0,00">
@@ -257,3 +275,44 @@
 @else
 </form>
 @endif
+
+@push('scripts')
+<script>
+(function() {
+    function initPecaProdutoSelect2(el) {
+        $(el).select2({
+            minimumInputLength: 2,
+            language: "pt-BR",
+            placeholder: "Buscar produto...",
+            allowClear: true,
+            width: "100%",
+            ajax: {
+                cache: false,
+                url: path_url + "api/produtos",
+                dataType: "json",
+                data: function (params) {
+                    return {
+                        pesquisa: params.term,
+                        empresa_id: $("#empresa_id").val(),
+                        usuario_id: $("#usuario_id").val(),
+                    };
+                },
+                processResults: function (response) {
+                    var results = [];
+                    $.each(response, function (i, v) {
+                        results.push({ id: v.id, text: v.nome || v.text || String(v.id) });
+                    });
+                    return { results: results };
+                },
+            },
+        });
+    }
+
+    $(function () {
+        $(".select2-peca-produto").each(function () {
+            initPecaProdutoSelect2(this);
+        });
+    });
+})();
+</script>
+@endpush

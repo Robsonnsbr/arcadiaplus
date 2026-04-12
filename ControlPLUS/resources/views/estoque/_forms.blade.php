@@ -1,4 +1,28 @@
+@php
+    $tradeinInventoryId = request('tradein_inventory_id');
+    $tradeinProdutoId   = request('produto_id');
+    $tradeinProdutoNome = '';
+    $tradeinSerial      = request('serial');
+    if ($tradeinInventoryId && $tradeinProdutoId) {
+        $tradeinProdutoObj  = \App\Models\Produto::find($tradeinProdutoId);
+        $tradeinProdutoNome = $tradeinProdutoObj ? $tradeinProdutoObj->nome : '';
+    }
+@endphp
 <div class="row">
+    @if($tradeinInventoryId)
+    <input type="hidden" name="tradein_inventory_id" value="{{ $tradeinInventoryId }}">
+    <input type="hidden" name="produto_id" value="{{ $tradeinProdutoId }}">
+    @if($tradeinSerial)
+    <input type="hidden" name="serial" value="{{ $tradeinSerial }}">
+    @endif
+    <div class="col-md-4">
+        <label class="form-label">Produto <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" value="{{ $tradeinProdutoNome ?: '(produto do trade-in)' }}" readonly>
+        @if($tradeinSerial)
+        <small class="text-muted">Serial: <strong>{{ $tradeinSerial }}</strong></small>
+        @endif
+    </div>
+    @else
     <div class="col-md-4">
         {!!Form::select('produto_id', 'Produto')
         ->attrs(['class' => 'form-select'])->required()
@@ -6,6 +30,7 @@
         ->disabled(isset($item) ? true : false)
         !!}
     </div>
+    @endif
 
     @if(isset($item) && $item->produtoVariacao)
     <div class="col-md-2">
@@ -66,7 +91,7 @@
         {!!Form::tel('quantidade', 'Quantidade')
         ->attrs((isset($item) && (!$item->produto->unidadeDecimal())) ? ['data-mask' => '000000'] : ['class' => 'qtd'])
         ->required()
-        ->value(isset($item) ? ((!$item->produto->unidadeDecimal()) ? number_format($item->quantidade, 0) : number_format($item->quantidade, 2, ',', '')) : '')
+        ->value(isset($item) ? ((!$item->produto->unidadeDecimal()) ? number_format($item->quantidade, 0) : number_format($item->quantidade, 2, ',', '')) : (request('quantidade') ?: ''))
         !!}
     </div>
 

@@ -35,13 +35,17 @@
                                         <td>{{ $item->status }}</td>
                                         <td>{{ $item->created_at ? $item->created_at->format('d/m/Y H:i') : '—' }}</td>
                                         <td class="text-end">
+                                            <a href="{{ route('tradein.inventory.edit', ['id' => $item->id, 'empresa_id' => request()->empresa_id]) }}"
+                                               class="btn btn-sm btn-outline-secondary me-1" title="Editar">
+                                                <i class="ri-edit-line"></i>
+                                            </a>
                                             @if ($item->status === \App\Models\TradeinInventoryItem::STATUS_PENDING_TRANSFER)
                                                 <a href="{{ route('tradein.inventory.transfer', ['id' => $item->id, 'empresa_id' => request()->empresa_id]) }}"
                                                    class="btn btn-sm btn-outline-primary">
                                                     Transferir para estoque real
                                                 </a>
                                             @else
-                                                <span class="text-muted">Transferido</span>
+                                                <span class="badge bg-success">Transferido</span>
                                             @endif
                                         </td>
                                     </tr>

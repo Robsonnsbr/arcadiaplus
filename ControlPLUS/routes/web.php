@@ -727,6 +727,8 @@ Route::middleware(['verificaEmpresa', 'validaPlano', 'validaContrato'])->group(f
     Route::post('trade-in/store', 'TradeinController@storeWeb')->name('tradein.store');
     Route::get('trade-in/inventory', 'TradeinInventoryController@index')->name('tradein.inventory.index');
     Route::get('trade-in/inventory/{id}/transfer', 'TradeinInventoryController@transferRedirect')->name('tradein.inventory.transfer');
+    Route::get('trade-in/inventory/{id}/edit', 'TradeinInventoryController@edit')->name('tradein.inventory.edit');
+    Route::put('trade-in/inventory/{id}', 'TradeinInventoryController@update')->name('tradein.inventory.update');
     Route::get('trade-in/credit/{cliente_id}', 'TradeinController@creditBalance')->name('tradein.credit');
     Route::post('trade-in/credit/debit', 'TradeinController@creditDebit')->name('tradein.credit-debit');
     Route::get('trade-in/{id}/modal', 'TradeinController@modalForm')->name('tradein.modal-form');

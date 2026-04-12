@@ -1521,6 +1521,16 @@ class EstoqueController extends Controller
             $this->util->movimentacaoProduto($request->produto_id, $request->quantidade, $tipo, $codigo_transacao, $tipo_transacao, \Auth::user()->id, $request->produto_variacao_id, $local_id, $deposito_id);
 
             __createLog($empresa_id, 'Estoque', 'cadastrar', $transacao->produto->nome . " - quantidade " . $request->quantidade);
+
+            if ($request->filled('tradein_inventory_id')) {
+                $invItem = \App\Models\TradeinInventoryItem::where('empresa_id', $empresa_id)
+                    ->find((int) $request->tradein_inventory_id);
+                if ($invItem && $invItem->status === \App\Models\TradeinInventoryItem::STATUS_PENDING_TRANSFER) {
+                    $invItem->status = \App\Models\TradeinInventoryItem::STATUS_TRANSFERRED;
+                    $invItem->save();
+                }
+            }
+
             session()->flash("flash_success", "Estoque adicionado com sucesso!");
         } catch (\Exception $e) {
             // echo $e->getLine();
