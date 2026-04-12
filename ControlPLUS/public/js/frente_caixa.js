@@ -1413,8 +1413,47 @@ function calcTotal() {
 }
 
 var CLIENTESEMLIMITE = 0;
-$(".btn-modal-multiplo").on("click", (event) => {
-    // consultaDebito()
+$(".btn-modal-multiplo").on("click", function (event) {
+    var somaMultiplo = 0;
+    $(".valor_integral").each(function () {
+        somaMultiplo += convertMoedaToFloat($(this).val());
+    });
+    var totalEsperado = parseFloat((total_venda + parseFloat(VALORACRESCIMO) - parseFloat(DESCONTO)).toFixed(2));
+    var somaArredondada = parseFloat(somaMultiplo.toFixed(2));
+    if (somaArredondada !== totalEsperado) {
+        toastr.error("A soma das formas de pagamento deve ser igual ao total da venda.");
+        showModal("#pagamento_multiplo");
+        return false;
+    }
+
+    const linhasTipo = $("input[name='tipo_pagamento_row[]']");
+    const linhasBandeira = $("input[name='bandeira_cartao_row[]']");
+    for (let i = 0; i < linhasTipo.length; i++) {
+        const tipo = ($(linhasTipo[i]).val() || "").trim();
+        if (!isTipoPagamentoCredito(tipo)) {
+            continue;
+        }
+        const bandeira = ($(linhasBandeira[i]).val() || "").trim();
+        if (!bandeira) {
+            toastr.warning("Selecione a bandeira do cartão para pagamento no crédito.");
+            showModal("#pagamento_multiplo");
+            setTimeout(() => {
+                $("#inp-bandeira_cartao_row_input").focus();
+            }, 50);
+            return false;
+        }
+    }
+
+    if ($("#pagamento_multiplo").length) {
+        if (window.bootstrap && window.bootstrap.Modal && typeof window.bootstrap.Modal.getOrCreateInstance === "function") {
+            window.bootstrap.Modal.getOrCreateInstance(document.getElementById("pagamento_multiplo")).hide();
+        } else if (window.bootstrap && window.bootstrap.Modal) {
+            new window.bootstrap.Modal(document.getElementById("pagamento_multiplo")).hide();
+        } else if (window.jQuery && window.jQuery.fn && window.jQuery.fn.modal) {
+            window.jQuery("#pagamento_multiplo").modal("hide");
+        }
+    }
+
     validateButtonSave();
     $("#salvar_venda").trigger("click");
 });
@@ -3646,67 +3685,6 @@ function validarDadosCartaoCredito(json) {
 
     return true;
 }
-
-$(document).on("click", ".btn-modal-multiplo", function (e) {
-    var somaMultiplo = 0;
-    $(".valor_integral").each(function () {
-        somaMultiplo += convertMoedaToFloat($(this).val());
-    });
-    var totalEsperado = parseFloat((total_venda + parseFloat(VALORACRESCIMO) - parseFloat(DESCONTO)).toFixed(2));
-    var somaArredondada = parseFloat(somaMultiplo.toFixed(2));
-    if (somaArredondada !== totalEsperado) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        toastr.error("A soma das formas de pagamento deve ser igual ao total da venda.");
-        showModal("#pagamento_multiplo");
-        return false;
-    }
-
-    const linhasTipo = $("input[name='tipo_pagamento_row[]']");
-    const linhasBandeira = $("input[name='bandeira_cartao_row[]']");
-    for (let i = 0; i < linhasTipo.length; i++) {
-        const tipo = ($(linhasTipo[i]).val() || "").trim();
-        if (!isTipoPagamentoCredito(tipo)) {
-            continue;
-        }
-
-        const bandeira = ($(linhasBandeira[i]).val() || "").trim();
-        if (!bandeira) {
-            e.preventDefault();
-            e.stopPropagation();
-            toastr.warning(
-                "Selecione a bandeira do cartão para pagamento no crédito.",
-            );
-            showModal("#pagamento_multiplo");
-            setTimeout(() => {
-                $("#inp-bandeira_cartao_row_input").focus();
-            }, 50);
-            return false;
-        }
-    }
-
-    if ($("#pagamento_multiplo").length) {
-        if (
-            window.bootstrap &&
-            window.bootstrap.Modal &&
-            typeof window.bootstrap.Modal.getOrCreateInstance === "function"
-        ) {
-            window.bootstrap.Modal.getOrCreateInstance(
-                document.getElementById("pagamento_multiplo"),
-            ).hide();
-        } else if (window.bootstrap && window.bootstrap.Modal) {
-            new window.bootstrap.Modal(
-                document.getElementById("pagamento_multiplo"),
-            ).hide();
-        } else if (
-            window.jQuery &&
-            window.jQuery.fn &&
-            window.jQuery.fn.modal
-        ) {
-            window.jQuery("#pagamento_multiplo").modal("hide");
-        }
-    }
-});
 
 $("#form-pdv").on("submit", function (e) {
     e.preventDefault();
