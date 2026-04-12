@@ -25,6 +25,7 @@ class Tradein extends Model
         'assigned_to_user_id',
         'status',
         'nome_item',
+        'produto_id',
         'serial_number',
         'valor_pretendido',
         'observacao_vendedor',

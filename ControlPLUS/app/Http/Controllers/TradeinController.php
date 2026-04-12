@@ -486,15 +486,16 @@ class TradeinController extends Controller
                 if (!$alreadyInInventory) {
                     try {
                         TradeinInventoryItem::create([
-                            'empresa_id' => $tradein->empresa_id,
-                            'tradein_id' => $tradein->id,
-                            'cliente_id' => $tradein->cliente_id,
-                            'descricao_item' => $tradein->nome_item,
-                            'serial' => $tradein->serial_number,
-                            'valor' => $tradein->valor_avaliado,
-                            'status' => TradeinInventoryItem::STATUS_PENDING_TRANSFER,
-                            'observacao_tecnica' => $tradein->observacao_tecnico,
-                            'created_by_user_id' => Auth::id(),
+                            'empresa_id'          => $tradein->empresa_id,
+                            'tradein_id'          => $tradein->id,
+                            'cliente_id'          => $tradein->cliente_id,
+                            'descricao_item'      => $tradein->nome_item,
+                            'produto_id'          => $tradein->produto_id,
+                            'serial'              => $tradein->serial_number,
+                            'valor'               => $tradein->valor_avaliado,
+                            'status'              => TradeinInventoryItem::STATUS_PENDING_TRANSFER,
+                            'observacao_tecnica'  => $tradein->observacao_tecnico,
+                            'created_by_user_id'  => Auth::id(),
                         ]);
                         $inventoryCreated = true;
                     } catch (QueryException $e) {
@@ -725,27 +726,54 @@ class TradeinController extends Controller
     public function storeWeb(Request $request)
     {
         $request->validate([
-            'empresa_id' => 'required|integer',
-            'cliente_id' => 'required|integer',
-            'nome_item' => 'required|string|max:255',
-            'serial_number' => 'nullable|string|max:120',
+            'empresa_id'       => 'required|integer',
+            'cliente_id'       => 'required|integer',
+            'produto_id'       => 'nullable|integer|exists:produtos,id',
+            'nome_item'        => 'required_without:produto_id|nullable|string|max:255',
+            'serial_number'    => 'required|string|max:120',
             'valor_pretendido' => 'nullable',
-            'observacao' => 'nullable|string',
+            'observacao'       => 'nullable|string',
+        ], [
+            'serial_number.required' => 'O número de série (IMEI/serial) é obrigatório.',
+            'nome_item.required_without' => 'Informe o nome do item ou selecione um produto do catálogo.',
         ]);
 
+        $serial = trim($request->serial_number);
+
+        $serialExistente = Tradein::where('empresa_id', $request->empresa_id)
+            ->where('serial_number', $serial)
+            ->whereNotIn('status', [Tradein::STATUS_CANCELLED])
+            ->exists();
+
+        if ($serialExistente) {
+            return response()->json([
+                'message' => 'Já existe um trade-in ativo com este número de série.',
+                'errors'  => ['serial_number' => ['Serial já cadastrado em outro trade-in ativo.']],
+            ], 422);
+        }
+
+        $nomeItem = $request->nome_item;
+        if ($request->produto_id) {
+            $produto = \App\Models\Produto::find($request->produto_id);
+            if ($produto && !$nomeItem) {
+                $nomeItem = $produto->nome;
+            }
+        }
+
         $tradein = Tradein::create([
-            'empresa_id' => $request->empresa_id,
-            'cliente_id' => $request->cliente_id,
+            'empresa_id'        => $request->empresa_id,
+            'cliente_id'        => $request->cliente_id,
             'created_by_user_id' => Auth::id(),
-            'status' => Tradein::STATUS_SUBMITTED,
-            'nome_item' => $request->nome_item,
-            'serial_number' => $request->serial_number,
-            'valor_pretendido' => $request->valor_pretendido ? __convert_value_bd($request->valor_pretendido) : null,
+            'status'            => Tradein::STATUS_SUBMITTED,
+            'nome_item'         => $nomeItem,
+            'produto_id'        => $request->produto_id,
+            'serial_number'     => $serial,
+            'valor_pretendido'  => $request->valor_pretendido ? __convert_value_bd($request->valor_pretendido) : null,
             'observacao_vendedor' => $request->observacao,
         ]);
 
         return response()->json([
-            'id' => $tradein->id,
+            'id'     => $tradein->id,
             'status' => $tradein->status,
         ], 201);
     }

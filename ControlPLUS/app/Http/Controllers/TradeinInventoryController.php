@@ -38,13 +38,14 @@ class TradeinInventoryController extends Controller
         __validaObjetoEmpresa($item);
 
         return redirect()->route('estoque.create', [
-            'empresa_id' => $request->empresa_id,
-            'quantidade' => 1,
+            'empresa_id'           => $request->empresa_id,
+            'quantidade'           => 1,
             'tradein_inventory_id' => $item->id,
-            'tradein_id' => $item->tradein_id,
-            'descricao_item' => $item->descricao_item,
-            'serial' => $item->serial,
-            'valor' => $item->valor,
+            'tradein_id'           => $item->tradein_id,
+            'descricao_item'       => $item->descricao_item,
+            'produto_id'           => $item->produto_id,
+            'serial'               => $item->serial,
+            'valor'                => $item->valor,
         ]);
     }
 }

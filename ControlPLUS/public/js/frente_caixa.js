@@ -2940,30 +2940,74 @@ $("#btn-open-tradein").click(() => {
         openTradeinStatusModal(tradeinId);
         return;
     }
+    $("#tradein_produto_id").val(null).trigger("change");
+    $("#tradein_nome_item").val("");
+    $("#tradein_serial_number").val("");
+    $("#tradein_valor_pretendido").val("");
+    $("#tradein_observacao").val("");
+    $("#tradein_nome_item_wrap").addClass("d-none");
     $("#modal_tradein_create").modal("show");
+});
+
+if ($("#tradein_produto_id").length && !$("#tradein_produto_id").hasClass("select2-hidden-accessible")) {
+    $("#tradein_produto_id").select2({
+        dropdownParent: $("#modal_tradein_create"),
+        placeholder: "Digite para buscar no catálogo...",
+        allowClear: true,
+        minimumInputLength: 1,
+        ajax: {
+            url: path_url + "api/produtos",
+            dataType: "json",
+            delay: 250,
+            data: function (params) {
+                return { pesquisa: params.term, empresa_id: $("#empresa_id").val() };
+            },
+            processResults: function (data) {
+                var list = Array.isArray(data) ? data : (data.data || []);
+                return {
+                    results: $.map(list, function (v) {
+                        return { id: v.id, text: v.nome + (v.codigo ? " (" + v.codigo + ")" : "") };
+                    }),
+                };
+            },
+        },
+    });
+}
+
+$("#tradein_btn_sem_catalogo").on("click", function (e) {
+    e.preventDefault();
+    $("#tradein_nome_item_wrap").toggleClass("d-none");
+    $("#tradein_produto_id").val(null).trigger("change");
+    if (!$("#tradein_nome_item_wrap").hasClass("d-none")) {
+        $("#tradein_nome_item").focus();
+    }
 });
 
 $("#btn-create-tradein").click(() => {
     const clienteId = $("#inp-cliente_id").val();
-    const nomeItem = $("#tradein_nome_item").val();
+    const produtoId = $("#tradein_produto_id").val();
+    const nomeItemManual = $("#tradein_nome_item").val();
+    const serial = $("#tradein_serial_number").val();
+
     if (!clienteId) {
-        swal(
-            "Alerta",
-            "Selecione um cliente para criar o trade-in.",
-            "warning",
-        );
+        swal("Alerta", "Selecione um cliente para criar o trade-in.", "warning");
         return;
     }
-    if (!nomeItem || !nomeItem.trim()) {
-        swal("Alerta", "Informe o nome do item.", "warning");
+    if (!produtoId && (!nomeItemManual || !nomeItemManual.trim())) {
+        swal("Alerta", "Selecione um produto do catálogo ou informe o nome do item.", "warning");
+        return;
+    }
+    if (!serial || !serial.trim()) {
+        swal("Alerta", "Informe o número de série (IMEI/serial) do aparelho.", "warning");
         return;
     }
 
     const payload = {
         empresa_id: $("#empresa_id").val(),
         cliente_id: clienteId,
-        nome_item: nomeItem,
-        serial_number: $("#tradein_serial_number").val(),
+        produto_id: produtoId || "",
+        nome_item: nomeItemManual,
+        serial_number: serial,
         valor_pretendido: $("#tradein_valor_pretendido").val(),
         observacao: $("#tradein_observacao").val(),
         _token: $('meta[name="csrf-token"]').attr("content"),
@@ -2978,8 +3022,10 @@ $("#btn-create-tradein").click(() => {
             }
         })
         .fail((err) => {
-            console.log(err);
-            swal("Erro", "Não foi possível criar o trade-in.", "error");
+            const msg = err.responseJSON && err.responseJSON.message
+                ? err.responseJSON.message
+                : "Não foi possível criar o trade-in.";
+            swal("Erro", msg, "error");
         });
 });
 

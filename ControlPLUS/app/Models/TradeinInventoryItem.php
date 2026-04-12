@@ -17,6 +17,7 @@ class TradeinInventoryItem extends Model
         'tradein_id',
         'cliente_id',
         'descricao_item',
+        'produto_id',
         'serial',
         'valor',
         'status',
