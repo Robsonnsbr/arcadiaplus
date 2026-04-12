@@ -62,23 +62,20 @@
                 <div class="card widget-icon-box">
                     <div class="card-body" style="height: 89px;">
 
-                        @isset($cliente)
-                        <h5 class="cliente_selecionado">Cliente:
-                            <strong class="text-primary">{{ $cliente->razao_social }}</strong>
-                        </h5>
-
-                        @else
                         <div class="row">
                             <div class="col-md-9">
                                 <h5 class="cliente_selecionado">
+                                    @isset($cliente)
+                                    Cliente: <strong class="text-primary">{{ $cliente->razao_social }}</strong>
+                                    @else
                                     Cliente: <strong class="text-primary">Consumidor final</strong>
+                                    @endisset
                                 </h5>
                             </div>
                             <div class="col-md-3">
                                 <button class="btn btn-sm btn-dark" data-bs-toggle="modal" data-bs-target="#cliente" type="button"><i class="ri-pencil-fill"></i></button>
                             </div>
                         </div>
-                        @endif
 
 
                         @isset($funcionario)

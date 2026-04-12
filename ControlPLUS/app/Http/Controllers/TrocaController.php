@@ -171,27 +171,8 @@ class TrocaController extends Controller
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
         $pdf = ob_get_clean();
-        $height = 400;
 
-        $height += sizeof($item->itens)*11;
-        foreach($item->itens as $it){
-            if(strlen($it->descricao()) > 10){
-                $height += 10;
-            }
-        }
-
-        foreach(($item->nfe ? $item->nfe->itens : $item->nfce->itens) as $it){
-            if(strlen($it->descricao()) > 10){
-                $height += 10;
-            }
-        }
-
-        if($item->observacao != ''){
-            $height += 30;
-        }
-
-
-        $domPdf->setPaper([0,0,244,$height]);
+        $domPdf->setPaper('a4', 'portrait');
         $pdf = $domPdf->render();
 
         $domPdf->stream("Doc. Troca $item->numero_sequencial.pdf", array("Attachment" => false));
