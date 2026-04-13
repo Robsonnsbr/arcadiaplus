@@ -440,32 +440,62 @@
     @endif
 
     @if (in_array('Gráfico de vendas', $homeComponentes))
-        <div class="row">
-            <div class="col-lg-3">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Vendas</h5>
+    <div class="card shadow-sm border-0 mb-3" id="card-grafico-vendas">
+        <div class="card-body">
+
+            {{-- Cabeçalho: título + toggle --}}
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="fw-bold fs-5">Vendas</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small text-muted" id="label-tipo-data-vendas-esq" style="font-size:12px;">Data de Cadastro</span>
+                    <div class="form-check form-switch mb-0 mx-1">
+                        <input class="form-check-input" type="checkbox" role="switch"
+                               id="toggle-tipo-data-vendas" style="cursor:pointer; width:2.4em; height:1.2em;">
                     </div>
-                    <div class="card-body">
-                        <h5>Total de vendas {{ $mes }} R$ <strong>{{ __moeda($totalVendasMes) }}</strong></h5>
-                        <p>Vendas meses anteriores.</p>
-                        @foreach ($somaVendasMesesAnteriores as $key => $s)
-                            <h6>{{ $key }}: <strong class="text-success">R$ {{ __moeda($s) }}</strong></h6>
-                        @endforeach
+                    <span class="small text-muted" id="label-tipo-data-vendas-dir" style="font-size:12px;">Data de Faturamento</span>
+                </div>
+            </div>
+
+            {{-- Área do gráfico --}}
+            <div style="background:#f8f9fa; border-radius:8px; padding:12px 8px 4px;">
+                <canvas id="grafico-vendas-mes" style="max-height:230px;"></canvas>
+            </div>
+
+            {{-- Timestamp de atualização --}}
+            <div class="text-center text-muted mt-2 mb-3" id="vendas-atualizado" style="font-size:12px;"></div>
+
+            {{-- Resumo: Total + Ticket Médio --}}
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <div class="rounded p-3" style="background:#daeef8;">
+                        <div class="small fw-semibold text-dark mb-1">Total de Vendas</div>
+                        <div class="fw-bold text-dark" id="vendas-total-chart" style="font-size:1.15rem;">R$ 0,00</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="rounded p-3" style="background:#f0f0f0;">
+                        <div class="small fw-semibold text-dark mb-1">Ticket Médio</div>
+                        <div class="fw-bold text-dark" id="vendas-ticket-chart" style="font-size:1.15rem;">R$ 0,00</div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-9">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Grafico de vendas mensal (valores por dia)</h5>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="grafico-vendas-mes"></canvas>
-                    </div>
+
+            {{-- Botões de ação --}}
+            <div class="row g-2">
+                <div class="col-6">
+                    <a href="{{ route('nfe.create') }}" class="btn btn-primary w-100 fw-semibold" style="letter-spacing:.5px;">
+                        NOVA VENDA
+                    </a>
+                </div>
+                <div class="col-6">
+                    <a href="{{ route('relatorios.index') }}" class="btn btn-primary w-100 fw-semibold" style="letter-spacing:.5px;">
+                        RELATÓRIOS DE VENDA
+                    </a>
                 </div>
             </div>
+
         </div>
+    </div>
     @endif
 
     @if (in_array('Gráfico de compras', $homeComponentes))
@@ -782,11 +812,15 @@
                     })
             }
 
+            var _chartVendasMes = null;
+            var _tipoDataVendas = 'cadastro';
+
             function buscaDadosGraficoVendasMes() {
                 let empresa_id = $('#empresa_id').val()
 
                 $.get(path_url + "api/graficos/grafico-vendas-mes", {
-                        empresa_id: empresa_id
+                        empresa_id: empresa_id,
+                        tipo_data: _tipoDataVendas
                     })
                     .done((success) => {
                         iniciaGraficoVendasMes(success)
@@ -795,6 +829,15 @@
                         console.log(err)
                     })
             }
+
+            $(document).on('change', '#toggle-tipo-data-vendas', function () {
+                _tipoDataVendas = $(this).is(':checked') ? 'faturamento' : 'cadastro';
+                if (_chartVendasMes) {
+                    _chartVendasMes.destroy();
+                    _chartVendasMes = null;
+                }
+                buscaDadosGraficoVendasMes();
+            });
 
             function buscaDadosGraficoComprasMes() {
                 let empresa_id = $('#empresa_id').val()
@@ -910,26 +953,86 @@
 
             function iniciaGraficoVendasMes(data) {
                 const ctx = document.getElementById('grafico-vendas-mes');
-                if (ctx) {
-                    new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: montaLabels(data),
-                            datasets: [{
-                                label: 'total',
-                                data: montaValues(data),
-                                borderWidth: 1
-                            }]
+                if (!ctx) return;
+
+                // Calcular totais para os boxes de resumo
+                const valores   = montaValues(data);
+                const totalBruto = valores.reduce((s, v) => s + v, 0);
+                const diasComVenda = valores.filter(v => v > 0).length;
+                const ticketMedio  = diasComVenda > 0 ? totalBruto / diasComVenda : 0;
+
+                $('#vendas-total-chart').text('R$ ' + convertFloatToMoeda(totalBruto));
+                $('#vendas-ticket-chart').text('R$ ' + convertFloatToMoeda(ticketMedio));
+
+                // Timestamp de atualização
+                const agora = new Date();
+                const pad   = n => String(n).padStart(2, '0');
+                const ts    = pad(agora.getDate()) + '/' + pad(agora.getMonth()+1) + '/' + agora.getFullYear()
+                            + ' ' + pad(agora.getHours()) + ':' + pad(agora.getMinutes()) + ':' + pad(agora.getSeconds());
+                $('#vendas-atualizado').text('Atualizado em ' + ts);
+
+                // Cor primária do sistema (usada nos botões)
+                const primaria = getComputedStyle(document.documentElement)
+                    .getPropertyValue('--bs-primary').trim() || '#0d6efd';
+
+                _chartVendasMes = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: montaLabels(data).map(l => l.split('/')[0]), // só o dia
+                        datasets: [{
+                            label: 'Vendas (R$)',
+                            data: valores,
+                            backgroundColor: primaria || '#0d6efd',
+                            borderRadius: 3,
+                            borderSkipped: false,
+                            barPercentage: 0.6,
+                            categoryPercentage: 0.7
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => 'R$ ' + convertFloatToMoeda(ctx.parsed.y)
+                                }
+                            }
                         },
-                        options: {
-                            scales: {
-                                y: {
-                                    beginAtZero: true
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    font: { size: 10 },
+                                    maxRotation: 0,
+                                    // Mostrar só dias ímpares para não poluir
+                                    callback: function(val, idx) {
+                                        return (idx % 2 === 0) ? this.getLabelForValue(val) : '';
+                                    }
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(0,0,0,0.05)' },
+                                title: {
+                                    display: true,
+                                    text: 'R$',
+                                    font: { size: 10 },
+                                    color: '#888'
+                                },
+                                ticks: {
+                                    font: { size: 10 },
+                                    callback: function(value) {
+                                        if (value >= 1000000) return (value / 1000000).toFixed(1).replace('.0','') + 'M';
+                                        if (value >= 1000)    return (value / 1000).toFixed(1).replace('.0','') + 'k';
+                                        return value;
+                                    }
                                 }
                             }
                         }
-                    });
-                }
+                    }
+                });
             }
 
             function iniciaGraficoComprasMes(data) {
