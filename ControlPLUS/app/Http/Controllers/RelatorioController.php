@@ -87,8 +87,11 @@ class RelatorioController extends Controller
         ->get();
         $tiposDespesaFrete = TipoDespesaFrete::where('empresa_id', request()->empresa_id)->get();
         $depositosRelatorioSelect = $this->depositosRelatorioSelectOptions();
+        $fornecedores = Fornecedor::where('empresa_id', request()->empresa_id)
+            ->orderBy('razao_social')
+            ->get();
 
-        return view('relatorios.index', compact('funcionarios', 'marcas', 'categorias', 'caixas', 'tiposDespesaFrete', 'depositosRelatorioSelect'));
+        return view('relatorios.index', compact('funcionarios', 'marcas', 'categorias', 'caixas', 'tiposDespesaFrete', 'depositosRelatorioSelect', 'fornecedores'));
     }
 
     private function relatorioLocalIds(): array
@@ -1272,9 +1275,11 @@ class RelatorioController extends Controller
         $locais = __getLocaisAtivoUsuario();
         $locais = $locais->pluck(['id']);
 
-        $start_date = $request->start_date;
-        $end_date = $request->end_date;
-        $local_id = $request->local_id;
+        $start_date    = $request->start_date;
+        $end_date      = $request->end_date;
+        $local_id      = $request->local_id;
+        $fornecedor_id = $request->fornecedor_id;
+        $produto_id    = $request->produto_id;
         $esportar_excel = $request->esportar_excel;
 
         $data = Nfe::where('empresa_id', request()->empresa_id)->where('tpNF', 0)
@@ -1283,6 +1288,14 @@ class RelatorioController extends Controller
         })
         ->when(!empty($end_date), function ($query) use ($end_date) {
             return $query->whereDate('created_at', '<=', $end_date);
+        })
+        ->when(!empty($fornecedor_id), function ($query) use ($fornecedor_id) {
+            return $query->where('fornecedor_id', $fornecedor_id);
+        })
+        ->when(!empty($produto_id), function ($query) use ($produto_id) {
+            return $query->whereHas('itens', function ($q) use ($produto_id) {
+                $q->where('produto_id', $produto_id);
+            });
         })
         ->limit($total_resultados ?? 1000000)
         ->when($local_id, function ($query) use ($local_id) {

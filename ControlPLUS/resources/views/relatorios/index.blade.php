@@ -627,33 +627,46 @@
         --}}
 
             <div class="col-12 col-md-6 collapse relatorios-compras" style="order: 31;">
-                <form method="get" action="{{ route('relatorios.compras') }}" target="_blank">
+                <form method="get" action="{{ route('relatorios.compras') }}" target="_blank" id="form-relatorio-compras">
+                    <input type="hidden" name="empresa_id" value="{{ request()->empresa_id }}">
                     <div class="card">
                         <div class="card-header">
                             <h5>Relatório de Compras</h5>
                         </div>
                         <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
+                            <div class="row g-2">
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('periodo_compras', 'Período',
+                                        [
+                                            ''            => 'Personalizado',
+                                            'este_mes'    => 'Este mês',
+                                            'mes_passado' => 'Mês passado',
+                                            'esta_semana' => 'Esta semana',
+                                            'hoje'        => 'Hoje',
+                                        ]
+                                    )->attrs(['class' => 'form-select', 'id' => 'periodo-compras']) !!}
                                 </div>
                                 <div class="col-md-3 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
+                                    {!! Form::date('start_date', 'Data inicial')->id('compras-start-date') !!}
                                 </div>
                                 <div class="col-md-3 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
-                                        'class' => 'form-select',
-                                    ]) !!}
+                                    {!! Form::date('end_date', 'Data final')->id('compras-end-date') !!}
+                                </div>
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('fornecedor_id', 'Fornecedor',
+                                        ['' => 'Todos'] + $fornecedores->pluck('razao_social', 'id')->all()
+                                    )->attrs(['class' => 'form-select select2']) !!}
+                                </div>
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('produto_id', 'Produto')->attrs(['class' => 'form-select produtos_filtro'])->id('produto-compras') !!}
                                 </div>
                                 @if (__countLocalAtivo() > 1)
                                     <div class="col-md-6 col-12">
-                                        {!! Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
+                                        {!! Form::select('local_id', 'Depósito', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
                                     </div>
                                 @endif
                                 <div class="col-md-6 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
-                                        'class' => 'form-select',
-                                    ]) !!}
+                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
                                 </div>
                             </div>
                         </div>
