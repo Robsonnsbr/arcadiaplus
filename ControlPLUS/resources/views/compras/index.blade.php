@@ -100,6 +100,10 @@
                                             @method('delete')
                                             @csrf
 
+                                            <a class="btn btn-secondary btn-sm" title="Ver itens da compra" href="{{ route('compras.show', $item->id) }}">
+                                                <i class="ri-eye-line"></i>
+                                            </a>
+
                                             @can('compras_edit')
                                             <a class="btn btn-warning btn-sm" href="{{ route('nfe.edit', $item->id) }}">
                                                 <i class="ri-edit-line"></i>
