@@ -29,13 +29,17 @@
             <th>PRODUTO</th>
             <th>CATEGORIA</th>
             <th>CÓDIGO</th>
+            <th>SERIAL</th>
+            <th>VALOR UNITÁRIO</th>
             <th>ESTOQUE ATUAL</th>
+            <th>CLIENTE</th>
+            <th>USUÁRIO</th>
         </tr>
     </thead>
     <tbody>
         @if(sizeof($data) == 0)
         <tr>
-            <td colspan="8">Nenhum registro</td>
+            <td colspan="12">Nenhum registro</td>
         </tr>
         @endif
 
@@ -48,7 +52,11 @@
             <td>{{ $item['produto'] }}</td>
             <td>{{ $item['categoria'] }}</td>
             <td>{{ $item['codigo'] }}</td>
+            <td>{{ $item['serial'] }}</td>
+            <td>{{ $item['valor'] }}</td>
             <td>{{ $item['estoque_atual'] }}</td>
+            <td>{{ $item['cliente'] }}</td>
+            <td>{{ $item['usuario'] }}</td>
         </tr>
         @endforeach
     </tbody>

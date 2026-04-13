@@ -30,6 +30,8 @@ use App\Models\Marca;
 use App\Models\TaxaPagamento;
 use App\Models\Estoque;
 use App\Models\MovimentacaoProduto;
+use App\Models\ProdutoUnico;
+use App\Models\User;
 use Dompdf\Dompdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\RelatorioClientesExport;
@@ -2546,7 +2548,8 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
         $movimentacoes = MovimentacaoProduto::with([
             'produto.categoria',
-            'produtoVariacao'
+            'produtoVariacao',
+            'user'
         ])
         ->when(!empty($start_date), function ($query) use ($start_date) {
             return $query->whereDate('movimentacao_produtos.created_at', '>=', $start_date);
@@ -2571,22 +2574,59 @@ class RelatorioController extends Controller
         ->orderBy('movimentacao_produtos.created_at', 'desc')
         ->get();
 
+        $nfeIds  = $movimentacoes->where('tipo_transacao', 'venda_nfe')->pluck('codigo_transacao')->unique()->filter()->values();
+        $nfceIds = $movimentacoes->where('tipo_transacao', 'venda_nfce')->pluck('codigo_transacao')->unique()->filter()->values();
+
+        $nfes  = $nfeIds->isNotEmpty()  ? Nfe::with('cliente')->whereIn('id', $nfeIds)->get()->keyBy('id')   : collect();
+        $nfces = $nfceIds->isNotEmpty() ? Nfce::with('cliente')->whereIn('id', $nfceIds)->get()->keyBy('id') : collect();
+
+        $itemsNfe  = $nfeIds->isNotEmpty()  ? ItemNfe::whereIn('nfe_id', $nfeIds)->get()->groupBy(fn($i) => $i->nfe_id . '_' . $i->produto_id)   : collect();
+        $itemsNfce = $nfceIds->isNotEmpty() ? ItemNfce::whereIn('nfce_id', $nfceIds)->get()->groupBy(fn($i) => $i->nfce_id . '_' . $i->produto_id) : collect();
+
+        $serialsNfe  = $nfeIds->isNotEmpty()  ? ProdutoUnico::whereIn('nfe_id', $nfeIds)->get()->groupBy(fn($p) => $p->nfe_id . '_' . $p->produto_id)   : collect();
+        $serialsNfce = $nfceIds->isNotEmpty() ? ProdutoUnico::whereIn('nfce_id', $nfceIds)->get()->groupBy(fn($p) => $p->nfce_id . '_' . $p->produto_id) : collect();
+
         $data = $movimentacoes
-        ->map(function ($item) {
+        ->map(function ($item) use ($nfes, $nfces, $itemsNfe, $itemsNfce, $serialsNfe, $serialsNfce) {
             $nomeProduto = optional($item->produto)->nome ?? '--';
             if($item->produtoVariacao && $item->produtoVariacao->descricao){
                 $nomeProduto .= ' ' . $item->produtoVariacao->descricao;
             }
 
+            $cliente = '--';
+            $valor   = '--';
+            $serial  = '--';
+            $key     = $item->codigo_transacao . '_' . $item->produto_id;
+
+            if($item->tipo_transacao == 'venda_nfe'){
+                $nfe     = $nfes->get($item->codigo_transacao);
+                $cliente = $nfe && $nfe->cliente ? $nfe->cliente->razao_social : 'Consumidor Final';
+                $itemDoc = optional($itemsNfe->get($key))->first();
+                $valor   = $itemDoc ? __moeda($itemDoc->valor_unitario) : '--';
+                $serialList = $serialsNfe->get($key);
+                $serial  = $serialList ? $serialList->pluck('codigo')->implode(', ') : '--';
+            } elseif($item->tipo_transacao == 'venda_nfce'){
+                $nfce    = $nfces->get($item->codigo_transacao);
+                $cliente = $nfce && $nfce->cliente ? $nfce->cliente->razao_social : 'Consumidor Final';
+                $itemDoc = optional($itemsNfce->get($key))->first();
+                $valor   = $itemDoc ? __moeda($itemDoc->valor_unitario) : '--';
+                $serialList = $serialsNfce->get($key);
+                $serial  = $serialList ? $serialList->pluck('codigo')->implode(', ') : '--';
+            }
+
             return [
-                'tipo' => $item->tipo == 'incremento' ? 'Entrada' : 'Saída',
-                'quantidade' => $item->quantidade,
-                'data' => $item->created_at,
+                'tipo'         => $item->tipo == 'incremento' ? 'Entrada' : 'Saída',
+                'quantidade'   => $item->quantidade,
+                'data'         => $item->created_at,
                 'movimentacao' => $this->movimentacaoTipoTransacaoLabel($item->tipo_transacao),
-                'produto' => $nomeProduto,
-                'categoria' => optional(optional($item->produto)->categoria)->nome ?? '--',
-                'codigo' => $item->codigo_transacao,
-                'estoque_atual' => $item->estoque_atual,
+                'produto'      => $nomeProduto,
+                'categoria'    => optional(optional($item->produto)->categoria)->nome ?? '--',
+                'codigo'       => $item->codigo_transacao,
+                'estoque_atual'=> $item->estoque_atual,
+                'serial'       => $serial,
+                'valor'        => $valor,
+                'cliente'      => $cliente,
+                'usuario'      => optional($item->user)->name ?? '--',
             ];
         })
         ->values()
