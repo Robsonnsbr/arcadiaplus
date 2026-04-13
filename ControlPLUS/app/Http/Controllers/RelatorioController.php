@@ -1093,7 +1093,7 @@ class RelatorioController extends Controller
         ->when($funcionario_id, function ($query) use ($funcionario_id) {
             return $query->where('funcionario_id', $funcionario_id);
         })
-        ->with(['cliente', 'localizacao', 'funcionario'])
+        ->with(['cliente', 'localizacao', 'funcionario', 'itens.produto.categoria'])
         ->get();
 
         $vendasCaixa = Nfce::where('empresa_id', $request->empresa_id)
@@ -1124,7 +1124,7 @@ class RelatorioController extends Controller
         ->when($funcionario_id, function ($query) use ($funcionario_id) {
             return $query->where('funcionario_id', $funcionario_id);
         })
-        ->with(['cliente', 'localizacao', 'funcionario'])
+        ->with(['cliente', 'localizacao', 'funcionario', 'itens.produto.categoria'])
         ->get();
 
         // echo (sizeof($vendas)+sizeof($vendasCaixa));
@@ -1157,36 +1157,72 @@ class RelatorioController extends Controller
 
     private function uneArrayVendas($vendas, $vendasCaixa)
     {
-        $adicionados = [];
         $arr = [];
+
         foreach ($vendas as $v) {
-            $temp = [
-                'id' => $v->numero_sequencial,
-                'data' => $v->created_at,
-                'tipo' => 'Pedido',
-                'total' => $v->total,
-                'cliente' => $v->cliente ? $v->cliente->info : '--',
-                'vendedor' => $v->funcionario ? $v->funcionario->nome : '--',
-                'localizacao' => $v->localizacao
-                // 'itens' => $v->itens
+            $base = [
+                'id'           => $v->numero_sequencial,
+                'data'         => $v->created_at,
+                'tipo'         => 'Pedido',
+                'total'        => $v->total,
+                'cliente_nome' => $v->cliente ? $v->cliente->razao_social : 'Consumidor Final',
+                'cliente_cpf'  => $v->cliente ? $v->cliente->cpf_cnpj : '--',
+                'vendedor'     => $v->funcionario ? $v->funcionario->nome : '--',
+                'localizacao'  => $v->localizacao,
             ];
-            array_push($adicionados, $v->id);
-            array_push($arr, $temp);
+            $itens = $v->itens ?? collect();
+            if ($itens->isEmpty()) {
+                $base['produto']        = '--';
+                $base['categoria']      = '--';
+                $base['quantidade']     = '--';
+                $base['valor_unitario'] = '--';
+                $base['sub_total']      = '--';
+                $arr[] = $base;
+            } else {
+                foreach ($itens as $i) {
+                    $row = $base;
+                    $row['produto']        = optional($i->produto)->nome ?? '--';
+                    $row['categoria']      = optional(optional($i->produto)->categoria)->nome ?? '--';
+                    $row['quantidade']     = $i->quantidade;
+                    $row['valor_unitario'] = $i->valor_unitario;
+                    $row['sub_total']      = $i->sub_total;
+                    $arr[] = $row;
+                }
+            }
         }
+
         foreach ($vendasCaixa as $v) {
-            $temp = [
-                'id' => $v->numero_sequencial,
-                'data' => $v->created_at,
-                'tipo' => 'PDV',
-                'total' => $v->total,
-                'cliente' => $v->cliente ? $v->cliente->info : '--',
-                'vendedor' => $v->funcionario ? $v->funcionario->nome : '--',
-                'localizacao' => $v->localizacao
-                // 'itens' => $v->itens
+            $base = [
+                'id'           => $v->numero_sequencial,
+                'data'         => $v->created_at,
+                'tipo'         => 'PDV',
+                'total'        => $v->total,
+                'cliente_nome' => $v->cliente ? $v->cliente->razao_social : 'Consumidor Final',
+                'cliente_cpf'  => $v->cliente ? $v->cliente->cpf_cnpj : '--',
+                'vendedor'     => $v->funcionario ? $v->funcionario->nome : '--',
+                'localizacao'  => $v->localizacao,
             ];
-            array_push($adicionados, $v->id);
-            array_push($arr, $temp);
+            $itens = $v->itens ?? collect();
+            if ($itens->isEmpty()) {
+                $base['produto']        = '--';
+                $base['categoria']      = '--';
+                $base['quantidade']     = '--';
+                $base['valor_unitario'] = '--';
+                $base['sub_total']      = '--';
+                $arr[] = $base;
+            } else {
+                foreach ($itens as $i) {
+                    $row = $base;
+                    $row['produto']        = optional($i->produto)->nome ?? '--';
+                    $row['categoria']      = optional(optional($i->produto)->categoria)->nome ?? '--';
+                    $row['quantidade']     = $i->quantidade;
+                    $row['valor_unitario'] = $i->valor_unitario;
+                    $row['sub_total']      = $i->sub_total;
+                    $arr[] = $row;
+                }
+            }
         }
+
         return $arr;
     }
 
