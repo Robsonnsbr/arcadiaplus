@@ -16,9 +16,10 @@
         <tr>
             <th>DATA</th>
             <th>PRODUTO</th>
+            <th>SERIAIS</th>
             <th>QUANTIDADE</th>
             <th>VALOR VENDA</th>
-            <th>VALOR VENDA MEDIA</th>
+            <th>VALOR VENDA MÉDIA</th>
             <th>SUB TOTAL</th>
             <th>LUCRO</th>
         </tr>
@@ -30,6 +31,7 @@
             <tr>
                 <td>{{ __data_pt($grupo['data'], 0) }}</td>
                 <td>{{ $item['produto']->nome }} {{ $item['produto']->referencia }}</td>
+                <td>{{ $item['seriais'] ?? '--' }}</td>
                 <td>{{ __moeda($item['quantidade']) }}</td>
                 <td>{{ __moeda($item['valor']) }}</td>
                 <td>{{ __moeda($item['media']) }}</td>

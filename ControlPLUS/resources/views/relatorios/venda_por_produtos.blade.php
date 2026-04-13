@@ -61,7 +61,8 @@
                     </td>
                 </tr>
                 <tr>
-                    <td style="width: 40%;">Produto</td>
+                    <td style="width: 35%;">Produto</td>
+                    <td>Seriais</td>
                     <td>Quantidade</td>
                     <td>Valor venda</td>
                     <td>Valor venda média</td>
@@ -71,6 +72,7 @@
                 @foreach ($i['itens'] as $d)
                     <tr>
                         <th class="b-top">{{ $d['produto']->nome }} {{ $d['produto']->referencia }}</th>
+                        <th class="b-top" style="font-size:10px; white-space: normal; word-break: break-word;">{{ $d['seriais'] ?? '--' }}</th>
                         <th class="b-top">{{ __moeda($d['quantidade']) }}</th>
                         <th class="b-top">
                             {{ __moeda($d['valor']) }}

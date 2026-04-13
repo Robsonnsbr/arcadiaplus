@@ -1667,7 +1667,15 @@ class RelatorioController extends Controller
             })
             ->get();
 
-            $itens = $this->uneArrayItens($itensNfe, $itensNfce, $request->ordem);
+            $serialsForDay = ProdutoUnico::where(function ($q) use ($dataAtual) {
+                $q->whereHas('nfe', function ($s) use ($dataAtual) {
+                    $s->whereDate('created_at', $dataAtual);
+                })->orWhereHas('nfce', function ($s) use ($dataAtual) {
+                    $s->whereDate('created_at', $dataAtual);
+                });
+            })->get()->groupBy('produto_id');
+
+            $itens = $this->uneArrayItens($itensNfe, $itensNfce, $request->ordem, $serialsForDay);
             $temp = [
                 'data' => $dataAtual,
                 'itens' => $itens,
@@ -1691,39 +1699,46 @@ class RelatorioController extends Controller
         $domPdf->stream("Relatório de venda por produtos.pdf", array("Attachment" => false));
     }
 
-    private function uneArrayItens($itens, $itensCaixa, $ordem){
+    private function uneArrayItens($itens, $itensCaixa, $ordem, $seriais = null){
         $data = [];
-        $adicionados = [];
-        foreach($itens as $i){
 
+        foreach($itens as $i){
+            $produtoId = $i->produto->id;
             $temp = [
                 'quantidade' => $i->soma_quantidade,
-                'subtotal' => $i->subtotal,
-                'valor' => $i->produto->valor_unitario,
-                'media' => $i->media,
-                'produto' => $i->produto,
+                'subtotal'   => $i->subtotal,
+                'valor'      => $i->produto->valor_unitario,
+                'media'      => $i->media,
+                'produto'    => $i->produto,
+                'seriais'    => $seriais ? ($seriais->get($produtoId)?->pluck('codigo')->filter()->implode(', ') ?: '--') : '--',
             ];
             array_push($data, $temp);
-            // array_push($adicionados, $i->produto->id);
         }
 
-        // print_r($data[0]['produto']);
         foreach($itensCaixa as $i){
             $indiceAdicionado = $this->jaAdicionadoProduto($data, $i->produto->id);
             if($indiceAdicionado == -1){
-
+                $produtoId = $i->produto->id;
                 $temp = [
                     'quantidade' => $i->soma_quantidade,
-                    'subtotal' => $i->subtotal,
-                    'valor' => $i->produto->valor_unitario,
-                    'media' => $i->media,
-                    'produto' => $i->produto,
+                    'subtotal'   => $i->subtotal,
+                    'valor'      => $i->produto->valor_unitario,
+                    'media'      => $i->media,
+                    'produto'    => $i->produto,
+                    'seriais'    => $seriais ? ($seriais->get($produtoId)?->pluck('codigo')->filter()->implode(', ') ?: '--') : '--',
                 ];
                 array_push($data, $temp);
             }else{
                 $data[$indiceAdicionado]['quantidade'] += $i->soma_quantidade;
-                $data[$indiceAdicionado]['subtotal'] += $i->subtotal;
-                $data[$indiceAdicionado]['media'] = ($data[$indiceAdicionado]['media'] + $i->media) / 2;
+                $data[$indiceAdicionado]['subtotal']   += $i->subtotal;
+                $data[$indiceAdicionado]['media']       = ($data[$indiceAdicionado]['media'] + $i->media) / 2;
+                if($seriais){
+                    $produtoId  = $i->produto->id;
+                    $novos      = $seriais->get($produtoId)?->pluck('codigo')->filter()->implode(', ') ?? '';
+                    $existentes = $data[$indiceAdicionado]['seriais'] !== '--' ? $data[$indiceAdicionado]['seriais'] : '';
+                    $merged     = implode(', ', array_filter([$existentes, $novos]));
+                    $data[$indiceAdicionado]['seriais'] = $merged ?: '--';
+                }
             }
         }
 
