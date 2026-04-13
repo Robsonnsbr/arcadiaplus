@@ -20,7 +20,7 @@
                                     <th>Valor</th>
                                     <th>Status</th>
                                     <th>Criado em</th>
-                                    <th></th>
+                                    <th class="text-end" style="min-width: 15rem" aria-label="Ações"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -34,19 +34,22 @@
                                         <td>R$ {{ __moeda($item->valor ?? 0) }}</td>
                                         <td>{{ $item->status }}</td>
                                         <td>{{ $item->created_at ? $item->created_at->format('d/m/Y H:i') : '—' }}</td>
-                                        <td class="text-end">
-                                            <a href="{{ route('tradein.inventory.edit', ['id' => $item->id, 'empresa_id' => request()->empresa_id]) }}"
-                                               class="btn btn-sm btn-outline-secondary me-1" title="Editar">
-                                                <i class="ri-edit-line"></i>
-                                            </a>
-                                            @if ($item->status === \App\Models\TradeinInventoryItem::STATUS_PENDING_TRANSFER)
-                                                <a href="{{ route('tradein.inventory.transfer', ['id' => $item->id, 'empresa_id' => request()->empresa_id]) }}"
-                                                   class="btn btn-sm btn-outline-primary">
-                                                    Transferir para estoque real
+                                        <td class="text-end" style="min-width: 15rem">
+                                            <div
+                                                class="d-inline-flex flex-nowrap justify-content-end gap-2 align-items-center flex-shrink-0">
+                                                <a href="{{ route('tradein.inventory.edit', ['id' => $item->id, 'empresa_id' => request()->empresa_id]) }}"
+                                                    class="btn btn-sm btn-outline-secondary" title="Editar">
+                                                    <i class="ri-edit-line"></i>
                                                 </a>
-                                            @else
-                                                <span class="badge bg-success">Transferido</span>
-                                            @endif
+                                                @if ($item->status === \App\Models\TradeinInventoryItem::STATUS_PENDING_TRANSFER)
+                                                    <a href="{{ route('tradein.inventory.transfer', ['id' => $item->id, 'empresa_id' => request()->empresa_id]) }}"
+                                                        class="btn btn-sm btn-outline-primary c">
+                                                        Transferir para estoque real
+                                                    </a>
+                                                @else
+                                                    <span class="badge bg-success text-white">Transferido</span>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
