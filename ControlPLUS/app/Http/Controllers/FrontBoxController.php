@@ -774,7 +774,8 @@ class FrontBoxController extends Controller
         }
 
         $configGeral = ConfigGeral::where('empresa_id', $item->empresa_id)->first();
-        $p = view('front_box.cupom_nao_fiscal', compact('config', 'item', 'configGeral'));
+        $tradein = $this->getTradeinDaVenda($item);
+        $p = view('front_box.cupom_nao_fiscal', compact('config', 'item', 'configGeral', 'tradein'));
 
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
@@ -875,8 +876,27 @@ class FrontBoxController extends Controller
 
         $config = __objetoParaEmissao($config, $item->local_id);
         $configGeral = ConfigGeral::where('empresa_id', $item->empresa_id)->first();
+        $tradein = $this->getTradeinDaVenda($item);
 
-        return compact('config', 'item', 'configGeral');
+        return compact('config', 'item', 'configGeral', 'tradein');
+    }
+
+    private function getTradeinDaVenda(Nfce $item): ?\App\Models\Tradein
+    {
+        $code = \App\Models\TradeinCreditMovement::PAYMENT_CODE;
+
+        $hasTradein = $item->tipo_pagamento === $code
+            || $item->fatura()->where('tipo_pagamento', $code)->exists();
+
+        if (!$hasTradein || !$item->cliente_id) {
+            return null;
+        }
+
+        return \App\Models\Tradein::where('empresa_id', $item->empresa_id)
+            ->where('cliente_id', $item->cliente_id)
+            ->where('status_aceite_cliente', \App\Models\Tradein::ACEITE_ACCEPTED)
+            ->orderByDesc('aceite_em')
+            ->first();
     }
 
     public function mesas(Request $request){

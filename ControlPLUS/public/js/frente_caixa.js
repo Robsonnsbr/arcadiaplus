@@ -2735,6 +2735,7 @@ function updateTradeinCreditBalance(clienteId) {
         TRADEIN_CREDIT_BALANCE = 0;
         $("#tradein_credit_balance").text("R$ 0,00");
         $("#tradein_credit_wrap").addClass("d-none");
+        $("#tradein_credit_wrap_mirror").addClass("d-none");
         calcTotalPayment();
         return;
     }
@@ -2752,6 +2753,7 @@ function updateTradeinCreditBalance(clienteId) {
                 "R$ " + convertFloatToMoeda(saldo),
             );
             $("#tradein_credit_wrap").removeClass("d-none");
+            $("#tradein_credit_wrap_mirror").removeClass("d-none");
             calcTotalPayment();
         })
         .fail((err) => {
@@ -2759,6 +2761,7 @@ function updateTradeinCreditBalance(clienteId) {
             TRADEIN_CREDIT_BALANCE = 0;
             $("#tradein_credit_balance").text("R$ 0,00");
             $("#tradein_credit_wrap").removeClass("d-none");
+            $("#tradein_credit_wrap_mirror").removeClass("d-none");
             calcTotalPayment();
         });
 }

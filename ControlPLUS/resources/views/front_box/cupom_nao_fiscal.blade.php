@@ -243,6 +243,23 @@
 			</tr>
 			@endif
 
+			@if (!empty($tradein) && ($tradein->nome_item || $tradein->serial_number))
+			<tr><th class="total" colspan="2">-----</th></tr>
+			<tr><th class="total" colspan="2">TRADE-IN</th></tr>
+			@if ($tradein->nome_item)
+			<tr>
+				<th class="total">Aparelho</th>
+				<th class="total" style="text-align: right;">{{ $tradein->nome_item }}</th>
+			</tr>
+			@endif
+			@if ($tradein->serial_number)
+			<tr>
+				<th class="total">Código/Serial</th>
+				<th class="total" style="text-align: right;">{{ $tradein->serial_number }}</th>
+			</tr>
+			@endif
+			@endif
+
 			<tr>
 				<th class="total">Data</th>
 				<th class="total" style="text-align: right;">{{ __data_pt($item->created_at) }}</th>

@@ -6,7 +6,7 @@
 ->post()
 ->route('frontbox.store')->id('form-pdv')
 !!}
-<div class="pl-lg-4">
+<div class="px-lg-2 px-1">
     @include('front_box._forms')
 </div>
 {!!Form::close()!!}

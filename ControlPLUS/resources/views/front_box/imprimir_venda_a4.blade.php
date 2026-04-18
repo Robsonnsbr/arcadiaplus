@@ -1032,6 +1032,31 @@
     </table>
     <br>
 
+    @if (!empty($tradein) && ($tradein->nome_item || $tradein->serial_number))
+        <table>
+            <tr>
+                <td class="b-top b-bottom" style="width: 700px;">
+                    <strong>TRADE-IN</strong>
+                </td>
+            </tr>
+        </table>
+        <table>
+            @if ($tradein->nome_item)
+                <tr>
+                    <td style="text-align: left; width: 200px;">Aparelho:</td>
+                    <td style="text-align: left;"><strong>{{ $tradein->nome_item }}</strong></td>
+                </tr>
+            @endif
+            @if ($tradein->serial_number)
+                <tr>
+                    <td style="text-align: left; width: 200px;">Código/Serial:</td>
+                    <td style="text-align: left;"><strong>{{ $tradein->serial_number }}</strong></td>
+                </tr>
+            @endif
+        </table>
+        <br>
+    @endif
+
     <table>
         <tr>
             <td class="text-left" style="width: 240px;">
