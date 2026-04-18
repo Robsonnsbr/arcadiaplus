@@ -130,6 +130,30 @@
                     !!}
                 </div>
 
+                {{-- SKU: obrigatório somente em novos produtos (front-end), nullable no back para compatibilidade com legado --}}
+                <div class="col-md-2">
+                    <label class="form-label">
+                        SKU
+                        @if(!isset($item))
+                            <span class="text-danger">*</span>
+                        @endif
+                        <small class="text-muted d-block" style="font-size:0.7rem;">Somente letras, números, - ou _</small>
+                    </label>
+                    <input
+                        type="text"
+                        name="sku"
+                        id="inp-sku"
+                        maxlength="40"
+                        class="form-control text-uppercase"
+                        value="{{ isset($item) ? $item->sku : old('sku') }}"
+                        placeholder="Ex: PROD-001"
+                        data-sku-required="{{ isset($item) ? '0' : '1' }}"
+                    >
+                    @if($errors->has('sku'))
+                        <p class="text-danger small mt-1">{{ $errors->first('sku') }}</p>
+                    @endif
+                </div>
+
                 <div class="col-md-2">
                     {!!Form::select('gerenciar_estoque', 'Gerenciar estoque', [1 => 'Sim', 0 => 'Não'])
                     ->attrs(['class' => 'form-select'])
@@ -440,25 +464,24 @@
                                                         <th>Valor</th>
                                                         <th>Código de barras</th>
                                                         <th>Referência</th>
+                                                        <th>SKU <span class="text-danger">*</span></th>
                                                         <th>Estoque</th>
                                                         <th>Imagem</th>
-                                                        <th>
-
-                                                        </th>
+                                                        <th></th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     @isset($item)
                                                     @foreach($item->variacoes as $v)
                                                     <tr class="dynamic-form">
-                                                        <input type="hidden" name="variacao_id[]]]" value="{{ $v->id }}">
+                                                        {{-- Correção: era variacao_id[]]] (três colchetes), o que quebrava o request --}}
+                                                        <input type="hidden" name="variacao_id[]" value="{{ $v->id }}">
                                                         <td>
                                                             <input type="text" class="form-control" name="descricao_variacao[]" value="{{ $v->descricao }}" style="width: 150px;" required readonly>
                                                         </td>
                                                         <td>
                                                             <input style="width: 100px;" type="tel" class="form-control moeda" name="valor_venda_variacao[]" value="{{ __moeda($v->valor) }}" required>
                                                         </td>
-
                                                         <td>
                                                             <div class="input-group input-group-merge" style="width: 200px;">
                                                                 <input type="tel" name="codigo_barras_variacao[]" class="form-control ignore" value="{{ $v->codigo_barras }}">
@@ -469,6 +492,9 @@
                                                         </td>
                                                         <td>
                                                             <input style="width: 100px;" type="text" class="form-control ignore" name="referencia_variacao[]" value="{{ $v->referencia }}">
+                                                        </td>
+                                                        <td>
+                                                            <input style="width: 100px;" type="text" class="form-control text-uppercase sku-variacao-input" name="sku_variacao[]" value="{{ $v->sku }}" placeholder="SKU" maxlength="40">
                                                         </td>
                                                         <td>
                                                             <input style="width: 100px;" readonly type="text" class="form-control ignore" name="estoque_variacao[]" value="{{ $v->estoque ? number_format($v->estoque->quantidade, 0, '.', '') : '' }}">

@@ -1831,6 +1831,7 @@ class RelatorioController extends Controller
                     if(sizeof($produto->variacoes) == 0){
                         $linha = [
                             'produto' => $produto->nome,
+                            'sku' => $produto->sku ?? '--',
                             'quantidade' => $quantidadeProduto,
                             'estoque_minimo' => $produto->estoque_minimo,
                             'valor_compra' => $produto->valor_compra,
@@ -1843,6 +1844,7 @@ class RelatorioController extends Controller
                         foreach($produto->variacoes as $v){
                             $linha = [
                                 'produto' => $produto->nome . " " . $v->descricao,
+                                'sku' => $v->sku ?? $produto->sku ?? '--',
                                 'quantidade' => $this->quantidadeVariacaoRelatorio($quantidadePorVariacao, $produto->id, $v->id),
                                 'estoque_minimo' => $produto->estoque_minimo,
                                 'valor_compra' => $produto->valor_compra,
@@ -1882,6 +1884,7 @@ class RelatorioController extends Controller
                 if(sizeof($produto->variacoes) == 0){
                     $linha = [
                         'produto' => $produto->nome,
+                        'sku' => $produto->sku ?? '--',
                         'quantidade' => (float)($quantidadePorProduto[$produto->id] ?? 0),
                         'estoque_minimo' => $produto->estoque_minimo,
                         'valor_compra' => $produto->valor_compra,
@@ -1894,6 +1897,7 @@ class RelatorioController extends Controller
                     foreach($produto->variacoes as $v){
                         $linha = [
                             'produto' => $produto->nome . " " . $v->descricao,
+                            'sku' => $v->sku ?? $produto->sku ?? '--',
                             'quantidade' => $this->quantidadeVariacaoRelatorio($quantidadePorVariacao, $produto->id, $v->id),
                             'estoque_minimo' => $produto->estoque_minimo,
                             'valor_compra' => $produto->valor_compra,
@@ -1923,6 +1927,7 @@ class RelatorioController extends Controller
                 if(sizeof($produto->variacoes) == 0){
                     $linha = [
                         'produto' => $produto->nome,
+                        'sku' => $produto->sku ?? '--',
                         'quantidade' => (float)($quantidadePorProduto[$produto->id] ?? 0),
                         'estoque_minimo' => $produto->estoque_minimo,
                         'valor_compra' => $produto->valor_compra,
@@ -1935,6 +1940,7 @@ class RelatorioController extends Controller
                     foreach($produto->variacoes as $v){
                         $linha = [
                             'produto' => $produto->nome . " " . $v->descricao,
+                            'sku' => $v->sku ?? $produto->sku ?? '--',
                             'quantidade' => $this->quantidadeVariacaoRelatorio($quantidadePorVariacao, $produto->id, $v->id),
                             'estoque_minimo' => $produto->estoque_minimo,
                             'valor_compra' => $produto->valor_compra,
@@ -2029,6 +2035,7 @@ class RelatorioController extends Controller
         return $produtos->map(function ($produto) {
             return [
                 'produto' => $produto->nome,
+                'sku' => $produto->sku ?? '--',
                 'quantidade' => $produto->quantidade_total,
                 'estoque_minimo' => $produto->estoque_minimo,
                 'valor_compra' => $produto->valor_compra,
@@ -2684,6 +2691,7 @@ class RelatorioController extends Controller
                 'data'         => $item->created_at,
                 'movimentacao' => $this->movimentacaoTipoTransacaoLabel($item->tipo_transacao),
                 'produto'      => $nomeProduto,
+                'sku'          => optional($item->produto)->sku ?? '--',
                 'categoria'    => optional(optional($item->produto)->categoria)->nome ?? '--',
                 'codigo'       => $item->codigo_transacao,
                 'estoque_atual'=> $item->estoque_atual,

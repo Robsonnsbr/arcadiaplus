@@ -31,6 +31,31 @@
             background: #eef1f4;
             color: #212529;
         }
+
+        /* Filtro de período padronizado */
+        .rp-period-filter {
+            margin-bottom: 0.25rem;
+        }
+
+        .rp-date-input[readonly] {
+            background-color: #f0f2f5;
+            cursor: default;
+        }
+
+        .rp-date-input.rp-date-editavel {
+            background-color: #fff;
+            cursor: text;
+        }
+
+        /*
+         * Alinhamento dos campos abaixo do filtro de período.
+         * Todos os col-* irmãos do period-filter recebem o mesmo
+         * espaçamento superior (equivalente a mt-2), eliminando a
+         * inconsistência entre campos com e sem mt-2 explícito.
+         */
+        .rp-period-filter ~ [class*="col-"] {
+            margin-top: 0.5rem !important;
+        }
     </style>
 @endsection
 @section('content')
@@ -92,12 +117,7 @@
                         <div class="card-body">
                             <div class="row">
 
-                                <div class="col-md-6 col-12">
-                                    {!! Form::date('start_date', 'Data inicial de cadastro') !!}
-                                </div>
-                                <div class="col-md-6 col-12">
-                                    {!! Form::date('end_date', 'Data final de cadastro') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-6 col-12 mt-2">
                                     {!! Form::select('estoque', 'Estoque', [
                                         '' => 'Selecione',
@@ -154,12 +174,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('tipo', 'Tipo', [
                                         '' => 'Selecione',
@@ -222,12 +237,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('tipo', 'Tipo', [
                                         '' => 'Selecione',
@@ -260,12 +270,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('tipo', 'Tipo', [
                                         '' => 'Selecione',
@@ -353,12 +358,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
 
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('cliente', 'Cliente')->attrs(['class' => 'form-select cliente'])->id('cliente2') !!}
@@ -404,12 +404,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
 
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('status', 'Estado', ['1' => 'Quitadas', '-1' => 'Pendentes', '' => 'Todas'])->attrs([
@@ -452,12 +447,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
 
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('status', 'Estado', ['1' => 'Recebidas', '-1' => 'Pendentes', '' => 'Todos'])->attrs([
@@ -500,12 +490,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
 
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('status', 'Status', ['1' => 'Quitado', '-1' => 'Aberto', '' => 'Todos'])->attrs([
@@ -541,12 +526,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-4 col-12">
                                     {!! Form::select(
                                         'caixa_id',
@@ -635,23 +615,10 @@
                         </div>
                         <div class="card-body">
                             <div class="row g-2">
-                                <div class="col-md-6 col-12">
-                                    {!! Form::select('periodo_compras', 'Período',
-                                        [
-                                            ''            => 'Personalizado',
-                                            'este_mes'    => 'Este mês',
-                                            'mes_passado' => 'Mês passado',
-                                            'esta_semana' => 'Esta semana',
-                                            'hoje'        => 'Hoje',
-                                        ]
-                                    )->attrs(['class' => 'form-select', 'id' => 'periodo-compras']) !!}
-                                </div>
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('start_date', 'Data inicial')->id('compras-start-date') !!}
-                                </div>
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('end_date', 'Data final')->id('compras-end-date') !!}
-                                </div>
+                                @include('partials.period-filter', [
+                                    'startId' => 'compras-start-date',
+                                    'endId'   => 'compras-end-date',
+                                ])
                                 <div class="col-md-6 col-12">
                                     {!! Form::select('fornecedor_id', 'Fornecedor',
                                         ['' => 'Todos'] + $fornecedores->pluck('razao_social', 'id')->all()
@@ -687,12 +654,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('estado', 'Estado', [
                                         'novo' => 'Novas',
@@ -751,12 +713,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
 
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('funcionario_id', 'Vendedor')->attrs(['class' => 'form-select funcionario'])->id('funcionario-vendas-pdv') !!}
@@ -832,12 +789,10 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter', [
+                                    'startName' => 'data_inicial',
+                                    'endName'   => 'data_final',
+                                ])
                                 @if (__countLocalAtivo() > 1)
                                     <div class="col-md-4 col-12">
                                         {!! Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
@@ -867,12 +822,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-3 col-12">
                                     {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
@@ -951,12 +901,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('start_date', 'Data inicial cadastro')->required() !!}
-                                </div>
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('end_date', 'Data final cadastro')->required() !!}
-                                </div>
+                                @include('partials.period-filter')
 
                                 <div class="col-md-3 col-12">
                                     {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
@@ -991,12 +936,10 @@
                         </div>
                         <div class="card-body">
                             <div class="row g-2">
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('start_date', 'Data inicial')->id('relatorio-estoque-start-date') !!}
-                                </div>
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('end_date', 'Data final')->id('relatorio-estoque-end-date') !!}
-                                </div>
+                                @include('partials.period-filter', [
+                                    'startId' => 'relatorio-estoque-start-date',
+                                    'endId'   => 'relatorio-estoque-end-date',
+                                ])
 
                                 <div class="col-md-6 col-12">
                                     {!! Form::select('categoria_id', 'Categoria', ['' => 'Selecione'] + $categorias->pluck('nome', 'id')->all())->attrs(['class' => 'form-select select2'])->id('categoria2') !!}
@@ -1047,12 +990,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row g-2">
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('start_date', 'Data cadastro inicial') !!}
-                                </div>
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('end_date', 'Data cadastro final') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-6 col-12">
                                     {!! Form::select('categoria_id', 'Categoria', ['' => 'Selecione'] + $categorias->pluck('nome', 'id')->all())->attrs(['class' => 'form-select select2'])->id('categoria3') !!}
                                 </div>
@@ -1210,12 +1148,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row g-2">
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
 
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('ordem', 'Ordem', [
@@ -1259,12 +1192,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row g-2">
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('start_date', 'Data inicial')->required() !!}
-                                </div>
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('end_date', 'Data final')->required() !!}
-                                </div>
+                                @include('partials.period-filter')
 
                                 <div class="col-md-6 col-12">
                                     {!! Form::select('marca_id', 'Marca', ['' => 'Selecione'] + $marcas->pluck('nome', 'id')->all())->attrs([
@@ -1315,12 +1243,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row g-2">
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-3 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
 
                                 <div class="col-md-6 col-12">
                                     {!! Form::select('marca_id', 'Marca', ['' => 'Selecione'] + $marcas->pluck('nome', 'id')->all())->attrs([
@@ -1408,12 +1331,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-4 col-12">
                                     {!! Form::select(
                                         'tipo_pagamento',
@@ -1508,12 +1426,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
 
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('marca_id', 'Marca', ['' => 'Selecione'] + $marcas->pluck('nome', 'id')->all())->attrs([
@@ -1595,12 +1508,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('status', 'Status', ['' => 'Todos', '1' => 'Ativo', '2' => 'Utilizado', '0' => 'Expirado'])->attrs(['class' => 'form-select']) !!}
                                 </div>
@@ -1630,12 +1538,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-6 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-6 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-6 col-12 mt-2">
                                     {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
                                 </div>
@@ -1658,12 +1561,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('start_date', 'Data inicial') !!}
-                                </div>
-                                <div class="col-md-4 col-12">
-                                    {!! Form::date('end_date', 'Data final') !!}
-                                </div>
+                                @include('partials.period-filter')
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('tipo', 'Tipo', ['' => 'Todos', 'receber' => 'Contas a Receber', 'pagar' => 'Contas a Pagar'])->attrs(['class' => 'form-select']) !!}
                                 </div>
@@ -1689,5 +1587,6 @@
 @endsection
 
 @section('js')
+    <script type="text/javascript" src="/js/period-filter.js"></script>
     <script type="text/javascript" src="/js/relatorio.js"></script>
 @endsection

@@ -5,13 +5,11 @@
 <tr class="dynamic-form">
 	<input type="hidden" class="form-control" name="variacao_modelo_item_id[]" value="{{ $i->id }}" required readonly>
 	<td>
-
 		<input style="width: 150px;" type="text" class="form-control" name="descricao_variacao[]" value="{{ $i->nome }} {{ $s->nome }}" required readonly>
 	</td>
 	<td>
 		<input style="width: 100px;" type="tel" class="form-control moeda" name="valor_venda_variacao[]" value="" required>
 	</td>
-
 	<td>
 		<div class="input-group input-group-merge" style="width: 200px;">
 			<input type="tel" name="codigo_barras_variacao[]" class="form-control ignore">
@@ -22,6 +20,9 @@
 	</td>
 	<td>
 		<input style="width: 100px;" type="text" class="form-control ignore" name="referencia_variacao[]" value="">
+	</td>
+	<td>
+		<input style="width: 100px;" type="text" class="form-control text-uppercase sku-variacao-input" name="sku_variacao[]" value="" placeholder="SKU" maxlength="40">
 	</td>
 	<td>
 		<input style="width: 100px;" type="text" class="form-control ignore qtd" name="estoque_variacao[]" value="">
@@ -48,9 +49,7 @@
 	<td>
 		<input style="width: 100px;" type="tel" class="form-control moeda" name="valor_venda_variacao[]" value="">
 	</td>
-
 	<td>
-
 		<div class="input-group input-group-merge" style="width: 200px;">
 			<input type="tel" name="codigo_barras_variacao[]" class="form-control ignore">
 			<div class="input-group-text gerar-codigo">
@@ -60,6 +59,9 @@
 	</td>
 	<td>
 		<input style="width: 100px;" type="text" class="form-control ignore" name="referencia_variacao[]" value="">
+	</td>
+	<td>
+		<input style="width: 100px;" type="text" class="form-control text-uppercase sku-variacao-input" name="sku_variacao[]" value="" placeholder="SKU" maxlength="40">
 	</td>
 	<td>
 		<input style="width: 100px;" type="text" class="form-control ignore qtd" name="estoque_variacao[]" value="">

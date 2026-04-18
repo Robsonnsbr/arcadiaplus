@@ -43,6 +43,7 @@ use App\Utils\EstoqueUtil;
 use App\Utils\WoocommerceUtil;
 use App\Rules\ValidaReferenciaBalanca;
 use App\Rules\ValidaCodigoBarrasUnico;
+use App\Rules\ValidaSkuUnico;
 use App\Exports\ProdutoExport;
 use App\Services\IbptService;
 
@@ -537,6 +538,7 @@ class ProdutoController extends Controller
                             'valor' => __convert_value_bd($request->valor_venda_variacao[$i]),
                             'codigo_barras' => $request->codigo_barras_variacao[$i],
                             'referencia' => $request->referencia_variacao[$i],
+                            'sku' => isset($request->sku_variacao[$i]) && $request->sku_variacao[$i] !== '' ? $request->sku_variacao[$i] : null,
                             'imagem' => $file_name,
                             'variacao_modelo_item_id' => $request->variacao_modelo_item_id[$i]
                         ];
@@ -764,6 +766,16 @@ private function insereEmListaDePrecos($produto){
 public function update(Request $request, $id)
 {
         $item = $this->produtoComAvaliacao($id);
+
+        // Valida SKU (unicidade) no update, ignorando o próprio produto.
+        // Não revalida campos obrigatórios do store para não quebrar edições parciais via API.
+        $this->validate($request, [
+            'sku' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9\-_]+$/', new ValidaSkuUnico((int)$item->empresa_id, (int)$id)],
+        ], [
+            'sku.regex' => 'SKU deve conter apenas letras, números, hífen ou sublinhado (sem espaços)',
+            'sku.max'   => 'SKU deve ter no máximo 40 caracteres',
+        ]);
+
         try {
             $file_name = $item->imagem;
 
@@ -865,6 +877,7 @@ public function update(Request $request, $id)
                     'valor' => __convert_value_bd($request->valor_venda_variacao[$i]),
                     'codigo_barras' => $request->codigo_barras_variacao[$i],
                     'referencia' => $request->referencia_variacao[$i],
+                    'sku' => isset($request->sku_variacao[$i]) && $request->sku_variacao[$i] !== '' ? $request->sku_variacao[$i] : null,
                 ];
                 if(isset($request->variacao_id[$i])){
                     $variacao = ProdutoVariacao::findOrfail($request->variacao_id[$i]);
@@ -1181,8 +1194,24 @@ public function desactiveSelecet(Request $request)
     return redirect()->back();
 }
 
-private function __validate(Request $request)
+private function __validate(Request $request, ?int $ignoreId = null)
 {
+    // Fluxos de importação automática (NF-e, planilha, integrações) identificados
+    // pelo header X-Auto-Import ou por serem requisições puramente JSON sem formulário.
+    // Nesses casos o SKU permanece nullable para não bloquear o sistema.
+    $isAutoImport = $request->hasHeader('X-Auto-Import') || (
+        $request->expectsJson() && !$request->hasHeader('X-Manual-Create')
+    );
+
+    $skuRule = $isAutoImport
+        ? ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9\-_]+$/', new ValidaSkuUnico((int)$request->empresa_id, $ignoreId)]
+        : ($ignoreId === null
+            // Store (novo produto): obrigatório no backend, alinhado com o frontend
+            ? ['required', 'string', 'max:40', 'regex:/^[A-Za-z0-9\-_]+$/', new ValidaSkuUnico((int)$request->empresa_id, null)]
+            // Update: nullable — produtos legados sem SKU não devem ser bloqueados
+            : ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9\-_]+$/', new ValidaSkuUnico((int)$request->empresa_id, $ignoreId)]
+        );
+
     $rules = [
         'nome' => 'required',
             // 'codigo_barras' => 'required',
@@ -1201,6 +1230,7 @@ private function __validate(Request $request)
         'local_id' => 'nullable|required_without:locais|integer|exists:localizacaos,id',
         'locais' => 'nullable|required_without:local_id|array|min:1',
         'locais.*' => 'nullable|integer|exists:localizacaos,id',
+        'sku' => $skuRule,
     ];
 
     $messages = [
@@ -1224,6 +1254,9 @@ private function __validate(Request $request)
         'local_id.required_without' => 'Selecione o local de armazenamento',
         'locais.required_without' => 'Selecione o local de armazenamento',
         'locais.min' => 'Selecione ao menos um local de armazenamento',
+        'sku.required' => 'SKU é obrigatório para novos produtos',
+        'sku.regex'    => 'SKU deve conter apenas letras, números, hífen ou sublinhado (sem espaços)',
+        'sku.max'      => 'SKU deve ter no máximo 40 caracteres',
     ];
     $this->validate($request, $rules, $messages);
 

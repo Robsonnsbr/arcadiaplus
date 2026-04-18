@@ -2969,7 +2969,10 @@ if ($("#tradein_produto_id").length && !$("#tradein_produto_id").hasClass("selec
                 var list = Array.isArray(data) ? data : (data.data || []);
                 return {
                     results: $.map(list, function (v) {
-                        return { id: v.id, text: v.nome + (v.codigo ? " (" + v.codigo + ")" : "") };
+                        var suffix = '';
+                        if (v.sku) suffix += ' [SKU: ' + v.sku + ']';
+                        else if (v.codigo) suffix += ' (' + v.codigo + ')';
+                        return { id: v.id, text: v.nome + suffix };
                     }),
                 };
             },

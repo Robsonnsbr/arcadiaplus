@@ -27,8 +27,9 @@
             <th>DATA</th>
             <th>MOVIMENTAÇÃO</th>
             <th>PRODUTO</th>
+            <th>SKU</th>
             <th>CATEGORIA</th>
-            <th>CÓDIGO</th>
+            <th>CÓD. TRANSAÇÃO</th>
             <th>SERIAL</th>
             <th>VALOR UNITÁRIO</th>
             <th>ESTOQUE ATUAL</th>
@@ -50,6 +51,7 @@
             <td>{{ __data_pt($item['data']) }}</td>
             <td>{{ $item['movimentacao'] }}</td>
             <td>{{ $item['produto'] }}</td>
+            <td>{{ $item['sku'] ?? '--' }}</td>
             <td>{{ $item['categoria'] }}</td>
             <td>{{ $item['codigo'] }}</td>
             <td>{{ $item['serial'] }}</td>

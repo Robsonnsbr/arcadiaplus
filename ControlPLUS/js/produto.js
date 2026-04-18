@@ -28,6 +28,43 @@ $(function() {
     }, 1100)
 })
 
+// Validação de SKU no submit — obrigatório apenas em novos cadastros (data-sku-required="1")
+$(document).on('submit', 'form', function (e) {
+    var $skuInput = $('#inp-sku');
+    if ($skuInput.length === 0) return true;
+
+    var isRequired = $skuInput.data('sku-required') == '1';
+    var valor = $skuInput.val().trim();
+
+    if (isRequired && valor === '') {
+        e.preventDefault();
+        $skuInput.addClass('is-invalid');
+        if ($skuInput.next('.invalid-feedback').length === 0) {
+            $skuInput.after('<div class="invalid-feedback">SKU é obrigatório para novos produtos.</div>');
+        }
+        $skuInput[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    }
+
+    if (valor !== '' && !/^[A-Za-z0-9\-_]+$/.test(valor)) {
+        e.preventDefault();
+        $skuInput.addClass('is-invalid');
+        if ($skuInput.next('.invalid-feedback').length === 0) {
+            $skuInput.after('<div class="invalid-feedback">SKU deve conter apenas letras, números, hífen ou sublinhado.</div>');
+        }
+        $skuInput[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    }
+});
+
+// Normaliza SKU para maiúsculas e remove caracteres inválidos ao sair do campo
+$(document).on('blur', '#inp-sku, .sku-variacao-input', function () {
+    var val = $(this).val().trim().toUpperCase().replace(/[^A-Z0-9\-_]/g, '');
+    $(this).val(val);
+    $(this).removeClass('is-invalid');
+    $(this).next('.invalid-feedback').remove();
+});
+
 $('#btn-store').click(() => {
 
 })

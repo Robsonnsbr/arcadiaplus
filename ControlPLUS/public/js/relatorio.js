@@ -112,70 +112,28 @@ $(function(){
             return;
         });
 
-        // Atalhos de período — Relatório de Compras
-        const $periodoCompras = $("#periodo-compras");
-        const $comprasStart   = $("#compras-start-date");
-        const $comprasEnd     = $("#compras-end-date");
-
-        function aplicarPeriodoCompras(valor) {
-            const hoje = new Date();
-            const pad  = n => String(n).padStart(2, '0');
-            const fmt  = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
-
-            if (valor === 'hoje') {
-                $comprasStart.val(fmt(hoje));
-                $comprasEnd.val(fmt(hoje));
-            } else if (valor === 'esta_semana') {
-                const dia = hoje.getDay();
-                const seg = new Date(hoje); seg.setDate(hoje.getDate() - (dia === 0 ? 6 : dia - 1));
-                $comprasStart.val(fmt(seg));
-                $comprasEnd.val(fmt(hoje));
-            } else if (valor === 'este_mes') {
-                const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-                const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
-                $comprasStart.val(fmt(ini));
-                $comprasEnd.val(fmt(fim));
-            } else if (valor === 'mes_passado') {
-                const ini = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
-                const fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
-                $comprasStart.val(fmt(ini));
-                $comprasEnd.val(fmt(fim));
-            } else {
-                $comprasStart.val('');
-                $comprasEnd.val('');
-            }
-        }
-
-        if ($periodoCompras.length) {
-            $periodoCompras.on('change', function () {
-                aplicarPeriodoCompras($(this).val());
-            });
-        }
-
-        // Ao digitar data manualmente, volta para "Personalizado"
-        $comprasStart.add($comprasEnd).on('change', function () {
-            if ($periodoCompras.val() !== '') {
-                $periodoCompras.val('');
-            }
-        });
-
-        const $estoqueStartDate = $("#relatorio-estoque-start-date");
-        const $estoqueEndDate = $("#relatorio-estoque-end-date");
+        // Interação Estoque Crítico ↔ Filtro de Período
+        // Os inputs de data agora são gerenciados pelo period-filter.js.
+        // Quando o usuário ativa "Estoque Crítico", forçamos o período para
+        // "todo_periodo" (datas vazias), pois a lógica de crítico ignora datas.
+        // Quando "Estoque Crítico" é removido, restauramos "mes_atual".
         const $estoqueCritico = $("#relatorio-estoque-critico");
+        const $estoqueSelectPeriodo = $("#relatorio-estoque-start-date")
+            .closest('.rp-period-filter')
+            .find('.rp-periodo-select');
 
         if ($estoqueCritico.length) {
             $estoqueCritico.on("change", function () {
                 if ($(this).val()) {
-                    $estoqueStartDate.val("");
-                    $estoqueEndDate.val("");
-                }
-            });
-        }
-
-        if ($estoqueStartDate.length || $estoqueEndDate.length) {
-            $estoqueStartDate.add($estoqueEndDate).on("change", function () {
-                if ($estoqueStartDate.val() || $estoqueEndDate.val()) {
-                    $estoqueCritico.val("");
+                    // Ativa estoque crítico: limpa datas (todo período)
+                    if (window.rpSetPeriodo && $estoqueSelectPeriodo.length) {
+                        window.rpSetPeriodo($estoqueSelectPeriodo[0], 'todo_periodo');
+                    }
+                } else {
+                    // Remove estoque crítico: volta ao padrão
+                    if (window.rpSetPeriodo && $estoqueSelectPeriodo.length) {
+                        window.rpSetPeriodo($estoqueSelectPeriodo[0], 'mes_atual');
+                    }
                 }
             });
         }

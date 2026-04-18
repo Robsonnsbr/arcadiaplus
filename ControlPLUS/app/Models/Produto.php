@@ -38,7 +38,8 @@ class Produto extends Model
 		'numero_sequencial', 'valor_prazo', 'ifood_id', 'vendizap_id', 'vendizap_valor', 'destaque_cardapio', 'oferta_cardapio',
 		'sub_variacao_modelo_id', 'peso_bruto', 'pICMSEfet', 'pRedBCEfet',
 		'cst_ibscbs', 'cclass_trib', 'perc_ibs_uf', 'perc_ibs_mun', 'perc_cbs', 'perc_dif', 'tipo_item_sped', 'prazo_garantia',
-		'tipo_produto', 'origem_produto'
+		'tipo_produto', 'origem_produto',
+		'sku',
 	];
 
 	protected $appends = [ 'imgApp' ];

@@ -14,6 +14,7 @@ use App\Models\ListaPrecoUsuario;
 use App\Models\Nfce;
 use App\Models\PadraoTributacaoProduto;
 use App\Models\ProdutoVariacao;
+use App\Rules\ValidaSkuUnico;
 use App\Models\CategoriaProduto;
 use App\Models\Marca;
 use App\Models\VariacaoModelo;
@@ -436,6 +437,14 @@ class ContadorAdminController extends Controller
 
     public function produtoUpdate(Request $request, $id){
         $item = Produto::findOrFail($id);
+
+        $this->validate($request, [
+            'sku' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9\-_]+$/', new ValidaSkuUnico((int)$item->empresa_id, (int)$id)],
+        ], [
+            'sku.regex' => 'SKU deve conter apenas letras, números, hífen ou sublinhado (sem espaços)',
+            'sku.max'   => 'SKU deve ter no máximo 40 caracteres',
+        ]);
+
         try {
             $file_name = $item->imagem;
 

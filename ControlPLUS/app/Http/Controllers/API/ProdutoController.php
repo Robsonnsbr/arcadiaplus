@@ -80,11 +80,11 @@ class ProdutoController extends Controller
         ->where('empresa_id', $request->empresa_id)
         ->where('status', 1)
         ->when(!is_numeric($request->pesquisa) && $refDigito != '#', function ($q) use ($request) {
-            // return $q->where('nome', 'LIKE', "%$request->pesquisa%");
             return $q->where(function($query) use ($request)
             {
                 return $query->where('nome', 'LIKE', "%$request->pesquisa%")
-                ->orWhere('referencia', 'LIKE', "%$request->pesquisa%");
+                ->orWhere('referencia', 'LIKE', "%$request->pesquisa%")
+                ->orWhere('sku', 'LIKE', "%$request->pesquisa%");
             });
         })
         ->when(is_numeric($request->pesquisa) && $refDigito != '#', function ($q) use ($request) {
@@ -93,12 +93,17 @@ class ProdutoController extends Controller
                 return $query->where('codigo_barras', 'LIKE', "%$request->pesquisa%")
                 ->orWhere('codigo_barras2', 'LIKE', "%$request->pesquisa%")
                 ->orWhere('codigo_barras3', 'LIKE', "%$request->pesquisa%")
-                ->orWhere('numero_sequencial', 'LIKE', "%$request->pesquisa%");
+                ->orWhere('numero_sequencial', 'LIKE', "%$request->pesquisa%")
+                ->orWhere('sku', 'LIKE', "%$request->pesquisa%");
             });
         })
         ->when($refDigito == '#', function ($q) use ($request) {
             $pesquisa = substr($request->pesquisa, 1, strlen($request->pesquisa));
-            return $q->where('referencia', 'LIKE', "%$pesquisa%");
+            return $q->where(function($query) use ($pesquisa)
+            {
+                return $query->where('referencia', 'LIKE', "%$pesquisa%")
+                ->orWhere('sku', 'LIKE', "%$pesquisa%");
+            });
         })
         ->when($local_id != null && !$request->boolean('is_compra'), function ($query) use ($local_id) {
             return $query->whereExists(function ($sub) use ($local_id) {

@@ -10,7 +10,7 @@ class ProdutoVariacao extends Model
     use HasFactory;
 
     protected $fillable = [
-        'produto_id', 'descricao', 'valor', 'codigo_barras', 'referencia', 'imagem', 'variacao_modelo_item_id'
+        'produto_id', 'descricao', 'valor', 'codigo_barras', 'referencia', 'sku', 'imagem', 'variacao_modelo_item_id'
     ];
 
     public function produto(){

@@ -31,11 +31,11 @@
     <thead>
         <tr>
             <th style="width: 300px">Produto</th>
+            <th>SKU</th>
             <th>Categoria</th>
             <th>Valor de compra</th>
             <th>Valor de venda</th>
             <th>Valor de lucro</th>
-
             <th>Quantidade</th>
             <th>Estoque mínimo</th>
             @if($isEstoqueCritico)
@@ -53,6 +53,7 @@
         @foreach($data as $key => $item)
         <tr class="@if($key%2 == 0) pure-table-odd @endif">
             <td>{{ $item['produto'] }}</td>
+            <td><code>{{ $item['sku'] ?? '--' }}</code></td>
             <td>{{ $item['categoria'] }}</td>
             <td>{{ __moeda($item['valor_compra']) }}</td>
             <td>{{ __moeda($item['valor_venda']) }}</td>
