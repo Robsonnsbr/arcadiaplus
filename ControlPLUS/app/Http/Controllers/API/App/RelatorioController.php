@@ -179,22 +179,10 @@ class RelatorioController extends Controller
 
         $estoque_minimo = $request->estoque_minimo;
         $estoque_critico = $request->estoque_critico;
-        $start_date = $request->data_inicial;
-        if($start_date){
-            $start_date = \Carbon\Carbon::createFromFormat('d/m/Y', $start_date)->format('Y-m-d');
-        }
-        $end_date = $request->data_final;
-        if($end_date){
-            $end_date = \Carbon\Carbon::createFromFormat('d/m/Y', $end_date)->format('Y-m-d');
-        }
         $categoria_id = $request->categoria_id;
         $local_id = $request->local_id;
 
         $data = [];
-
-        if($request->data_inicial || $request->data_final){
-            $estoque_critico = null;
-        }
 
         if($estoque_critico){
             $data = $this->getEstoqueCriticoData($request, $local_id, $categoria_id, $estoque_minimo, (int)$estoque_critico);
@@ -213,12 +201,6 @@ class RelatorioController extends Controller
             //     return $query->join('produto_localizacaos', 'produto_localizacaos.produto_id', '=', 'produtos.id')
             //     ->whereIn('produto_localizacaos.localizacao_id', $locais);
             // })
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('produtos.created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date,) {
-                return $query->whereDate('produtos.created_at', '<=', $end_date);
-            })
             // ->limit(20)
             ->where('produtos.estoque_minimo', '>', 0)->get();
             foreach($produtosComEstoqueMinimo as $produto){
@@ -260,62 +242,6 @@ class RelatorioController extends Controller
                     
                 }
             }
-        }else if($start_date || $end_date){
-            $movimentacoes = MovimentacaoProduto::
-            select('movimentacao_produtos.*')
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('movimentacao_produtos.created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date,) {
-                return $query->whereDate('movimentacao_produtos.created_at', '<=', $end_date);
-            })
-            ->join('produtos', 'produtos.id', '=', 'movimentacao_produtos.produto_id')
-            ->when($categoria_id, function ($query) use ($categoria_id) {
-                return $query->where('produtos.categoria_id', $categoria_id);
-            })
-            // ->when(!empty($local_id), function ($query) use ($local_id) {
-            //     return $query->join('produto_localizacaos', 'produto_localizacaos.produto_id', '=', 'produtos.id')
-            //     ->where('produto_localizacaos.localizacao_id', $local_id);
-            // })
-            // ->when(!$local_id, function ($query) use ($locais) {
-            //     return $query->join('produto_localizacaos', 'produto_localizacaos.produto_id', '=', 'produtos.id')
-            //     ->whereIn('produto_localizacaos.localizacao_id', $locais);
-            // })
-            ->where('produtos.empresa_id', $request->empresa_id)
-            ->groupBy('produtos.id')
-            ->orderBy('movimentacao_produtos.created_at', 'desc')
-            ->get();
-
-            foreach($movimentacoes as $m){
-
-                $produto = $m->produto;
-                if(sizeof($produto->variacoes) == 0){
-                    $linha = [
-                        'produto' => $m->produto->nome,
-                        'quantidade' => $m->produto->estoqueTotalProduto(),
-                        'estoque_minimo' => $m->produto->estoque_minimo,
-                        'valor_compra' => $m->produto->valor_compra,
-                        'valor_venda' => $m->produto->valor_unitario,
-                        'categoria' => $m->produto->categoria ? $m->produto->categoria->nome : '--',
-                        'data_cadastro' => __data_pt($m->produto->created_at)
-                    ];
-                    array_push($data, $linha);
-                }else{
-                    foreach($produto->variacoes as $v){
-                        $linha = [
-                            'produto' => $m->produto->nome . " " . $v->descricao,
-                            'quantidade' => $v->estoque ? $v->estoque->quantidade : '',
-                            'estoque_minimo' => $m->produto->estoque_minimo,
-                            'valor_compra' => $m->produto->valor_compra,
-                            'valor_venda' => $v->valor,
-                            'categoria' => $m->produto->categoria ? $m->produto->categoria->nome : '--',
-                            'data_cadastro' => __data_pt($m->produto->created_at)
-                        ];
-                        array_push($data, $linha);
-                    }
-                }
-            }
-
         }else{
 
             $estoque = Estoque::
@@ -360,8 +286,9 @@ class RelatorioController extends Controller
             }
         }
         $localizacao = null;
-        $p = view('relatorios.estoque', compact('data', 'start_date', 'end_date', 'estoque_minimo', 'localizacao', 'estoque_critico'))
-        ->with('title', 'Relatório de Estoque');
+        $deposito = null;
+        $p = view('relatorios.estoque', compact('data', 'estoque_minimo', 'localizacao', 'estoque_critico', 'deposito'))
+        ->with('title', 'Relatório de Estoque Atual');
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
 

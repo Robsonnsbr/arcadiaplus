@@ -111,31 +111,5 @@ $(function(){
             });
             return;
         });
-
-        // Interação Estoque Crítico ↔ Filtro de Período
-        // Os inputs de data agora são gerenciados pelo period-filter.js.
-        // Quando o usuário ativa "Estoque Crítico", forçamos o período para
-        // "todo_periodo" (datas vazias), pois a lógica de crítico ignora datas.
-        // Quando "Estoque Crítico" é removido, restauramos "mes_atual".
-        const $estoqueCritico = $("#relatorio-estoque-critico");
-        const $estoqueSelectPeriodo = $("#relatorio-estoque-start-date")
-            .closest('.rp-period-filter')
-            .find('.rp-periodo-select');
-
-        if ($estoqueCritico.length) {
-            $estoqueCritico.on("change", function () {
-                if ($(this).val()) {
-                    // Ativa estoque crítico: limpa datas (todo período)
-                    if (window.rpSetPeriodo && $estoqueSelectPeriodo.length) {
-                        window.rpSetPeriodo($estoqueSelectPeriodo[0], 'todo_periodo');
-                    }
-                } else {
-                    // Remove estoque crítico: volta ao padrão
-                    if (window.rpSetPeriodo && $estoqueSelectPeriodo.length) {
-                        window.rpSetPeriodo($estoqueSelectPeriodo[0], 'mes_atual');
-                    }
-                }
-            });
-        }
     }, 100);
 });

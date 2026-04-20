@@ -1780,10 +1780,12 @@ class RelatorioController extends Controller
         return -1;
     }
 
+    /**
+     * Relatório de estoque atual: posição na tabela `estoques` no momento da geração.
+     * (Snapshot histórico por data de corte — ex.: estoque em uma data passada — não implementado; ver backlog.)
+     */
     public function estoque(Request $request){
         $estoque_minimo = $request->estoque_minimo;
-        $start_date = $request->start_date;
-        $end_date = $request->end_date;
         $estoque_critico = $request->estoque_critico;
         $categoria_id = $request->categoria_id;
         $esportar_excel = $request->esportar_excel;
@@ -1797,10 +1799,6 @@ class RelatorioController extends Controller
 
         $data = [];
 
-        if($start_date || $end_date){
-            $estoque_critico = null;
-        }
-
         if($estoque_critico){
             $data = $this->getEstoqueCriticoData($request, $localIds, $local_id, $categoria_id, $estoque_minimo, (int)$estoque_critico, $deposito_id);
         }else if($estoque_minimo == 1){
@@ -1812,12 +1810,6 @@ class RelatorioController extends Controller
                 {
                     $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
                 });
-            })
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('produtos.created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date,) {
-                return $query->whereDate('produtos.created_at', '<=', $end_date);
             })
             ->where('produtos.estoque_minimo', '>', 0);
 
@@ -1857,59 +1849,6 @@ class RelatorioController extends Controller
                     }
                 }
             }
-        }else if($start_date || $end_date){
-            $movimentacoes = MovimentacaoProduto::
-            select('movimentacao_produtos.*')
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('movimentacao_produtos.created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date,) {
-                return $query->whereDate('movimentacao_produtos.created_at', '<=', $end_date);
-            })
-            ->join('produtos', 'produtos.id', '=', 'movimentacao_produtos.produto_id')
-            ->when($categoria_id, function ($query) use ($categoria_id) {
-                return $query->where(function($t) use ($categoria_id)
-                {
-                    $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
-                });
-            })
-            ->where('produtos.empresa_id', $request->empresa_id)
-            ->groupBy('produtos.id')
-            ->orderBy('movimentacao_produtos.created_at', 'desc');
-
-            $movimentacoes = $this->applyRelatorioEstoqueContextToProdutoQuery($movimentacoes, $deposito_id, $localIds)->get();
-
-            foreach($movimentacoes as $m){
-                $produto = $m->produto;
-                if(sizeof($produto->variacoes) == 0){
-                    $linha = [
-                        'produto' => $produto->nome,
-                        'sku' => $produto->sku ?? '--',
-                        'quantidade' => (float)($quantidadePorProduto[$produto->id] ?? 0),
-                        'estoque_minimo' => $produto->estoque_minimo,
-                        'valor_compra' => $produto->valor_compra,
-                        'valor_venda' => $produto->valor_unitario,
-                        'categoria' => $produto->categoria ? $produto->categoria->nome : '--',
-                        'data_cadastro' => __data_pt($produto->created_at)
-                    ];
-                    array_push($data, $linha);
-                }else{
-                    foreach($produto->variacoes as $v){
-                        $linha = [
-                            'produto' => $produto->nome . " " . $v->descricao,
-                            'sku' => $v->sku ?? $produto->sku ?? '--',
-                            'quantidade' => $this->quantidadeVariacaoRelatorio($quantidadePorVariacao, $produto->id, $v->id),
-                            'estoque_minimo' => $produto->estoque_minimo,
-                            'valor_compra' => $produto->valor_compra,
-                            'valor_venda' => $v->valor,
-                            'categoria' => $produto->categoria ? $produto->categoria->nome : '--',
-                            'data_cadastro' => __data_pt($produto->created_at)
-                        ];
-                        array_push($data, $linha);
-                    }
-                }
-            }
-
         }else{
 
             $produtos = Produto::select('produtos.*')
@@ -1955,14 +1894,14 @@ class RelatorioController extends Controller
         }
 
         if($esportar_excel == -1){
-            $p = view('relatorios/estoque', compact('data', 'start_date', 'end_date', 'estoque_minimo', 'deposito', 'estoque_critico'))
-            ->with('title', 'Relatório de Estoque');
+            $p = view('relatorios/estoque', compact('data', 'estoque_minimo', 'deposito', 'estoque_critico'))
+            ->with('title', 'Relatório de Estoque Atual');
             $domPdf = new Dompdf(["enable_remote" => true]);
             $domPdf->loadHtml($p);
 
             $domPdf->setPaper("A4", "landscape");
             $domPdf->render();
-            $domPdf->stream("Relatório de estoque.pdf", array("Attachment" => false));
+            $domPdf->stream("Relatório de estoque atual.pdf", array("Attachment" => false));
         }else{
             $relatorioEx = new RelatorioEstoqueExport($data, $estoque_critico, $deposito);
             return Excel::download($relatorioEx, 'estoque.xlsx');

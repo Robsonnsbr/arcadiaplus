@@ -27,6 +27,7 @@
 @if($deposito != null)
 <h5>Depósito: <strong>{{ $deposito->nome }}@if($deposito->localizacao) ({{ $deposito->localizacao->descricao }})@endif</strong></h5>
 @endif
+<p style="font-size: 11px; color: #555; margin-bottom: 12px;">Exibe o saldo atual dos produtos com base no estoque registrado no sistema no momento da geração.</p>
 <table class="table-sm table-borderless" style="border-bottom: 1px solid rgb(206, 206, 206); margin-bottom:10px;  width: 100%;">
     <thead>
         <tr>

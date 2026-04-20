@@ -932,15 +932,11 @@
                     id="form-relatorio-estoque">
                     <div class="card">
                         <div class="card-header">
-                            <h5>Relatório de Estoque</h5>
+                            <h5>Relatório de Estoque Atual</h5>
+                            <p class="text-muted small mb-0 mt-1">Exibe o saldo atual dos produtos com base no estoque registrado no sistema no momento da geração.</p>
                         </div>
                         <div class="card-body">
                             <div class="row g-2">
-                                @include('partials.period-filter', [
-                                    'startId' => 'relatorio-estoque-start-date',
-                                    'endId'   => 'relatorio-estoque-end-date',
-                                ])
-
                                 <div class="col-md-6 col-12">
                                     {!! Form::select('categoria_id', 'Categoria', ['' => 'Selecione'] + $categorias->pluck('nome', 'id')->all())->attrs(['class' => 'form-select select2'])->id('categoria2') !!}
                                 </div>
