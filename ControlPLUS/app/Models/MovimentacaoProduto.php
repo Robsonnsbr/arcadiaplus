@@ -9,7 +9,7 @@ class MovimentacaoProduto extends Model
 {
     use HasFactory;
 
-    protected $fillable = [ 
+    protected $fillable = [
         'produto_id',
         'quantidade',
         'tipo',
@@ -20,7 +20,8 @@ class MovimentacaoProduto extends Model
         'deposito_origem_id',
         'deposito_destino_id',
         'user_id',
-        'estoque_atual'
+        'estoque_atual',
+        'serial',
     ];
 
     public function produto(){
@@ -50,17 +51,15 @@ class MovimentacaoProduto extends Model
         return $this->belongsTo(Deposito::class, 'deposito_destino_id');
     }
 
-    public function tipoTransacao(){
-        if($this->tipo_transacao == 'venda_nfe'){
-            return 'Venda NFe';
-        }else if($this->tipo_transacao == 'venda_nfce'){
-            return 'Venda NFCe';
-        }else if($this->tipo_transacao == 'compra'){
-            return 'Compra';
-        }else if($this->tipo_transacao == 'transferencia_estoque'){
-            return 'Transferência de estoque';
-        }else{
-            return 'Alteração de estoque';
-        }
+    public function tipoTransacao(): string
+    {
+        return match ($this->tipo_transacao) {
+            'venda_nfe'             => 'Venda NFe',
+            'venda_nfce'            => 'Venda NFCe',
+            'compra'                => 'Compra',
+            'transferencia_estoque' => 'Transferência de estoque',
+            'tradein_entrada'       => 'Entrada Trade-in',
+            default                 => 'Alteração de estoque',
+        };
     }
 }

@@ -438,9 +438,9 @@ class EstoqueUtil
         $user_id,
         $produto_variacao_id = null,
         $local_id = null,
-        $deposito_id = null
-    ){
-
+        $deposito_id = null,
+        ?string $serial = null
+    ) {
         $estoqueQuery = Estoque::where('produto_id', $produto_id);
         $estoqueQuery = VariacaoQueryUtil::apply($estoqueQuery, $produto_variacao_id);
         if ($deposito_id || $local_id) {
@@ -452,17 +452,18 @@ class EstoqueUtil
         $estoque = $estoqueQuery->first();
 
         MovimentacaoProduto::create([
-            'produto_id' => $produto_id,
-            'quantidade' => $quantidade,
-            'tipo' => $tipo,
-            'codigo_transacao' => $codigo_transacao,
-            'tipo_transacao' => $tipo_transacao,
+            'produto_id'          => $produto_id,
+            'quantidade'          => $quantidade,
+            'tipo'                => $tipo,
+            'codigo_transacao'    => $codigo_transacao,
+            'tipo_transacao'      => $tipo_transacao,
             'produto_variacao_id' => $produto_variacao_id,
-            'deposito_id' => $deposito_id,
-            'deposito_origem_id' => null,
+            'deposito_id'         => $deposito_id,
+            'deposito_origem_id'  => null,
             'deposito_destino_id' => null,
-            'user_id' => $user_id,
-            'estoque_atual' => $estoque ? $estoque->quantidade : 0
+            'user_id'             => $user_id,
+            'estoque_atual'       => $estoque ? $estoque->quantidade : 0,
+            'serial'              => $serial,
         ]);
     }
 

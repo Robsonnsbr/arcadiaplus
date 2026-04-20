@@ -1,11 +1,13 @@
 @extends('relatorios.default')
 @section('content')
 
+<h5>Total de registros: <strong>{{ $data->count() }}</strong></h5>
+
 @foreach($data as $nfe)
-<table class="table-sm table-borderless" style="border:1px solid #ccc; margin-bottom:16px; width:100%; border-collapse:collapse;">
+<table style="margin-bottom: 16px; width: 100%;">
     <thead>
-        <tr style="background:#f0f0f0;">
-            <th style="padding:4px 6px; border-bottom:1px solid #ccc;" colspan="4">
+        <tr>
+            <th class="text-left" colspan="4">
                 NF-e #{{ $nfe->numero ?? $nfe->id }}
                 &nbsp;|&nbsp; <strong>{{ $nfe->fornecedor ? $nfe->fornecedor->razao_social : '--' }}</strong>
                 &nbsp;|&nbsp; {{ __data_pt($nfe->created_at) }}
@@ -15,20 +17,20 @@
                 @endif
             </th>
         </tr>
-        <tr style="background:#e8e8e8; font-size:11px;">
-            <th style="padding:3px 6px; border-bottom:1px solid #ccc; width:50%;">Produto</th>
-            <th style="padding:3px 6px; border-bottom:1px solid #ccc; width:12%; text-align:center;">Qtd.</th>
-            <th style="padding:3px 6px; border-bottom:1px solid #ccc; width:19%; text-align:right;">Valor Unit.</th>
-            <th style="padding:3px 6px; border-bottom:1px solid #ccc; width:19%; text-align:right;">Subtotal</th>
+        <tr>
+            <th class="text-left" style="width:50%;">Produto</th>
+            <th style="width:12%;">Qtd.</th>
+            <th class="text-right" style="width:19%;">Valor Unit.</th>
+            <th class="text-right" style="width:19%;">Subtotal</th>
         </tr>
     </thead>
     <tbody>
-        @forelse($nfe->itens as $item)
-        <tr style="font-size:11px; border-bottom:1px solid #eee;">
-            <td style="padding:3px 6px;">
+        @forelse($nfe->itens as $idx => $item)
+        <tr>
+            <td class="text-left">
                 @if($item->produto)
                     @if($item->variacao_id && $item->produtoVariacao)
-                        {{ $item->produto->nome }} - {{ $item->produtoVariacao->descricao }}
+                        {{ $item->produto->nome }} – {{ $item->produtoVariacao->descricao }}
                     @else
                         {{ $item->produto->nome }}
                     @endif
@@ -38,18 +40,18 @@
                     --
                 @endif
             </td>
-            <td style="padding:3px 6px; text-align:center;">{{ number_format((float)$item->quantidade, 2, ',', '.') }}</td>
-            <td style="padding:3px 6px; text-align:right;">{{ __moeda($item->valor_unitario) }}</td>
-            <td style="padding:3px 6px; text-align:right;">{{ __moeda($item->sub_total) }}</td>
+            <td>{{ number_format((float)$item->quantidade, 2, ',', '.') }}</td>
+            <td class="text-right">{{ __moeda($item->valor_unitario) }}</td>
+            <td class="text-right">{{ __moeda($item->sub_total) }}</td>
         </tr>
         @empty
         <tr>
-            <td colspan="4" style="padding:4px 6px; color:#999; font-size:11px;">Nenhum produto encontrado nesta nota.</td>
+            <td colspan="4" class="text-left">Nenhum produto encontrado nesta nota.</td>
         </tr>
         @endforelse
     </tbody>
 </table>
 @endforeach
 
-<h4 style="margin-top:10px;">Total de Compras: R$ {{ __moeda($data->sum('total')) }}</h4>
+<h4 style="margin-top: 10px;">Total de Compras: R$ {{ __moeda($data->sum('total')) }}</h4>
 @endsection

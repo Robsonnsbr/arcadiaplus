@@ -2572,22 +2572,26 @@ class RelatorioController extends Controller
         ->orderBy('movimentacao_produtos.created_at', 'desc')
         ->get();
 
-        $nfeIds  = $movimentacoes->where('tipo_transacao', 'venda_nfe')->pluck('codigo_transacao')->unique()->filter()->values();
-        $nfceIds = $movimentacoes->where('tipo_transacao', 'venda_nfce')->pluck('codigo_transacao')->unique()->filter()->values();
+        $nfeIds    = $movimentacoes->where('tipo_transacao', 'venda_nfe')->pluck('codigo_transacao')->unique()->filter()->values();
+        $nfceIds   = $movimentacoes->where('tipo_transacao', 'venda_nfce')->pluck('codigo_transacao')->unique()->filter()->values();
+        $compraIds = $movimentacoes->where('tipo_transacao', 'compra')->pluck('codigo_transacao')->unique()->filter()->values();
 
         $nfes  = $nfeIds->isNotEmpty()  ? Nfe::with('cliente')->whereIn('id', $nfeIds)->get()->keyBy('id')   : collect();
         $nfces = $nfceIds->isNotEmpty() ? Nfce::with('cliente')->whereIn('id', $nfceIds)->get()->keyBy('id') : collect();
+        $nfesCompra = $compraIds->isNotEmpty() ? Nfe::whereIn('id', $compraIds)->get()->keyBy('id') : collect();
 
         $itemsNfe  = $nfeIds->isNotEmpty()  ? ItemNfe::whereIn('nfe_id', $nfeIds)->get()->groupBy(fn($i) => $i->nfe_id . '_' . $i->produto_id)   : collect();
         $itemsNfce = $nfceIds->isNotEmpty() ? ItemNfce::whereIn('nfce_id', $nfceIds)->get()->groupBy(fn($i) => $i->nfce_id . '_' . $i->produto_id) : collect();
+        $itemsCompra = $compraIds->isNotEmpty() ? ItemNfe::whereIn('nfe_id', $compraIds)->get()->groupBy(fn($i) => $i->nfe_id . '_' . $i->produto_id) : collect();
 
-        $serialsNfe  = $nfeIds->isNotEmpty()  ? ProdutoUnico::whereIn('nfe_id', $nfeIds)->get()->groupBy(fn($p) => $p->nfe_id . '_' . $p->produto_id)   : collect();
-        $serialsNfce = $nfceIds->isNotEmpty() ? ProdutoUnico::whereIn('nfce_id', $nfceIds)->get()->groupBy(fn($p) => $p->nfce_id . '_' . $p->produto_id) : collect();
+        $serialsNfe    = $nfeIds->isNotEmpty()    ? ProdutoUnico::whereIn('nfe_id', $nfeIds)->get()->groupBy(fn($p) => $p->nfe_id . '_' . $p->produto_id)   : collect();
+        $serialsNfce   = $nfceIds->isNotEmpty()   ? ProdutoUnico::whereIn('nfce_id', $nfceIds)->get()->groupBy(fn($p) => $p->nfce_id . '_' . $p->produto_id) : collect();
+        $serialsCompra = $compraIds->isNotEmpty() ? ProdutoUnico::whereIn('nfe_id', $compraIds)->get()->groupBy(fn($p) => $p->nfe_id . '_' . $p->produto_id) : collect();
 
         $data = $movimentacoes
-        ->map(function ($item) use ($nfes, $nfces, $itemsNfe, $itemsNfce, $serialsNfe, $serialsNfce) {
+        ->map(function ($item) use ($nfes, $nfces, $nfesCompra, $itemsNfe, $itemsNfce, $itemsCompra, $serialsNfe, $serialsNfce, $serialsCompra) {
             $nomeProduto = optional($item->produto)->nome ?? '--';
-            if($item->produtoVariacao && $item->produtoVariacao->descricao){
+            if ($item->produtoVariacao && $item->produtoVariacao->descricao) {
                 $nomeProduto .= ' ' . $item->produtoVariacao->descricao;
             }
 
@@ -2596,20 +2600,35 @@ class RelatorioController extends Controller
             $serial  = '--';
             $key     = $item->codigo_transacao . '_' . $item->produto_id;
 
-            if($item->tipo_transacao == 'venda_nfe'){
+            if ($item->tipo_transacao == 'venda_nfe') {
                 $nfe     = $nfes->get($item->codigo_transacao);
                 $cliente = $nfe && $nfe->cliente ? $nfe->cliente->razao_social : 'Consumidor Final';
                 $itemDoc = optional($itemsNfe->get($key))->first();
                 $valor   = $itemDoc ? __moeda($itemDoc->valor_unitario) : '--';
                 $serialList = $serialsNfe->get($key);
                 $serial  = $serialList ? $serialList->pluck('codigo')->implode(', ') : '--';
-            } elseif($item->tipo_transacao == 'venda_nfce'){
+            } elseif ($item->tipo_transacao == 'venda_nfce') {
                 $nfce    = $nfces->get($item->codigo_transacao);
                 $cliente = $nfce && $nfce->cliente ? $nfce->cliente->razao_social : 'Consumidor Final';
                 $itemDoc = optional($itemsNfce->get($key))->first();
                 $valor   = $itemDoc ? __moeda($itemDoc->valor_unitario) : '--';
                 $serialList = $serialsNfce->get($key);
                 $serial  = $serialList ? $serialList->pluck('codigo')->implode(', ') : '--';
+            } elseif ($item->tipo_transacao == 'compra') {
+                $nfeCompra = $nfesCompra->get($item->codigo_transacao);
+                $itemDoc   = optional($itemsCompra->get($key))->first();
+                $valor     = $itemDoc ? __moeda($itemDoc->valor_unitario) : '--';
+                $serialList = $serialsCompra->get($key);
+                $serial    = $serialList ? $serialList->pluck('codigo')->implode(', ') : '--';
+            } elseif ($item->tipo_transacao == 'tradein_entrada') {
+                // Serial is stored directly on the movement record for tradein entries.
+                $serial = $item->serial ?? '--';
+            }
+
+            // Generic fallback: if the movement row itself carries a serial
+            // (e.g. tradein or any future type), always prefer it over '--'.
+            if ($serial === '--' && !empty($item->serial)) {
+                $serial = $item->serial;
             }
 
             return [
@@ -2652,21 +2671,16 @@ class RelatorioController extends Controller
         $domPdf->stream("Movimentação.pdf", array("Attachment" => false));
     }
 
-    private function movimentacaoTipoTransacaoLabel($tipoTransacao)
+    private function movimentacaoTipoTransacaoLabel($tipoTransacao): string
     {
-        if($tipoTransacao == 'venda_nfe'){
-            return 'Venda NF-e';
-        }
-        if($tipoTransacao == 'venda_nfce'){
-            return 'Venda NFC-e';
-        }
-        if($tipoTransacao == 'compra'){
-            return 'Compra';
-        }
-        if($tipoTransacao == 'transferencia_estoque'){
-            return 'Transferência de estoque';
-        }
-        return 'Ajuste';
+        return match ($tipoTransacao) {
+            'venda_nfe'             => 'Venda NF-e',
+            'venda_nfce'            => 'Venda NFC-e',
+            'compra'                => 'Compra',
+            'transferencia_estoque' => 'Transferência de estoque',
+            'tradein_entrada'       => 'Entrada Trade-in',
+            default                 => 'Ajuste',
+        };
     }
 
     public function vendasPdv(Request $request)

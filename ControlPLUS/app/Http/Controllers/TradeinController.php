@@ -3,13 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
-use App\Models\Deposito;
 use App\Models\Produto;
-use App\Models\ProdutoUnico;
 use App\Models\Tradein;
 use App\Models\TradeinCreditMovement;
 use App\Models\TradeinInventoryItem;
-use App\Utils\EstoqueUtil;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
@@ -493,52 +490,8 @@ class TradeinController extends Controller
                 $alreadyInInventory = TradeinInventoryItem::where('tradein_id', $tradein->id)->exists();
                 if (!$alreadyInInventory) {
                     try {
-                        $autoTransferred = false;
-                        $inventoryStatus = TradeinInventoryItem::STATUS_PENDING_TRANSFER;
-
-                        if ($tradein->produto_id && $tradein->serial_number) {
-                            try {
-                                $produto = Produto::find($tradein->produto_id);
-                                $depositoPadrao = Deposito::where('empresa_id', $tradein->empresa_id)
-                                    ->where('padrao', true)
-                                    ->first();
-
-                                if ($produto && $depositoPadrao) {
-                                    $estoqueUtil = app(EstoqueUtil::class);
-                                    $estoqueUtil->incrementaEstoque(
-                                        $tradein->produto_id,
-                                        1,
-                                        null,
-                                        null,
-                                        $depositoPadrao->id
-                                    );
-
-                                    if ($produto->tipo_unico) {
-                                        $jaExiste = ProdutoUnico::where('produto_id', $tradein->produto_id)
-                                            ->where('codigo', $tradein->serial_number)
-                                            ->exists();
-                                        if (!$jaExiste) {
-                                            ProdutoUnico::create([
-                                                'produto_id'  => $tradein->produto_id,
-                                                'deposito_id' => $depositoPadrao->id,
-                                                'codigo'      => $tradein->serial_number,
-                                                'tipo'        => 'entrada',
-                                                'em_estoque'  => 1,
-                                                'status_key'  => 'ATIVO',
-                                            ]);
-                                        }
-                                    }
-
-                                    $this->deductPartsFromStock($tradein, $depositoPadrao->id);
-
-                                    $autoTransferred = true;
-                                    $inventoryStatus = TradeinInventoryItem::STATUS_TRANSFERRED;
-                                }
-                            } catch (\Exception $e) {
-                                \Log::warning('Trade-in auto-stock falhou para tradein #' . $tradein->id . ': ' . $e->getMessage());
-                            }
-                        }
-
+                        // Stock movement must only happen in the explicit transfer step
+                        // (TradeinInventoryController::transferRedirect → EstoqueController::store).
                         TradeinInventoryItem::create([
                             'empresa_id'          => $tradein->empresa_id,
                             'tradein_id'          => $tradein->id,
@@ -547,7 +500,7 @@ class TradeinController extends Controller
                             'produto_id'          => $tradein->produto_id,
                             'serial'              => $tradein->serial_number,
                             'valor'               => $tradein->valor_avaliado,
-                            'status'              => $inventoryStatus,
+                            'status'              => TradeinInventoryItem::STATUS_PENDING_TRANSFER,
                             'observacao_tecnica'  => $tradein->observacao_tecnico,
                             'created_by_user_id'  => Auth::id(),
                         ]);
@@ -832,27 +785,6 @@ class TradeinController extends Controller
         ], 201);
     }
 
-    private function deductPartsFromStock(Tradein $tradein, int $depositoId): void
-    {
-        $pecas = is_array($tradein->avaliacao_snapshot) ? ($tradein->avaliacao_snapshot['pecas'] ?? []) : [];
-        if (empty($pecas)) {
-            return;
-        }
-
-        $estoqueUtil = app(EstoqueUtil::class);
-
-        foreach ($pecas as $peca) {
-            $produtoId = isset($peca['produto_id']) ? (int) $peca['produto_id'] : 0;
-            if (!$produtoId) {
-                continue;
-            }
-            try {
-                $estoqueUtil->incrementaEstoque($produtoId, -1, null, null, $depositoId);
-            } catch (\Exception $e) {
-                \Log::warning('Trade-in: falha ao deduzir peça produto_id=' . $produtoId . ' do estoque: ' . $e->getMessage());
-            }
-        }
-    }
 
     private function isDuplicateKey(QueryException $e): bool
     {
