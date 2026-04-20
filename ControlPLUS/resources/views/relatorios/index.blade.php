@@ -145,7 +145,7 @@
                                 </div>
 
                                 <div class="col-md-6 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -184,7 +184,7 @@
                                 </div>
 
                                 <div class="col-md-6 col-12 mt-2">
-                                    {!! Form::select('cliente', 'Cliente')->attrs(['class' => 'form-select cliente'])->id('cliente1') !!}
+                                    {!! Form::select('cliente', 'Cliente / fornecedor')->attrs(['class' => 'form-select cliente'])->id('cliente1') !!}
                                 </div>
 
                                 <div class="col-md-3 col-12 mt-2">
@@ -198,7 +198,7 @@
                                 </div>
 
                                 <div class="col-md-3 mt-2">
-                                    {!! Form::select('estado', 'Estado', [
+                                    {!! Form::select('estado', 'Situação da NF', [
                                         'novo' => 'Novas',
                                         'rejeitado' => 'Rejeitadas',
                                         'cancelado' => 'Canceladas',
@@ -208,7 +208,7 @@
                                 </div>
 
                                 <div class="col-md-3 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -245,9 +245,20 @@
                                         '-1' => 'Menos vendas',
                                     ])->attrs(['class' => 'form-select']) !!}
                                 </div>
+                                <div class="col-12">
+                                    <p class="small text-muted mb-0">Com ranking ativo, o período limita as vendas (NF-e e NFC-e) consideradas no total.</p>
+                                </div>
+                                @if (__countLocalAtivo() > 1)
+                                    <div class="col-md-6 col-12">
+                                        {!! Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
+                                    </div>
+                                @endif
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('funcionario_id', 'Vendedor')->attrs(['class' => 'form-select funcionario'])->id('funcionario-relatorio-clientes') !!}
+                                </div>
 
                                 <div class="col-md-4 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -278,9 +289,17 @@
                                         '-1' => 'Menos compras',
                                     ])->attrs(['class' => 'form-select']) !!}
                                 </div>
+                                <div class="col-12">
+                                    <p class="small text-muted mb-0">Com ranking ativo, o período limita as NF-e de entrada consideradas no total.</p>
+                                </div>
+                                @if (__countLocalAtivo() > 1)
+                                    <div class="col-md-6 col-12">
+                                        {!! Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
+                                    </div>
+                                @endif
 
                                 <div class="col-md-4 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -324,7 +343,7 @@
                             </div>
 
                             <div class="col-md-3 col-12 mt-2">
-                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                {!!Form::select('esportar_excel', 'Exportar Excel',
                                 ['-1' => 'Não', '1' => 'Sim'])
                                 ->attrs(['class' => 'form-select'])
                                 !!}
@@ -360,12 +379,16 @@
                             <div class="row">
                                 @include('partials.period-filter')
 
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('funcionario_id', 'Vendedor')->attrs(['class' => 'form-select funcionario'])->id('funcionario-relatorio-nfce') !!}
+                                </div>
+
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('cliente', 'Cliente')->attrs(['class' => 'form-select cliente'])->id('cliente2') !!}
                                 </div>
 
                                 <div class="col-md-3 mt-2">
-                                    {!! Form::select('estado', 'Estado', [
+                                    {!! Form::select('estado', 'Situação da NFC-e', [
                                         'novo' => 'Novas',
                                         'rejeitado' => 'Rejeitadas',
                                         'cancelado' => 'Canceladas',
@@ -375,7 +398,7 @@
                                 </div>
 
                                 <div class="col-md-3 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -405,15 +428,18 @@
                         <div class="card-body">
                             <div class="row">
                                 @include('partials.period-filter')
+                                <div class="col-12">
+                                    <p class="small text-muted mb-0">O período considera a data de vencimento dos títulos.</p>
+                                </div>
 
                                 <div class="col-md-4 col-12">
-                                    {!! Form::select('status', 'Estado', ['1' => 'Quitadas', '-1' => 'Pendentes', '' => 'Todas'])->attrs([
+                                    {!! Form::select('status', 'Situação do título', ['1' => 'Quitadas', '-1' => 'Pendentes', '' => 'Todas'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
 
                                 <div class="col-md-4 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -425,7 +451,15 @@
                                 @endif
 
                                 <div class="col-md-6 col-12 mt-2">
-                                    {!! Form::select('fornecedor_id', 'Fornecedor') !!}
+                                    {!! Form::select('fornecedor_id', 'Fornecedor', ['' => 'Todos'] + $fornecedores->pluck('razao_social', 'id')->all())->attrs(['class' => 'form-select select2']) !!}
+                                </div>
+
+                                <div class="col-md-6 col-12 mt-2">
+                                    {!! Form::select(
+                                        'categoria_conta_id',
+                                        'Categoria',
+                                        ['' => 'Todas'] + $categoriasConta->where('tipo', 'pagar')->pluck('nome', 'id')->all()
+                                    )->attrs(['class' => 'form-select']) !!}
                                 </div>
 
                             </div>
@@ -448,15 +482,18 @@
                         <div class="card-body">
                             <div class="row">
                                 @include('partials.period-filter')
+                                <div class="col-12">
+                                    <p class="small text-muted mb-0">O período considera a data de vencimento dos títulos.</p>
+                                </div>
 
                                 <div class="col-md-4 col-12">
-                                    {!! Form::select('status', 'Estado', ['1' => 'Recebidas', '-1' => 'Pendentes', '' => 'Todos'])->attrs([
+                                    {!! Form::select('status', 'Situação do título', ['1' => 'Recebidas', '-1' => 'Pendentes', '' => 'Todos'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
 
                                 <div class="col-md-4 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -469,6 +506,14 @@
 
                                 <div class="col-md-6 col-12 mt-2">
                                     {!! Form::select('cliente', 'Cliente')->attrs(['class' => 'form-select cliente'])->id('cliente3') !!}
+                                </div>
+
+                                <div class="col-md-6 col-12 mt-2">
+                                    {!! Form::select(
+                                        'categoria_conta_id',
+                                        'Categoria',
+                                        ['' => 'Todas'] + $categoriasConta->where('tipo', 'receber')->pluck('nome', 'id')->all()
+                                    )->attrs(['class' => 'form-select']) !!}
                                 </div>
 
                             </div>
@@ -491,6 +536,9 @@
                         <div class="card-body">
                             <div class="row">
                                 @include('partials.period-filter')
+                                <div class="col-12">
+                                    <p class="small text-muted mb-0">O período considera a data de vencimento das parcelas vinculadas aos pedidos faturados.</p>
+                                </div>
 
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('status', 'Status', ['1' => 'Quitado', '-1' => 'Aberto', '' => 'Todos'])->attrs([
@@ -499,7 +547,7 @@
                                 </div>
 
                                 <div class="col-md-4 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -507,6 +555,11 @@
                                 <div class="col-md-8 col-12 mt-2">
                                     {!! Form::select('cliente', 'Cliente')->attrs(['class' => 'form-select cliente'])->id('cliente-pedidos-faturados') !!}
                                 </div>
+                                @if (__countLocalAtivo() > 1)
+                                    <div class="col-md-6 col-12 mt-2">
+                                        {!! Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
+                                    </div>
+                                @endif
                             </div>
                         </div>
                         <div class="card-footer">
@@ -547,7 +600,7 @@
                                 </div>
 
                                 <div class="col-md-4 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -588,7 +641,7 @@
                             </div>
 
                             <div class="col-md-4 col-12 mt-2">
-                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                {!!Form::select('esportar_excel', 'Exportar Excel',
                                 ['-1' => 'Não', '1' => 'Sim'])
                                 ->attrs(['class' => 'form-select'])
                                 !!}
@@ -633,7 +686,7 @@
                                     </div>
                                 @endif
                                 <div class="col-md-6 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
                                 </div>
                             </div>
                         </div>
@@ -656,7 +709,7 @@
                             <div class="row">
                                 @include('partials.period-filter')
                                 <div class="col-md-4 col-12">
-                                    {!! Form::select('estado', 'Estado', [
+                                    {!! Form::select('estado', 'Situação da venda', [
                                         'novo' => 'Novas',
                                         'rejeitado' => 'Rejeitadas',
                                         'cancelado' => 'Canceladas',
@@ -681,7 +734,7 @@
                                 </div>
 
                                 <div class="col-md-3 col-6 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -719,8 +772,14 @@
                                     {!! Form::select('funcionario_id', 'Vendedor')->attrs(['class' => 'form-select funcionario'])->id('funcionario-vendas-pdv') !!}
                                 </div>
 
+                                @if (__countLocalAtivo() > 1)
+                                    <div class="col-md-6 col-12">
+                                        {!! Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
+                                    </div>
+                                @endif
+
                                 <div class="col-md-4 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -798,8 +857,11 @@
                                         {!! Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
                                     </div>
                                 @endif
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('tipo_pagamento', 'Tipo de pagamento', ['' => 'Todos'] + \App\Models\Nfe::tiposPagamento())->attrs(['class' => 'form-select']) !!}
+                                </div>
                                 <div class="col-md-4 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -823,18 +885,13 @@
                         <div class="card-body">
                             <div class="row">
                                 @include('partials.period-filter')
-                                <div class="col-md-3 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
-                                        'class' => 'form-select',
-                                    ]) !!}
-                                </div>
                                 @if (__countLocalAtivo() > 1)
                                     <div class="col-md-6 col-12">
                                         {!! Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
                                     </div>
                                 @endif
-                                <div class="col-md-6 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                <div class="col-md-3 col-12">
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -874,7 +931,7 @@
                             </div>
 
                             <div class="col-md-3 col-12">
-                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                {!!Form::select('esportar_excel', 'Exportar Excel',
                                 ['-1' => 'Não', '1' => 'Sim'])
                                 ->attrs(['class' => 'form-select'])
                                 !!}
@@ -902,9 +959,17 @@
                         <div class="card-body">
                             <div class="row">
                                 @include('partials.period-filter')
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('marca_id', 'Marca', ['' => 'Todas'] + $marcas->pluck('nome', 'id')->all())->attrs([
+                                        'class' => 'form-select',
+                                    ]) !!}
+                                </div>
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('categoria_id', 'Categoria', ['' => 'Todas'] + $categorias->pluck('nome', 'id')->all())->attrs(['class' => 'form-select select2'])->id('categoria-totaliza') !!}
+                                </div>
 
                                 <div class="col-md-3 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -941,6 +1006,18 @@
                                     {!! Form::select('categoria_id', 'Categoria', ['' => 'Selecione'] + $categorias->pluck('nome', 'id')->all())->attrs(['class' => 'form-select select2'])->id('categoria2') !!}
                                 </div>
 
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('marca_id', 'Marca', ['' => 'Todas'] + $marcas->pluck('nome', 'id')->all())->attrs([
+                                        'class' => 'form-select',
+                                    ]) !!}
+                                </div>
+
+                                <div class="col-md-4 col-12">
+                                    {!! Form::select('somente_saldo_positivo', 'Somente saldo &gt; 0', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                        'class' => 'form-select',
+                                    ]) !!}
+                                </div>
+
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('estoque_minimo', 'Estoque mínimo', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
@@ -956,7 +1033,7 @@
                                 </div>
 
                                 <div class="col-md-4 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -999,7 +1076,7 @@
                                     ])->attrs(['class' => 'form-select']) !!}
                                 </div>
                                 <div class="col-md-6 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -1037,7 +1114,7 @@
                                 !!}
                             </div>
                             <div class="col-md-3 col-12">
-                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                {!!Form::select('esportar_excel', 'Exportar Excel',
                                 ['-1' => 'Não', '1' => 'Sim'])
                                 ->attrs(['class' => 'form-select'])
                                 !!}
@@ -1078,7 +1155,7 @@
                                 </select>
                             </div>
                             <div class="col-md-3 col-12">
-                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                {!!Form::select('esportar_excel', 'Exportar Excel',
                                 ['-1' => 'Não', '1' => 'Sim'])
                                 ->attrs(['class' => 'form-select'])
                                 !!}
@@ -1115,7 +1192,7 @@
                                 </div>
 
                                 <div class="col-md-6 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -1159,7 +1236,7 @@
                                 </div>
 
                                 <div class="col-md-4 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -1180,7 +1257,7 @@
                 </form>
             </div>
 
-            <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 22;">
+            <div class="col-12 col-md-6 collapse relatorios-vendas" style="order: 23;">
                 <form method="get" action="{{ route('relatorios.venda-produtos') }}" target="_blank">
                     <div class="card">
                         <div class="card-header">
@@ -1216,7 +1293,7 @@
                                     </div>
                                 @endif
                                 <div class="col-md-6 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -1253,8 +1330,38 @@
                                 <div class="col-md-6 col-12">
                                     {!! Form::select('produto_id', 'Produto')->attrs(['class' => 'form-select produtos_filtro'])->id('produto2') !!}
                                 </div>
+                                @if (count($depositosRelatorioSelect) > 2)
+                                    <div class="col-md-6 col-12">
+                                        {!! Form::select('deposito_id', 'Depósito', $depositosRelatorioSelect)->attrs(['class' => 'form-select']) !!}
+                                    </div>
+                                @endif
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select(
+                                        'tipo_transacao',
+                                        'Origem da movimentação',
+                                        [
+                                            '' => 'Todas',
+                                            'venda_nfe' => 'Venda NF-e',
+                                            'venda_nfce' => 'Venda NFC-e',
+                                            'compra' => 'Compra',
+                                            'transferencia_estoque' => 'Transferência de estoque',
+                                            'alteracao_estoque' => 'Alteração de estoque',
+                                        ]
+                                    )->attrs(['class' => 'form-select']) !!}
+                                </div>
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select(
+                                        'tipo_movimento',
+                                        'Tipo de movimento',
+                                        [
+                                            '' => 'Todos',
+                                            'incremento' => 'Entrada',
+                                            'reducao' => 'Saída',
+                                        ]
+                                    )->attrs(['class' => 'form-select']) !!}
+                                </div>
                                 <div class="col-md-4 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -1294,7 +1401,7 @@
                             </div>
 
                             <div class="col-md-4 col-12 mt-2">
-                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                {!!Form::select('esportar_excel', 'Exportar Excel',
                                 ['-1' => 'Não', '1' => 'Sim'])
                                 ->attrs(['class' => 'form-select'])
                                 !!}
@@ -1337,7 +1444,7 @@
                                 </div>
 
                                 <div class="col-md-4 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -1397,7 +1504,7 @@
                                 !!}
                             </div>
                             <div class="col-md-4 mt-2">
-                                {!!Form::select('esportar_excel', 'Exportar excel',
+                                {!!Form::select('esportar_excel', 'Exportar Excel',
                                 ['-1' => 'Não', '1' => 'Sim'])
                                 ->attrs(['class' => 'form-select'])
                                 !!}
@@ -1436,8 +1543,13 @@
                                 <div class="col-md-6 col-12 mt-2">
                                     {!! Form::select('produto_id', 'Produto')->attrs(['class' => 'form-select produtos_filtro'])->id('produto3') !!}
                                 </div>
+                                @if (__countLocalAtivo() > 1)
+                                    <div class="col-md-6 col-12 mt-2">
+                                        {!! Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
+                                    </div>
+                                @endif
                                 <div class="col-md-6 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -1456,7 +1568,7 @@
                 <form method="get" action="{{ route('relatorios.registro-inventario') }}" target="_blank">
                     <div class="card">
                         <div class="card-header">
-                            <h5>Registro de Invetário</h5>
+                            <h5>Registro de Inventário</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -1471,7 +1583,7 @@
                                     {!! Form::select('tipo_custo', 'Tipo do custo', ['' => 'Selecione', 'media' => 'Médio', 'padrao' => 'Padrão'])->attrs(['class' => 'form-select'])->required() !!}
                                 </div>
                                 <div class="col-md-2 col-12">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
                                         'class' => 'form-select',
                                     ]) !!}
                                 </div>
@@ -1509,10 +1621,10 @@
                                     {!! Form::select('status', 'Status', ['' => 'Todos', '1' => 'Ativo', '2' => 'Utilizado', '0' => 'Expirado'])->attrs(['class' => 'form-select']) !!}
                                 </div>
                                 <div class="col-md-6 col-12 mt-2">
-                                    {!! Form::select('cliente_id', 'Cliente') !!}
+                                    {!! Form::select('cliente_id', 'Cliente')->attrs(['class' => 'form-select cliente'])->id('cliente-cashback') !!}
                                 </div>
                                 <div class="col-md-6 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
                                 </div>
                             </div>
                         </div>
@@ -1535,8 +1647,17 @@
                         <div class="card-body">
                             <div class="row">
                                 @include('partials.period-filter')
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('produto_id', 'Produto')->attrs(['class' => 'form-select produtos_filtro'])->id('produto-cashback-por-produto') !!}
+                                </div>
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('cliente_id', 'Cliente')->attrs(['class' => 'form-select cliente'])->id('cliente-cashback-por-produto') !!}
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    {!! Form::select('status', 'Status', ['' => 'Todos', '1' => 'Ativo', '2' => 'Utilizado', '0' => 'Expirado'])->attrs(['class' => 'form-select']) !!}
+                                </div>
                                 <div class="col-md-6 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
                                 </div>
                             </div>
                         </div>
@@ -1558,14 +1679,43 @@
                         <div class="card-body">
                             <div class="row">
                                 @include('partials.period-filter')
+                                <div class="col-12">
+                                    <p class="small text-muted mb-0">O período considera a data de vencimento dos lançamentos.</p>
+                                </div>
                                 <div class="col-md-4 col-12">
                                     {!! Form::select('tipo', 'Tipo', ['' => 'Todos', 'receber' => 'Contas a Receber', 'pagar' => 'Contas a Pagar'])->attrs(['class' => 'form-select']) !!}
                                 </div>
                                 <div class="col-md-4 col-12 mt-2">
-                                    {!! Form::select('status', 'Status', ['' => 'Todos', '1' => 'Quitados', '-1' => 'Pendentes'])->attrs(['class' => 'form-select']) !!}
+                                    {!! Form::select('status', 'Situação', ['' => 'Todos', '1' => 'Quitados', '-1' => 'Pendentes'])->attrs(['class' => 'form-select']) !!}
+                                </div>
+                                <div class="col-md-6 col-12 mt-2">
+                                    <label class="form-label">Categoria financeira</label>
+                                    <select name="categoria_id" class="form-select">
+                                        <option value="">Todas</option>
+                                        @if ($categoriasConta->where('tipo', 'receber')->isNotEmpty())
+                                            <optgroup label="Contas a receber">
+                                                @foreach ($categoriasConta->where('tipo', 'receber') as $cc)
+                                                    <option value="{{ $cc->id }}">{{ $cc->nome }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endif
+                                        @if ($categoriasConta->where('tipo', 'pagar')->isNotEmpty())
+                                            <optgroup label="Contas a pagar">
+                                                @foreach ($categoriasConta->where('tipo', 'pagar') as $cc)
+                                                    <option value="{{ $cc->id }}">{{ $cc->nome }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endif
+                                    </select>
+                                </div>
+                                <div class="col-md-6 col-12 mt-2">
+                                    {!! Form::select('cliente', 'Cliente (contas a receber)')->attrs(['class' => 'form-select cliente'])->id('cliente-lancamentos') !!}
+                                </div>
+                                <div class="col-md-6 col-12 mt-2">
+                                    {!! Form::select('fornecedor_id', 'Fornecedor (contas a pagar)', ['' => 'Todos'] + $fornecedores->pluck('razao_social', 'id')->all())->attrs(['class' => 'form-select select2']) !!}
                                 </div>
                                 <div class="col-md-4 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
                                 </div>
                             </div>
                         </div>

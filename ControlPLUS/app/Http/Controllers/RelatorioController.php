@@ -70,6 +70,7 @@ use App\Exports\RelatorioCashbackExport;
 use App\Exports\RelatorioCashbackPorProdutoExport;
 use App\Exports\RelatorioLancamentosFinanceirosExport;
 use App\Models\CashBackCliente;
+use App\Models\CategoriaConta;
 use Illuminate\Support\Facades\DB;
 
 class RelatorioController extends Controller
@@ -90,8 +91,22 @@ class RelatorioController extends Controller
         $fornecedores = Fornecedor::where('empresa_id', request()->empresa_id)
             ->orderBy('razao_social')
             ->get();
+        $categoriasConta = CategoriaConta::where('empresa_id', request()->empresa_id)
+            ->where('status', true)
+            ->orderBy('tipo')
+            ->orderBy('nome')
+            ->get();
 
-        return view('relatorios.index', compact('funcionarios', 'marcas', 'categorias', 'caixas', 'tiposDespesaFrete', 'depositosRelatorioSelect', 'fornecedores'));
+        return view('relatorios.index', compact(
+            'funcionarios',
+            'marcas',
+            'categorias',
+            'caixas',
+            'tiposDespesaFrete',
+            'depositosRelatorioSelect',
+            'fornecedores',
+            'categoriasConta'
+        ));
     }
 
     private function relatorioLocalIds(): array
@@ -377,22 +392,51 @@ class RelatorioController extends Controller
         $tipo = $request->tipo;
         $start_date = $request->start_date;
         $end_date = $request->end_date;
+        $local_id = $request->local_id;
+        $funcionario_id = $request->funcionario_id;
         $esportar_excel = $request->esportar_excel;
 
-        $data = Cliente::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })->get();
+        $locais = __getLocaisAtivoUsuario()->pluck('id');
+
+        $data = Cliente::where('empresa_id', $request->empresa_id)->get();
 
         if ($tipo != '') {
             foreach ($data as $item) {
                 $sumNfe = Nfe::where('cliente_id', $item->id)
+                ->where('tpNF', 1)
+                ->when(!empty($start_date), function ($query) use ($start_date) {
+                    return $query->whereDate('created_at', '>=', $start_date);
+                })
+                ->when(!empty($end_date), function ($query) use ($end_date) {
+                    return $query->whereDate('created_at', '<=', $end_date);
+                })
+                ->when(!empty($local_id), function ($query) use ($local_id) {
+                    return $query->where('local_id', $local_id);
+                })
+                ->when(empty($local_id), function ($query) use ($locais) {
+                    return $query->whereIn('local_id', $locais);
+                })
+                ->when(!empty($funcionario_id), function ($query) use ($funcionario_id) {
+                    return $query->where('funcionario_id', $funcionario_id);
+                })
                 ->sum('total');
 
                 $sumNfce = Nfce::where('cliente_id', $item->id)
+                ->when(!empty($start_date), function ($query) use ($start_date) {
+                    return $query->whereDate('created_at', '>=', $start_date);
+                })
+                ->when(!empty($end_date), function ($query) use ($end_date) {
+                    return $query->whereDate('created_at', '<=', $end_date);
+                })
+                ->when(!empty($local_id), function ($query) use ($local_id) {
+                    return $query->where('local_id', $local_id);
+                })
+                ->when(empty($local_id), function ($query) use ($locais) {
+                    return $query->whereIn('local_id', $locais);
+                })
+                ->when(!empty($funcionario_id), function ($query) use ($funcionario_id) {
+                    return $query->where('funcionario_id', $funcionario_id);
+                })
                 ->sum('total');
 
                 $item->total = $sumNfe + $sumNfce;
@@ -430,20 +474,29 @@ class RelatorioController extends Controller
         $tipo = $request->tipo;
         $start_date = $request->start_date;
         $end_date = $request->end_date;
+        $local_id = $request->local_id;
         $esportar_excel = $request->esportar_excel;
 
-        $data = Fornecedor::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })->get();
+        $locais = __getLocaisAtivoUsuario()->pluck('id');
+
+        $data = Fornecedor::where('empresa_id', $request->empresa_id)->get();
 
         if ($tipo != '') {
             foreach ($data as $item) {
                 $sumNfe = Nfe::where('fornecedor_id', $item->id)
                 ->where('tpNF', 0)
+                ->when(!empty($start_date), function ($query) use ($start_date) {
+                    return $query->whereDate('created_at', '>=', $start_date);
+                })
+                ->when(!empty($end_date), function ($query) use ($end_date) {
+                    return $query->whereDate('created_at', '<=', $end_date);
+                })
+                ->when(!empty($local_id), function ($query) use ($local_id) {
+                    return $query->where('local_id', $local_id);
+                })
+                ->when(empty($local_id), function ($query) use ($locais) {
+                    return $query->whereIn('local_id', $locais);
+                })
                 ->sum('total');
 
                 $item->total = $sumNfe;
@@ -548,6 +601,7 @@ class RelatorioController extends Controller
         $cliente_id = $request->cliente;
         $estado = $request->estado;
         $local_id = $request->local_id;
+        $funcionario_id = $request->funcionario_id;
         $esportar_excel = $request->esportar_excel;
 
         $data = Nfce::where('empresa_id', $request->empresa_id)
@@ -568,6 +622,9 @@ class RelatorioController extends Controller
         })
         ->when(!empty($cliente_id), function ($query) use ($cliente_id) {
             return $query->where('cliente_id', $cliente_id);
+        })
+        ->when(!empty($funcionario_id), function ($query) use ($funcionario_id) {
+            return $query->where('funcionario_id', $funcionario_id);
         })->get();
 
         if($esportar_excel == 1){
@@ -699,6 +756,7 @@ class RelatorioController extends Controller
         $status = $request->status;
         $local_id = $request->local_id;
         $fornecedor_id = $request->fornecedor_id;
+        $categoria_conta_id = $request->categoria_conta_id;
         $esportar_excel = $request->esportar_excel;
 
         $data = ContaPagar::where('empresa_id', $request->empresa_id)
@@ -723,6 +781,9 @@ class RelatorioController extends Controller
         })
         ->when($fornecedor_id, function ($query) use ($fornecedor_id) {
             return $query->where('fornecedor_id', $fornecedor_id);
+        })
+        ->when(!empty($categoria_conta_id), function ($query) use ($categoria_conta_id) {
+            return $query->where('categoria_conta_id', $categoria_conta_id);
         })
         ->orderBy('data_vencimento')
         ->get();
@@ -757,6 +818,7 @@ class RelatorioController extends Controller
         $status = $request->status;
         $local_id = $request->local_id;
         $cliente_id = $request->cliente;
+        $categoria_conta_id = $request->categoria_conta_id;
         $esportar_excel = $request->esportar_excel;
 
         $data = ContaReceber::where('empresa_id', $request->empresa_id)
@@ -781,6 +843,9 @@ class RelatorioController extends Controller
         })
         ->when($cliente_id, function ($query) use ($cliente_id) {
             return $query->where('cliente_id', $cliente_id);
+        })
+        ->when(!empty($categoria_conta_id), function ($query) use ($categoria_conta_id) {
+            return $query->where('categoria_conta_id', $categoria_conta_id);
         })
         ->orderBy('data_vencimento')
         ->get();
@@ -811,7 +876,10 @@ class RelatorioController extends Controller
         $end_date = $request->end_date;
         $status = $request->status;
         $cliente_id = $request->cliente;
+        $local_id = $request->local_id;
         $esportar_excel = $request->esportar_excel;
+
+        $locais = __getLocaisAtivoUsuario()->pluck('id');
 
         $data = DB::table('conta_recebers as cr')
         ->join('clientes as c', 'c.id', '=', 'cr.cliente_id')
@@ -827,6 +895,12 @@ class RelatorioController extends Controller
         })
         ->when($cliente_id, function ($query) use ($cliente_id) {
             return $query->where('cr.cliente_id', $cliente_id);
+        })
+        ->when(!empty($local_id), function ($query) use ($local_id) {
+            return $query->where('cr.local_id', $local_id);
+        })
+        ->when(empty($local_id), function ($query) use ($locais) {
+            return $query->whereIn('cr.local_id', $locais);
         })
         ->when(!empty($status), function ($query) use ($status) {
             if ($status == -1) {
@@ -1333,12 +1407,16 @@ class RelatorioController extends Controller
         $locais = __getLocaisAtivoUsuario();
         $locais = $locais->pluck(['id']);
 
-        if ($data_final && $data_final) {
+        if ($data_inicial != '' && $data_final != '') {
             $data_inicial = $this->parseDate($data_inicial);
             $data_final = $this->parseDate($data_final);
         }
         $taxas = TaxaPagamento::where('empresa_id', request()->empresa_id)->get();
-        $tipos = $taxas->pluck('tipo_pagamento')->toArray();
+        $tipos = $taxas->pluck('tipo_pagamento')->unique()->values()->toArray();
+        if ($request->filled('tipo_pagamento')) {
+            $tpFiltro = $request->tipo_pagamento;
+            $tipos = in_array($tpFiltro, $tipos, true) ? [$tpFiltro] : [];
+        }
         $vendas = Nfe::where('empresa_id', request()->empresa_id)
         ->when($data_inicial != '', function ($q) use ($data_inicial) {
             return $q->whereDate('created_at', '>=', $data_inicial);
@@ -1404,9 +1482,6 @@ class RelatorioController extends Controller
                             'tipo' => 'PEDIDO'
                         ];
                         array_push($data, $item);
-                    } else {
-                        echo $bandeira_cartao;
-                        die;
                     }
                 }
             }
@@ -1788,6 +1863,8 @@ class RelatorioController extends Controller
         $estoque_minimo = $request->estoque_minimo;
         $estoque_critico = $request->estoque_critico;
         $categoria_id = $request->categoria_id;
+        $marca_id = $request->marca_id;
+        $somente_saldo_positivo = $request->somente_saldo_positivo;
         $esportar_excel = $request->esportar_excel;
         $contexto = $this->resolveRelatorioEstoqueContext($request);
         $local_id = $contexto['local_id'];
@@ -1800,7 +1877,7 @@ class RelatorioController extends Controller
         $data = [];
 
         if($estoque_critico){
-            $data = $this->getEstoqueCriticoData($request, $localIds, $local_id, $categoria_id, $estoque_minimo, (int)$estoque_critico, $deposito_id);
+            $data = $this->getEstoqueCriticoData($request, $localIds, $local_id, $categoria_id, $estoque_minimo, (int)$estoque_critico, $deposito_id, $marca_id);
         }else if($estoque_minimo == 1){
 
             $produtosComEstoqueMinimo = Produto::where('produtos.empresa_id', $request->empresa_id)
@@ -1811,12 +1888,19 @@ class RelatorioController extends Controller
                     $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
                 });
             })
+            ->when(!empty($marca_id), function ($query) use ($marca_id) {
+                return $query->where('produtos.marca_id', $marca_id);
+            })
             ->where('produtos.estoque_minimo', '>', 0);
 
             $produtosComEstoqueMinimo = $this->applyRelatorioEstoqueContextToProdutoQuery($produtosComEstoqueMinimo, $deposito_id, $localIds)->get();
 
             foreach($produtosComEstoqueMinimo as $produto){
                 $quantidadeProduto = (float)($quantidadePorProduto[$produto->id] ?? 0);
+
+                if($somente_saldo_positivo == '1' && $quantidadeProduto <= 0){
+                    continue;
+                }
 
                 if($quantidadeProduto <= $produto->estoque_minimo){
 
@@ -1834,10 +1918,14 @@ class RelatorioController extends Controller
                         array_push($data, $linha);
                     }else{
                         foreach($produto->variacoes as $v){
+                            $qtdVar = $this->quantidadeVariacaoRelatorio($quantidadePorVariacao, $produto->id, $v->id);
+                            if($somente_saldo_positivo == '1' && (float) $qtdVar <= 0){
+                                continue;
+                            }
                             $linha = [
                                 'produto' => $produto->nome . " " . $v->descricao,
                                 'sku' => $v->sku ?? $produto->sku ?? '--',
-                                'quantidade' => $this->quantidadeVariacaoRelatorio($quantidadePorVariacao, $produto->id, $v->id),
+                                'quantidade' => $qtdVar,
                                 'estoque_minimo' => $produto->estoque_minimo,
                                 'valor_compra' => $produto->valor_compra,
                                 'valor_venda' => $v->valor,
@@ -1858,16 +1946,23 @@ class RelatorioController extends Controller
                 {
                     $t->where('categoria_id', $categoria_id)->orWhere('sub_categoria_id', $categoria_id);
                 });
+            })
+            ->when(!empty($marca_id), function ($query) use ($marca_id) {
+                return $query->where('produtos.marca_id', $marca_id);
             });
 
             $produtos = $this->applyRelatorioEstoqueContextToProdutoQuery($produtos, $deposito_id, $localIds)->get();
 
             foreach($produtos as $produto){
                 if(sizeof($produto->variacoes) == 0){
+                    $qtdLinha = (float)($quantidadePorProduto[$produto->id] ?? 0);
+                    if($somente_saldo_positivo == '1' && $qtdLinha <= 0){
+                        continue;
+                    }
                     $linha = [
                         'produto' => $produto->nome,
                         'sku' => $produto->sku ?? '--',
-                        'quantidade' => (float)($quantidadePorProduto[$produto->id] ?? 0),
+                        'quantidade' => $qtdLinha,
                         'estoque_minimo' => $produto->estoque_minimo,
                         'valor_compra' => $produto->valor_compra,
                         'valor_venda' => $produto->valor_unitario,
@@ -1877,10 +1972,14 @@ class RelatorioController extends Controller
                     array_push($data, $linha);
                 }else{
                     foreach($produto->variacoes as $v){
+                        $qtdVarGeral = $this->quantidadeVariacaoRelatorio($quantidadePorVariacao, $produto->id, $v->id);
+                        if($somente_saldo_positivo == '1' && (float) $qtdVarGeral <= 0){
+                            continue;
+                        }
                         $linha = [
                             'produto' => $produto->nome . " " . $v->descricao,
                             'sku' => $v->sku ?? $produto->sku ?? '--',
-                            'quantidade' => $this->quantidadeVariacaoRelatorio($quantidadePorVariacao, $produto->id, $v->id),
+                            'quantidade' => $qtdVarGeral,
                             'estoque_minimo' => $produto->estoque_minimo,
                             'valor_compra' => $produto->valor_compra,
                             'valor_venda' => $v->valor,
@@ -1908,7 +2007,7 @@ class RelatorioController extends Controller
         }
     }
 
-    private function getEstoqueCriticoData($request, $locais, $local_id, $categoria_id, $estoque_minimo, int $dias, ?int $deposito_id = null)
+    private function getEstoqueCriticoData($request, $locais, $local_id, $categoria_id, $estoque_minimo, int $dias, ?int $deposito_id = null, $marca_id = null)
     {
         $limite = now()->subDays($dias)->endOfDay();
 
@@ -1959,6 +2058,9 @@ class RelatorioController extends Controller
                 $t->where('produtos.categoria_id', $categoria_id)->orWhere('produtos.sub_categoria_id', $categoria_id);
             });
         })
+        ->when(!empty($marca_id), function ($query) use ($marca_id) {
+            return $query->where('produtos.marca_id', $marca_id);
+        })
         ->when($estoque_minimo == 1, function ($query) {
             return $query->where('produtos.estoque_minimo', '>', 0)
             ->whereColumn('estoque_atual.quantidade_total', '<=', 'produtos.estoque_minimo');
@@ -1990,6 +2092,8 @@ class RelatorioController extends Controller
         $start_date = $request->start_date;
         $end_date = $request->end_date;
         $local_id = $request->local_id;
+        $marca_id = $request->marca_id;
+        $categoria_id = $request->categoria_id;
         $esportar_excel = $request->esportar_excel;
 
         $locais = __getLocaisAtivoUsuario();
@@ -2002,6 +2106,14 @@ class RelatorioController extends Controller
         })
         ->when(!empty($end_date), function ($query) use ($end_date,) {
             return $query->whereDate('produtos.created_at', '<=', $end_date);
+        })
+        ->when(!empty($marca_id), function ($query) use ($marca_id) {
+            return $query->where('produtos.marca_id', $marca_id);
+        })
+        ->when(!empty($categoria_id), function ($query) use ($categoria_id) {
+            return $query->where(function ($t) use ($categoria_id) {
+                $t->where('produtos.categoria_id', $categoria_id)->orWhere('produtos.sub_categoria_id', $categoria_id);
+            });
         })
         ->when(!empty($local_id), function ($query) use ($local_id) {
             return $query->whereExists(function ($sub) use ($local_id) {
@@ -2555,6 +2667,9 @@ class RelatorioController extends Controller
         $marca_id = $request->marca_id;
         $categoria_id = $request->categoria_id;
         $produto_id = $request->produto_id;
+        $deposito_id = $request->deposito_id;
+        $tipo_transacao = $request->tipo_transacao;
+        $tipo_movimento = $request->tipo_movimento;
         $esportar_excel = $request->esportar_excel;
         $movimentacoes = MovimentacaoProduto::with([
             'produto.categoria',
@@ -2566,6 +2681,19 @@ class RelatorioController extends Controller
         })
         ->when(!empty($end_date), function ($query) use ($end_date) {
             return $query->whereDate('movimentacao_produtos.created_at', '<=', $end_date);
+        })
+        ->when(!empty($deposito_id), function ($query) use ($deposito_id) {
+            return $query->where(function ($q) use ($deposito_id) {
+                $q->where('movimentacao_produtos.deposito_id', $deposito_id)
+                    ->orWhere('movimentacao_produtos.deposito_origem_id', $deposito_id)
+                    ->orWhere('movimentacao_produtos.deposito_destino_id', $deposito_id);
+            });
+        })
+        ->when(!empty($tipo_transacao), function ($query) use ($tipo_transacao) {
+            return $query->where('movimentacao_produtos.tipo_transacao', $tipo_transacao);
+        })
+        ->when(!empty($tipo_movimento), function ($query) use ($tipo_movimento) {
+            return $query->where('movimentacao_produtos.tipo', $tipo_movimento);
         })
         ->whereHas('produto', function ($query) use ($request, $produto_id, $marca_id, $categoria_id) {
             $query->where('empresa_id', $request->empresa_id)
@@ -2687,7 +2815,9 @@ class RelatorioController extends Controller
         $end_date = $request->end_date ?? $request->data_fim;
         $empresa_id = $request->empresa_id ?: request()->empresa_id;
         $funcionario_id = $request->funcionario_id ?? $request->vendedor_id;
+        $local_id = $request->local_id;
         $esportar_excel = $request->esportar_excel;
+        $locais = __getLocaisAtivoUsuario()->pluck('id');
 
         $faturasSub = DB::table('fatura_nfces')
         ->select(
@@ -2724,6 +2854,12 @@ class RelatorioController extends Controller
         })
         ->when(!empty($funcionario_id), function ($query) use ($funcionario_id) {
             return $query->where('n.funcionario_id', $funcionario_id);
+        })
+        ->when(!empty($local_id), function ($query) use ($local_id) {
+            return $query->where('n.local_id', $local_id);
+        })
+        ->when(empty($local_id), function ($query) use ($locais) {
+            return $query->whereIn('n.local_id', $locais);
         })
         ->select([
             'n.estado as status',
@@ -2974,11 +3110,14 @@ class RelatorioController extends Controller
         $marca_id = $request->marca_id;
         $categoria_id = $request->categoria_id;
         $produto_id = $request->produto_id;
+        $local_id = $request->local_id;
         $esportar_excel = $request->esportar_excel;
+        $locais = __getLocaisAtivoUsuario()->pluck('id');
 
         $dataNfe = ItemNfe::where('produtos.empresa_id', $request->empresa_id)
         ->select('produtos.id as produto_id')
         ->join('produtos', 'produtos.id', '=', 'item_nves.produto_id')
+        ->join('nves', 'nves.id', '=', 'item_nves.nfe_id')
         ->when(!empty($start_date), function ($query) use ($start_date) {
             return $query->whereDate('item_nves.created_at', '>=', $start_date);
         })
@@ -2997,12 +3136,19 @@ class RelatorioController extends Controller
         ->when(!empty($produto_id), function ($query) use ($produto_id) {
             return $query->where('produtos.id', $produto_id);
         })
+        ->when(!empty($local_id), function ($query) use ($local_id) {
+            return $query->where('nves.local_id', $local_id);
+        })
+        ->when(empty($local_id), function ($query) use ($locais) {
+            return $query->whereIn('nves.local_id', $locais);
+        })
         ->groupBy('produto_id')
         ->pluck('produto_id')->toArray();
 
         $dataNfce = ItemNfce::where('produtos.empresa_id', $request->empresa_id)
         ->select('produtos.id as produto_id')
         ->join('produtos', 'produtos.id', '=', 'item_nfces.produto_id')
+        ->join('nfces', 'nfces.id', '=', 'item_nfces.nfce_id')
         ->when(!empty($start_date), function ($query) use ($start_date) {
             return $query->whereDate('item_nfces.created_at', '>=', $start_date);
         })
@@ -3021,6 +3167,12 @@ class RelatorioController extends Controller
         ->when(!empty($produto_id), function ($query) use ($produto_id) {
             return $query->where('produtos.id', $produto_id);
         })
+        ->when(!empty($local_id), function ($query) use ($local_id) {
+            return $query->where('nfces.local_id', $local_id);
+        })
+        ->when(empty($local_id), function ($query) use ($locais) {
+            return $query->whereIn('nfces.local_id', $locais);
+        })
         ->groupBy('produto_id')
         ->pluck('produto_id')->toArray();
 
@@ -3029,19 +3181,37 @@ class RelatorioController extends Controller
         foreach($resultado as $produto_id){
             $produto = Produto::findOrFail($produto_id);
 
-            $subVenda = ItemNfe::where('produto_id', $produto_id)
+            $subVenda = ItemNfe::where('item_nves.produto_id', $produto_id)
             ->where('nves.tpNF', 1)
             ->join('nves', 'nves.id', '=', 'item_nves.nfe_id')
-            ->sum('sub_total');
+            ->when(!empty($local_id), function ($query) use ($local_id) {
+                return $query->where('nves.local_id', $local_id);
+            })
+            ->when(empty($local_id), function ($query) use ($locais) {
+                return $query->whereIn('nves.local_id', $locais);
+            })
+            ->sum('item_nves.sub_total');
 
-            $subVendaNfce = ItemNfce::where('produto_id', $produto_id)
+            $subVendaNfce = ItemNfce::where('item_nfces.produto_id', $produto_id)
             ->join('nfces', 'nfces.id', '=', 'item_nfces.nfce_id')
-            ->sum('sub_total');
+            ->when(!empty($local_id), function ($query) use ($local_id) {
+                return $query->where('nfces.local_id', $local_id);
+            })
+            ->when(empty($local_id), function ($query) use ($locais) {
+                return $query->whereIn('nfces.local_id', $locais);
+            })
+            ->sum('item_nfces.sub_total');
 
-            $subCompra = ItemNfe::where('produto_id', $produto_id)
+            $subCompra = ItemNfe::where('item_nves.produto_id', $produto_id)
             ->where('nves.tpNF', 0)
             ->join('nves', 'nves.id', '=', 'item_nves.nfe_id')
-            ->sum('sub_total');
+            ->when(!empty($local_id), function ($query) use ($local_id) {
+                return $query->where('nves.local_id', $local_id);
+            })
+            ->when(empty($local_id), function ($query) use ($locais) {
+                return $query->whereIn('nves.local_id', $locais);
+            })
+            ->sum('item_nves.sub_total');
 
         $data[] = [
                 'produto_id' => $produto_id,
@@ -3085,8 +3255,8 @@ class RelatorioController extends Controller
             ->when(!empty($end_date), function ($q) use ($end_date) {
                 return $q->whereDate('created_at', '<=', $end_date);
             })
-            ->when($status !== null && $status !== '', function ($q) use ($status) {
-                return $q->where('status', $status);
+            ->when($request->filled('status'), function ($q) use ($request) {
+                return $q->where('status', $request->status);
             })
             ->when(!empty($cliente_id), function ($q) use ($cliente_id) {
                 return $q->where('cliente_id', $cliente_id);
@@ -3113,8 +3283,10 @@ class RelatorioController extends Controller
 
     public function cashbackPorProduto(Request $request)
     {
-        $start_date    = $request->start_date;
-        $end_date      = $request->end_date;
+        $start_date     = $request->start_date;
+        $end_date       = $request->end_date;
+        $produto_id     = $request->produto_id;
+        $cliente_id     = $request->cliente_id;
         $esportar_excel = $request->esportar_excel;
 
         $data = DB::table('cash_back_clientes as cb')
@@ -3130,6 +3302,15 @@ class RelatorioController extends Controller
             })
             ->when(!empty($end_date), function ($q) use ($end_date) {
                 return $q->whereDate('cb.created_at', '<=', $end_date);
+            })
+            ->when(!empty($produto_id), function ($q) use ($produto_id) {
+                return $q->where('p.id', $produto_id);
+            })
+            ->when(!empty($cliente_id), function ($q) use ($cliente_id) {
+                return $q->where('pv.cliente_id', $cliente_id);
+            })
+            ->when($request->filled('status'), function ($q) use ($request) {
+                return $q->where('cb.status', $request->status);
             })
             ->groupBy('p.id', 'p.nome', 'p.codigo_barras')
             ->selectRaw('
@@ -3167,7 +3348,20 @@ class RelatorioController extends Controller
         $status         = $request->status;
         $tipo           = $request->tipo;
         $categoria_id   = $request->categoria_id;
+        $cliente_id     = $request->cliente;
+        $fornecedor_id  = $request->fornecedor_id;
         $esportar_excel = $request->esportar_excel;
+
+        $empresaId = (int) $request->empresa_id;
+        $categoriaReceberOk = null;
+        $categoriaPagarOk = null;
+        if (!empty($categoria_id)) {
+            $cat = CategoriaConta::where('empresa_id', $empresaId)->where('id', $categoria_id)->first();
+            if ($cat) {
+                $categoriaReceberOk = $cat->tipo === 'receber' ? (int) $categoria_id : null;
+                $categoriaPagarOk = $cat->tipo === 'pagar' ? (int) $categoria_id : null;
+            }
+        }
 
         $receber = ContaReceber::where('empresa_id', $request->empresa_id)
             ->when(!empty($start_date), function ($q) use ($start_date) {
@@ -3182,8 +3376,14 @@ class RelatorioController extends Controller
                 }
                 return $q->where('status', $status);
             })
-            ->when(!empty($categoria_id), function ($q) use ($categoria_id) {
-                return $q->where('categoria_conta_id', $categoria_id);
+            ->when($categoriaReceberOk, function ($q) use ($categoriaReceberOk) {
+                return $q->where('categoria_conta_id', $categoriaReceberOk);
+            })
+            ->when(!empty($categoria_id) && !$categoriaReceberOk && $categoriaPagarOk, function ($q) {
+                return $q->whereRaw('1 = 0');
+            })
+            ->when(!empty($cliente_id), function ($q) use ($cliente_id) {
+                return $q->where('cliente_id', $cliente_id);
             })
             ->with('cliente', 'categoria')
             ->get();
@@ -3201,8 +3401,14 @@ class RelatorioController extends Controller
                 }
                 return $q->where('status', $status);
             })
-            ->when(!empty($categoria_id), function ($q) use ($categoria_id) {
-                return $q->where('categoria_conta_id', $categoria_id);
+            ->when($categoriaPagarOk, function ($q) use ($categoriaPagarOk) {
+                return $q->where('categoria_conta_id', $categoriaPagarOk);
+            })
+            ->when(!empty($categoria_id) && !$categoriaPagarOk && $categoriaReceberOk, function ($q) {
+                return $q->whereRaw('1 = 0');
+            })
+            ->when(!empty($fornecedor_id), function ($q) use ($fornecedor_id) {
+                return $q->where('fornecedor_id', $fornecedor_id);
             })
             ->with('fornecedor', 'categoria')
             ->get();
