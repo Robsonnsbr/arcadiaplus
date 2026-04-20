@@ -33,7 +33,7 @@
             <th>SERIAL</th>
             <th>VALOR UNITÁRIO</th>
             <th>ESTOQUE ATUAL</th>
-            <th>CLIENTE</th>
+            <th>CLIENTE/FORNECEDOR</th>
             <th>USUÁRIO</th>
         </tr>
     </thead>

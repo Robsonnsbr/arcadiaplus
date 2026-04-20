@@ -2578,7 +2578,7 @@ class RelatorioController extends Controller
 
         $nfes  = $nfeIds->isNotEmpty()  ? Nfe::with('cliente')->whereIn('id', $nfeIds)->get()->keyBy('id')   : collect();
         $nfces = $nfceIds->isNotEmpty() ? Nfce::with('cliente')->whereIn('id', $nfceIds)->get()->keyBy('id') : collect();
-        $nfesCompra = $compraIds->isNotEmpty() ? Nfe::whereIn('id', $compraIds)->get()->keyBy('id') : collect();
+        $nfesCompra = $compraIds->isNotEmpty() ? Nfe::with('fornecedor')->whereIn('id', $compraIds)->get()->keyBy('id') : collect();
 
         $itemsNfe  = $nfeIds->isNotEmpty()  ? ItemNfe::whereIn('nfe_id', $nfeIds)->get()->groupBy(fn($i) => $i->nfe_id . '_' . $i->produto_id)   : collect();
         $itemsNfce = $nfceIds->isNotEmpty() ? ItemNfce::whereIn('nfce_id', $nfceIds)->get()->groupBy(fn($i) => $i->nfce_id . '_' . $i->produto_id) : collect();
@@ -2589,7 +2589,7 @@ class RelatorioController extends Controller
         $serialsCompra = $compraIds->isNotEmpty() ? ProdutoUnico::whereIn('nfe_id', $compraIds)->get()->groupBy(fn($p) => $p->nfe_id . '_' . $p->produto_id) : collect();
 
         $data = $movimentacoes
-        ->map(function ($item) use ($nfes, $nfces, $nfesCompra, $itemsNfe, $itemsNfce, $itemsCompra, $serialsNfe, $serialsNfce, $serialsCompra) {
+        ->flatMap(function ($item) use ($nfes, $nfces, $nfesCompra, $itemsNfe, $itemsNfce, $itemsCompra, $serialsNfe, $serialsNfce, $serialsCompra) {
             $nomeProduto = optional($item->produto)->nome ?? '--';
             if ($item->produtoVariacao && $item->produtoVariacao->descricao) {
                 $nomeProduto .= ' ' . $item->produtoVariacao->descricao;
@@ -2597,7 +2597,7 @@ class RelatorioController extends Controller
 
             $cliente = '--';
             $valor   = '--';
-            $serial  = '--';
+            $serials = [];   // array of serial strings; empty = no serials
             $key     = $item->codigo_transacao . '_' . $item->produto_id;
 
             if ($item->tipo_transacao == 'venda_nfe') {
@@ -2606,34 +2606,34 @@ class RelatorioController extends Controller
                 $itemDoc = optional($itemsNfe->get($key))->first();
                 $valor   = $itemDoc ? __moeda($itemDoc->valor_unitario) : '--';
                 $serialList = $serialsNfe->get($key);
-                $serial  = $serialList ? $serialList->pluck('codigo')->implode(', ') : '--';
+                $serials = $serialList ? $serialList->pluck('codigo')->toArray() : [];
             } elseif ($item->tipo_transacao == 'venda_nfce') {
                 $nfce    = $nfces->get($item->codigo_transacao);
                 $cliente = $nfce && $nfce->cliente ? $nfce->cliente->razao_social : 'Consumidor Final';
                 $itemDoc = optional($itemsNfce->get($key))->first();
                 $valor   = $itemDoc ? __moeda($itemDoc->valor_unitario) : '--';
                 $serialList = $serialsNfce->get($key);
-                $serial  = $serialList ? $serialList->pluck('codigo')->implode(', ') : '--';
+                $serials = $serialList ? $serialList->pluck('codigo')->toArray() : [];
             } elseif ($item->tipo_transacao == 'compra') {
                 $nfeCompra = $nfesCompra->get($item->codigo_transacao);
+                $cliente   = $nfeCompra && $nfeCompra->fornecedor ? $nfeCompra->fornecedor->razao_social : '--';
                 $itemDoc   = optional($itemsCompra->get($key))->first();
                 $valor     = $itemDoc ? __moeda($itemDoc->valor_unitario) : '--';
                 $serialList = $serialsCompra->get($key);
-                $serial    = $serialList ? $serialList->pluck('codigo')->implode(', ') : '--';
+                $serials = $serialList ? $serialList->pluck('codigo')->toArray() : [];
             } elseif ($item->tipo_transacao == 'tradein_entrada') {
-                // Serial is stored directly on the movement record for tradein entries.
-                $serial = $item->serial ?? '--';
+                if (!empty($item->serial)) {
+                    $serials = [$item->serial];
+                }
             }
 
-            // Generic fallback: if the movement row itself carries a serial
-            // (e.g. tradein or any future type), always prefer it over '--'.
-            if ($serial === '--' && !empty($item->serial)) {
-                $serial = $item->serial;
+            // Generic fallback: movement row carries a serial (any future type).
+            if (empty($serials) && !empty($item->serial)) {
+                $serials = [$item->serial];
             }
 
-            return [
+            $base = [
                 'tipo'         => $item->tipo == 'incremento' ? 'Entrada' : 'Saída',
-                'quantidade'   => $item->quantidade,
                 'data'         => $item->created_at,
                 'movimentacao' => $this->movimentacaoTipoTransacaoLabel($item->tipo_transacao),
                 'produto'      => $nomeProduto,
@@ -2641,11 +2641,21 @@ class RelatorioController extends Controller
                 'categoria'    => optional(optional($item->produto)->categoria)->nome ?? '--',
                 'codigo'       => $item->codigo_transacao,
                 'estoque_atual'=> $item->estoque_atual,
-                'serial'       => $serial,
                 'valor'        => $valor,
                 'cliente'      => $cliente,
                 'usuario'      => optional($item->user)->name ?? '--',
             ];
+
+            // No serials: one row with original quantity.
+            if (empty($serials)) {
+                return [array_merge($base, ['quantidade' => $item->quantidade, 'serial' => '--'])];
+            }
+
+            // N serials: one row per serial, each with quantity 1.
+            return array_map(
+                fn($s) => array_merge($base, ['quantidade' => 1, 'serial' => $s]),
+                $serials
+            );
         })
         ->values()
         ->all();

@@ -22,7 +22,7 @@
                         <th>Serial</th>
                         <th>Valor Unit.</th>
                         <th>Estoque Atual</th>
-                        <th>Cliente</th>
+                        <th>Cliente/Fornecedor</th>
                         <th>Usuário</th>
                 </tr>
         </thead>
