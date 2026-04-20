@@ -71,6 +71,7 @@ use App\Exports\RelatorioCashbackPorProdutoExport;
 use App\Exports\RelatorioLancamentosFinanceirosExport;
 use App\Models\CashBackCliente;
 use App\Models\CategoriaConta;
+use App\Support\ReportPeriodFilter;
 use Illuminate\Support\Facades\DB;
 
 class RelatorioController extends Controller
@@ -257,12 +258,7 @@ class RelatorioController extends Controller
 
         $data = Produto::select('produtos.*')
         ->where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('produtos.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('produtos.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'produtos.created_at', $start_date, $end_date))
         ->when($estoque != '', function ($query) use ($estoque) {
             if ($estoque == 1) {
                 return $query->join('estoques', 'estoques.produto_id', '=', 'produtos.id')
@@ -404,12 +400,7 @@ class RelatorioController extends Controller
             foreach ($data as $item) {
                 $sumNfe = Nfe::where('cliente_id', $item->id)
                 ->where('tpNF', 1)
-                ->when(!empty($start_date), function ($query) use ($start_date) {
-                    return $query->whereDate('created_at', '>=', $start_date);
-                })
-                ->when(!empty($end_date), function ($query) use ($end_date) {
-                    return $query->whereDate('created_at', '<=', $end_date);
-                })
+                ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
                 ->when(!empty($local_id), function ($query) use ($local_id) {
                     return $query->where('local_id', $local_id);
                 })
@@ -422,12 +413,7 @@ class RelatorioController extends Controller
                 ->sum('total');
 
                 $sumNfce = Nfce::where('cliente_id', $item->id)
-                ->when(!empty($start_date), function ($query) use ($start_date) {
-                    return $query->whereDate('created_at', '>=', $start_date);
-                })
-                ->when(!empty($end_date), function ($query) use ($end_date) {
-                    return $query->whereDate('created_at', '<=', $end_date);
-                })
+                ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
                 ->when(!empty($local_id), function ($query) use ($local_id) {
                     return $query->where('local_id', $local_id);
                 })
@@ -485,12 +471,7 @@ class RelatorioController extends Controller
             foreach ($data as $item) {
                 $sumNfe = Nfe::where('fornecedor_id', $item->id)
                 ->where('tpNF', 0)
-                ->when(!empty($start_date), function ($query) use ($start_date) {
-                    return $query->whereDate('created_at', '>=', $start_date);
-                })
-                ->when(!empty($end_date), function ($query) use ($end_date) {
-                    return $query->whereDate('created_at', '<=', $end_date);
-                })
+                ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
                 ->when(!empty($local_id), function ($query) use ($local_id) {
                     return $query->where('local_id', $local_id);
                 })
@@ -544,13 +525,10 @@ class RelatorioController extends Controller
         $local_id = $request->local_id;
         $esportar_excel = $request->esportar_excel;
 
+        $dataColumn = ReportPeriodFilter::coalesce('data_emissao', 'created_at');
+
         $data = Nfe::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('data_emissao', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('data_emissao', '<=', $end_date);
-        })
+        ->tap(fn ($query) => ReportPeriodFilter::apply($query, $dataColumn, $start_date, $end_date))
         ->when(!empty($cliente), function ($query) use ($cliente) {
             return $query->where('cliente_id', $cliente);
         })
@@ -604,13 +582,10 @@ class RelatorioController extends Controller
         $funcionario_id = $request->funcionario_id;
         $esportar_excel = $request->esportar_excel;
 
+        $dataColumn = ReportPeriodFilter::coalesce('data_emissao', 'created_at');
+
         $data = Nfce::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('data_emissao', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('data_emissao', '<=', $end_date);
-        })
+        ->tap(fn ($query) => ReportPeriodFilter::apply($query, $dataColumn, $start_date, $end_date))
         ->when(!empty($estado), function ($query) use ($estado) {
             return $query->where('estado', $estado);
         })
@@ -660,12 +635,7 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
 
         $data = Cte::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when(!empty($estado), function ($query) use ($estado) {
             return $query->where('estado', $estado);
         })
@@ -708,12 +678,7 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
 
         $data = Mdfe::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when(!empty($estado), function ($query) use ($estado) {
             return $query->where('estado_emissao', $estado);
         })
@@ -760,12 +725,7 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
 
         $data = ContaPagar::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('data_vencimento', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('data_vencimento', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'data_vencimento', $start_date, $end_date))
         ->when(!empty($status), function ($query) use ($status) {
             if ($status == -1) {
                 return $query->where('status', '!=', 1);
@@ -822,12 +782,7 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
 
         $data = ContaReceber::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('data_vencimento', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('data_vencimento', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'data_vencimento', $start_date, $end_date))
         ->when(!empty($status), function ($query) use ($status) {
             if ($status == -1) {
                 return $query->where('status', '!=', 1);
@@ -887,12 +842,7 @@ class RelatorioController extends Controller
         ->leftJoin('nves as nv', 'nv.id', '=', 'cr.nfe_id')
         ->where('cr.empresa_id', $request->empresa_id)
         ->whereNotNull('cr.cliente_id')
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('cr.data_vencimento', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('cr.data_vencimento', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'cr.data_vencimento', $start_date, $end_date))
         ->when($cliente_id, function ($query) use ($cliente_id) {
             return $query->where('cr.cliente_id', $cliente_id);
         })
@@ -958,12 +908,7 @@ class RelatorioController extends Controller
         ->leftJoin('funcionarios as f', 'f.id', '=', 't.funcionario_id')
         ->leftJoin('users as uf', 'uf.id', '=', 'f.usuario_id')
         ->where('t.empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('t.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('t.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 't.created_at', $start_date, $end_date))
         ->when(!empty($caixa_id), function ($query) use ($caixa_id) {
             return $query->where('t.caixa_id', $caixa_id);
         })
@@ -986,12 +931,7 @@ class RelatorioController extends Controller
         ->leftJoin('funcionarios as f', 'f.id', '=', 's.funcionario_id')
         ->leftJoin('users as uf', 'uf.id', '=', 'f.usuario_id')
         ->where('c.empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('s.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('s.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 's.created_at', $start_date, $end_date))
         ->when(!empty($caixa_id), function ($query) use ($caixa_id) {
             return $query->where('s.caixa_id', $caixa_id);
         })
@@ -1014,12 +954,7 @@ class RelatorioController extends Controller
         ->leftJoin('funcionarios as f', 'f.id', '=', 's.funcionario_id')
         ->leftJoin('users as uf', 'uf.id', '=', 'f.usuario_id')
         ->where('c.empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('s.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('s.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 's.created_at', $start_date, $end_date))
         ->when(!empty($caixa_id), function ($query) use ($caixa_id) {
             return $query->where('s.caixa_id', $caixa_id);
         })
@@ -1071,12 +1006,7 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
 
         $data = ComissaoVenda::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when(!empty($funcionario_id), function ($query) use ($funcionario_id) {
             return $query->where('funcionario_id', $funcionario_id);
         })
@@ -1315,12 +1245,7 @@ class RelatorioController extends Controller
         select('despesa_fretes.*')
         ->join('fretes', 'fretes.id', '=', 'despesa_fretes.frete_id')
         ->where('fretes.empresa_id', request()->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('despesa_fretes.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('despesa_fretes.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'despesa_fretes.created_at', $start_date, $end_date))
         ->when($tipo_despesa_frete_id, function ($query) use ($tipo_despesa_frete_id) {
             return $query->where('despesa_fretes.tipo_despesa_id', $tipo_despesa_frete_id);
         })
@@ -1357,12 +1282,7 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
 
         $data = Nfe::where('empresa_id', request()->empresa_id)->where('tpNF', 0)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when(!empty($fornecedor_id), function ($query) use ($fornecedor_id) {
             return $query->where('fornecedor_id', $fornecedor_id);
         })
@@ -1418,12 +1338,7 @@ class RelatorioController extends Controller
             $tipos = in_array($tpFiltro, $tipos, true) ? [$tpFiltro] : [];
         }
         $vendas = Nfe::where('empresa_id', request()->empresa_id)
-        ->when($data_inicial != '', function ($q) use ($data_inicial) {
-            return $q->whereDate('created_at', '>=', $data_inicial);
-        })
-        ->when($data_final != '', function ($q) use ($data_final) {
-            return $q->whereDate('created_at', '<=', $data_final);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $data_inicial, $data_final))
         ->when($local_id, function ($query) use ($local_id) {
             return $query->where('local_id', $local_id);
         })
@@ -1488,12 +1403,7 @@ class RelatorioController extends Controller
         }
 
         $vendasCaixa = Nfce::where('empresa_id', request()->empresa_id)
-        ->when($data_inicial != '', function ($q) use ($data_inicial) {
-            return $q->whereDate('created_at', '>=', $data_inicial);
-        })
-        ->when($data_final != '', function ($q) use ($data_final) {
-            return $q->whereDate('created_at', '<=', $data_final);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $data_inicial, $data_final))
         ->get();
 
         foreach ($vendasCaixa as $v) {
@@ -1580,12 +1490,7 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
 
         $nfe = Nfe::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when($local_id, function ($query) use ($local_id) {
             return $query->where('local_id', $local_id);
         })
@@ -1597,12 +1502,7 @@ class RelatorioController extends Controller
         ->get();
 
         $nfce = Nfce::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when($local_id, function ($query) use ($local_id) {
             return $query->where('local_id', $local_id);
         })
@@ -2101,12 +2001,7 @@ class RelatorioController extends Controller
 
         $data = Produto::select('produtos.*')
         ->where('produtos.empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('produtos.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('produtos.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'produtos.created_at', $start_date, $end_date))
         ->when(!empty($marca_id), function ($query) use ($marca_id) {
             return $query->where('produtos.marca_id', $marca_id);
         })
@@ -2165,12 +2060,7 @@ class RelatorioController extends Controller
         $nves = Nfe::
         where('empresa_id', $request->empresa_id)
         ->where('funcionario_id', $funcionario_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when($local_id, function ($query) use ($local_id) {
             return $query->where('local_id', $local_id);
         })->get();
@@ -2178,12 +2068,7 @@ class RelatorioController extends Controller
         $nfces = Nfce::
         where('empresa_id', $request->empresa_id)
         ->where('funcionario_id', $funcionario_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when($local_id, function ($query) use ($local_id) {
             return $query->where('local_id', $local_id);
         })->get();
@@ -2241,12 +2126,7 @@ class RelatorioController extends Controller
         $data = Produto::select('produtos.*')
         ->where('produtos.empresa_id', $request->empresa_id)
         ->where('gerenciar_estoque', 1)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('produtos.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('produtos.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'produtos.created_at', $start_date, $end_date))
         ->when(!empty($categoria_id), function ($query) use ($categoria_id) {
             return $query->where(function($t) use ($categoria_id)
             {
@@ -2394,12 +2274,7 @@ class RelatorioController extends Controller
         $data = Produto::select('produtos.*')
         ->where('produtos.empresa_id', $request->empresa_id)
         ->where('gerenciar_estoque', 1)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('produtos.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('produtos.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'produtos.created_at', $start_date, $end_date))
         ;
 
         $data = $this->applyRelatorioEstoqueContextToProdutoQuery($data, $deposito_id, $localIds)->get();
@@ -2445,24 +2320,14 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
 
         $nfe = Nfe::where('nves.empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('nves.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('nves.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'nves.created_at', $start_date, $end_date))
         ->join('clientes', 'clientes.id', '=', 'nves.cliente_id')
         ->groupBy('cliente_id')
         ->select('clientes.id as cliente_id', 'clientes.razao_social as nome', \DB::raw('sum(nves.total) as total'), \DB::raw('count(nves.id) as count'))
         ->get();
 
         $nfce = Nfce::where('nfces.empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('nfces.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('nfces.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'nfces.created_at', $start_date, $end_date))
         ->join('clientes', 'clientes.id', '=', 'nfces.cliente_id')
         ->groupBy('cliente_id')
         ->select('clientes.id as cliente_id', 'clientes.razao_social as nome', \DB::raw('sum(nfces.total) as total'), \DB::raw('count(nfces.id) as count'))
@@ -2676,12 +2541,7 @@ class RelatorioController extends Controller
             'produtoVariacao',
             'user'
         ])
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('movimentacao_produtos.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('movimentacao_produtos.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'movimentacao_produtos.created_at', $start_date, $end_date))
         ->when(!empty($deposito_id), function ($query) use ($deposito_id) {
             return $query->where(function ($q) use ($deposito_id) {
                 $q->where('movimentacao_produtos.deposito_id', $deposito_id)
@@ -2846,12 +2706,7 @@ class RelatorioController extends Controller
             $join->on('tef.nfce_id', '=', 'n.id');
         })
         ->where('n.empresa_id', $empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('n.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('n.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'n.created_at', $start_date, $end_date))
         ->when(!empty($funcionario_id), function ($query) use ($funcionario_id) {
             return $query->where('n.funcionario_id', $funcionario_id);
         })
@@ -2910,12 +2765,7 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
 
         $data = OrdemServico::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when(!empty($cliente_id), function ($query) use ($cliente_id) {
             return $query->where('cliente_id', $cliente_id);
         })
@@ -2959,12 +2809,7 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
 
         $nves = Nfe::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when($local_id, function ($query) use ($local_id) {
             return $query->where('local_id', $local_id);
         })
@@ -2974,12 +2819,7 @@ class RelatorioController extends Controller
         ->get();
 
         $nfces = Nfce::where('empresa_id', $request->empresa_id)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when($local_id, function ($query) use ($local_id) {
             return $query->where('local_id', $local_id);
         })
@@ -3118,12 +2958,7 @@ class RelatorioController extends Controller
         ->select('produtos.id as produto_id')
         ->join('produtos', 'produtos.id', '=', 'item_nves.produto_id')
         ->join('nves', 'nves.id', '=', 'item_nves.nfe_id')
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('item_nves.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('item_nves.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'item_nves.created_at', $start_date, $end_date))
         ->when(!empty($categoria_id), function ($query) use ($categoria_id) {
             return $query->where(function($t) use ($categoria_id)
             {
@@ -3149,12 +2984,7 @@ class RelatorioController extends Controller
         ->select('produtos.id as produto_id')
         ->join('produtos', 'produtos.id', '=', 'item_nfces.produto_id')
         ->join('nfces', 'nfces.id', '=', 'item_nfces.nfce_id')
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('item_nfces.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date,) {
-            return $query->whereDate('item_nfces.created_at', '<=', $end_date);
-        })
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'item_nfces.created_at', $start_date, $end_date))
         ->when(!empty($categoria_id), function ($query) use ($categoria_id) {
             return $query->where(function($t) use ($categoria_id)
             {
@@ -3249,12 +3079,7 @@ class RelatorioController extends Controller
         $esportar_excel = $request->esportar_excel;
 
         $data = CashBackCliente::where('empresa_id', $request->empresa_id)
-            ->when(!empty($start_date), function ($q) use ($start_date) {
-                return $q->whereDate('created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($q) use ($end_date) {
-                return $q->whereDate('created_at', '<=', $end_date);
-            })
+            ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
             ->when($request->filled('status'), function ($q) use ($request) {
                 return $q->where('status', $request->status);
             })
@@ -3297,12 +3122,7 @@ class RelatorioController extends Controller
             ->join('item_pre_vendas as ipv', 'ipv.pre_venda_id', '=', 'pv.id')
             ->join('produtos as p', 'p.id', '=', 'ipv.produto_id')
             ->where('cb.empresa_id', $request->empresa_id)
-            ->when(!empty($start_date), function ($q) use ($start_date) {
-                return $q->whereDate('cb.created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($q) use ($end_date) {
-                return $q->whereDate('cb.created_at', '<=', $end_date);
-            })
+            ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'cb.created_at', $start_date, $end_date))
             ->when(!empty($produto_id), function ($q) use ($produto_id) {
                 return $q->where('p.id', $produto_id);
             })
@@ -3364,12 +3184,7 @@ class RelatorioController extends Controller
         }
 
         $receber = ContaReceber::where('empresa_id', $request->empresa_id)
-            ->when(!empty($start_date), function ($q) use ($start_date) {
-                return $q->whereDate('data_vencimento', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($q) use ($end_date) {
-                return $q->whereDate('data_vencimento', '<=', $end_date);
-            })
+            ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'data_vencimento', $start_date, $end_date))
             ->when(!empty($status), function ($q) use ($status) {
                 if ($status == -1) {
                     return $q->where('status', '!=', 1);
@@ -3389,12 +3204,7 @@ class RelatorioController extends Controller
             ->get();
 
         $pagar = ContaPagar::where('empresa_id', $request->empresa_id)
-            ->when(!empty($start_date), function ($q) use ($start_date) {
-                return $q->whereDate('data_vencimento', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($q) use ($end_date) {
-                return $q->whereDate('data_vencimento', '<=', $end_date);
-            })
+            ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'data_vencimento', $start_date, $end_date))
             ->when(!empty($status), function ($q) use ($status) {
                 if ($status == -1) {
                     return $q->where('status', '!=', 1);

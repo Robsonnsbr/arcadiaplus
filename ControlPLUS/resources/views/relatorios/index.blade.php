@@ -175,7 +175,10 @@
                         <div class="card-body">
                             <div class="row">
                                 @include('partials.period-filter')
-                                <div class="col-md-4 col-12">
+                                <div class="col-12">
+                                    <p class="small text-muted mb-0">O período considera a data de emissão; se a NF-e ainda não foi autorizada, usa a data de cadastro.</p>
+                                </div>
+                                <div class="col-md-4 col-12 mt-2">
                                     {!! Form::select('tipo', 'Tipo', [
                                         '' => 'Selecione',
                                         '1' => 'Saída',
@@ -378,8 +381,11 @@
                         <div class="card-body">
                             <div class="row">
                                 @include('partials.period-filter')
+                                <div class="col-12">
+                                    <p class="small text-muted mb-0">O período considera a data de emissão; se a NFC-e ainda não foi autorizada, usa a data de cadastro.</p>
+                                </div>
 
-                                <div class="col-md-6 col-12">
+                                <div class="col-md-6 col-12 mt-2">
                                     {!! Form::select('funcionario_id', 'Vendedor')->attrs(['class' => 'form-select funcionario'])->id('funcionario-relatorio-nfce') !!}
                                 </div>
 

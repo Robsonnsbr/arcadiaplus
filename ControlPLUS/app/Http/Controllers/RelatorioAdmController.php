@@ -15,6 +15,7 @@ use App\Models\ContaReceber;
 use App\Models\Produto;
 use App\Models\Cliente;
 use App\Models\Fornecedor;
+use App\Support\ReportPeriodFilter;
 
 class RelatorioAdmController extends Controller
 {
@@ -28,13 +29,8 @@ class RelatorioAdmController extends Controller
         $end_date = $request->end_date;
         $status = $request->status;
 
-        $data = Empresa::
-        when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
+        $data = Empresa::query()
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
         ->when($status !== null, function ($q) use ($status) {
             return $q->where('status', $status);
         })
@@ -59,13 +55,8 @@ class RelatorioAdmController extends Controller
         $end_date = $request->end_date;
         $empresa = $request->empresa;
 
-        $data = AcessoLog::
-        when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('acesso_logs.created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('acesso_logs.created_at', '<=', $end_date);
-        })
+        $data = AcessoLog::query()
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'acesso_logs.created_at', $start_date, $end_date))
         ->when($empresa, function ($query) use ($empresa) {
             return $query->where('usuario_empresas.empresa_id', $empresa)
             ->join('usuario_empresas', 'acesso_logs.usuario_id', '=', 'usuario_empresas.usuario_id');
@@ -91,13 +82,8 @@ class RelatorioAdmController extends Controller
         $start_date = $request->start_date;
         $end_date = $request->end_date;
 
-        $data = PlanoEmpresa::
-        when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('data_expiracao', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('data_expiracao', '<=', $end_date);
-        })
+        $data = PlanoEmpresa::query()
+        ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'data_expiracao', $start_date, $end_date))
         ->get();
 
         $p = view('relatorios_adm.planos', compact('data'))
@@ -171,8 +157,8 @@ class RelatorioAdmController extends Controller
         $end_date = $request->end_date;
         $status = $request->status;
 
-        $empresas = Empresa::
-        when($status !== null, function ($q) use ($status) {
+        $empresas = Empresa::query()
+        ->when($status !== null, function ($q) use ($status) {
             return $q->where('status', $status);
         })
         ->orderBy('nome')
@@ -181,13 +167,8 @@ class RelatorioAdmController extends Controller
 
         $data = [];
         foreach($empresas as $e){
-            $contaAcessos = AcessoLog::
-            when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('acesso_logs.created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date) {
-                return $query->whereDate('acesso_logs.created_at', '<=', $end_date);
-            })
+            $contaAcessos = AcessoLog::query()
+            ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'acesso_logs.created_at', $start_date, $end_date))
             ->where('usuario_empresas.empresa_id', $e->id)
             ->join('usuario_empresas', 'acesso_logs.usuario_id', '=', 'usuario_empresas.usuario_id')
             ->select('acesso_logs.*')
@@ -195,12 +176,7 @@ class RelatorioAdmController extends Controller
 
             $vendas = Nfe::where('empresa_id', $e->id)
             ->where('tpNF', 1)
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date) {
-                return $query->whereDate('created_at', '<=', $end_date);
-            })
+            ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
             ->selectRaw('COUNT(*) as total_vendas, SUM(total) as soma_vendas')
             ->first();
 
@@ -209,12 +185,7 @@ class RelatorioAdmController extends Controller
 
             $vendas = Nfce::
             where('empresa_id', $e->id)
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('created_at', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date) {
-                return $query->whereDate('created_at', '<=', $end_date);
-            })
+            ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'created_at', $start_date, $end_date))
             ->selectRaw('COUNT(*) as total_vendas, SUM(total) as soma_vendas')
             ->first();
 
@@ -232,24 +203,14 @@ class RelatorioAdmController extends Controller
             $contasRecebidas = ContaReceber::
             where('empresa_id', $e->id)
             ->where('status', 1)
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('data_vencimento', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date) {
-                return $query->whereDate('data_vencimento', '<=', $end_date);
-            })
+            ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'data_vencimento', $start_date, $end_date))
             ->selectRaw('COUNT(*) as total_contas, SUM(valor_recebido) as soma_contas')
             ->first();
 
             $contasReceber = ContaReceber::
             where('empresa_id', $e->id)
             ->where('status', 0)
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('data_vencimento', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date) {
-                return $query->whereDate('data_vencimento', '<=', $end_date);
-            })
+            ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'data_vencimento', $start_date, $end_date))
             ->selectRaw('COUNT(*) as total_contas, SUM(valor_integral) as soma_contas')
             ->first();
 
@@ -257,24 +218,14 @@ class RelatorioAdmController extends Controller
             $contasPagas = ContaPagar::
             where('empresa_id', $e->id)
             ->where('status', 1)
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('data_vencimento', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date) {
-                return $query->whereDate('data_vencimento', '<=', $end_date);
-            })
+            ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'data_vencimento', $start_date, $end_date))
             ->selectRaw('COUNT(*) as total_contas, SUM(valor_pago) as soma_contas')
             ->first();
 
             $contasPagar = ContaPagar::
             where('empresa_id', $e->id)
             ->where('status', 0)
-            ->when(!empty($start_date), function ($query) use ($start_date) {
-                return $query->whereDate('data_vencimento', '>=', $start_date);
-            })
-            ->when(!empty($end_date), function ($query) use ($end_date) {
-                return $query->whereDate('data_vencimento', '<=', $end_date);
-            })
+            ->tap(fn ($q) => ReportPeriodFilter::apply($q, 'data_vencimento', $start_date, $end_date))
             ->selectRaw('COUNT(*) as total_contas, SUM(valor_integral) as soma_contas')
             ->first();
 
