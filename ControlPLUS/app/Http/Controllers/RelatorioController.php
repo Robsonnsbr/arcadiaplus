@@ -45,6 +45,8 @@ use App\Exports\RelatorioContaReceberExport;
 use App\Exports\RelatorioPedidosFaturadosExport;
 use App\Exports\RelatorioComissaoExport;
 use App\Exports\RelatorioComprasExport;
+use App\Exports\RelatorioComprasItensExport;
+use App\Exports\RelatorioComprasNotasExport;
 use App\Exports\RelatorioDespesaFretesExport;
 use App\Exports\RelatorioTotalizaProdutosExport;
 use App\Exports\RelatorioVendasPorVendedorExport;
@@ -1316,6 +1318,156 @@ class RelatorioController extends Controller
         $domPdf->setPaper("A4", "landscape");
         $domPdf->render();
         $domPdf->stream("Relatório de Compras.pdf", array("Attachment" => false));
+    }
+
+    public function comprasItens(Request $request)
+    {
+        $locais = __getLocaisAtivoUsuario()->pluck('id');
+
+        $start_date    = $request->start_date;
+        $end_date      = $request->end_date;
+        $local_id      = $request->local_id;
+        $fornecedor_id = $request->fornecedor_id;
+        $produto_id    = $request->produto_id;
+        $esportar_excel = $request->esportar_excel;
+
+        $notas = Nfe::where('empresa_id', request()->empresa_id)
+            ->where('tpNF', 0)
+            ->tap(fn ($q) => ReportPeriodFilter::apply(
+                $q,
+                ReportPeriodFilter::coalesce('data_emissao', 'created_at'),
+                $start_date,
+                $end_date
+            ))
+            ->when(!empty($fornecedor_id), fn ($q) => $q->where('fornecedor_id', $fornecedor_id))
+            ->when($local_id, fn ($q) => $q->where('local_id', $local_id))
+            ->when(!$local_id, fn ($q) => $q->whereIn('local_id', $locais))
+            ->with([
+                'fornecedor',
+                'deposito',
+                'itens' => function ($q) use ($produto_id) {
+                    $q->when(!empty($produto_id), fn ($qq) => $qq->where('produto_id', $produto_id));
+                },
+                'itens.produto',
+                'itens.produtoVariacao',
+            ])
+            ->orderByRaw('COALESCE(data_emissao, created_at) DESC')
+            ->get();
+
+        $data = collect();
+        foreach ($notas as $nota) {
+            foreach ($nota->itens as $item) {
+                $nomeProduto = optional($item->produto)->nome ?? ($item->descricao ?: '--');
+                if ($item->produtoVariacao && $item->produtoVariacao->descricao) {
+                    $nomeProduto .= ' - ' . $item->produtoVariacao->descricao;
+                }
+
+                $data->push([
+                    'codigo'         => $item->id,
+                    'numero_nota'    => $nota->numero ?? $nota->id,
+                    'produto'        => $nomeProduto,
+                    'fornecedor'     => $nota->fornecedor ? $nota->fornecedor->razao_social : '--',
+                    'deposito'       => $nota->deposito ? $nota->deposito->nome : '--',
+                    'data_entrada'   => $nota->data_emissao ?: $nota->created_at,
+                    'quantidade'     => $item->quantidade,
+                    'valor_unitario' => $item->valor_unitario,
+                    'valor_total'    => $item->sub_total,
+                ]);
+            }
+        }
+        $data = $data->values()->all();
+
+        if ($esportar_excel == 1) {
+            $relatorioEx = new RelatorioComprasItensExport($data, $start_date, $end_date);
+            return Excel::download($relatorioEx, 'relatorio_compras_itens.xlsx');
+        }
+
+        $p = view('relatorios.compras_itens', compact('data', 'start_date', 'end_date'))
+            ->with('title', 'Relatório de Entrada de Itens');
+
+        $domPdf = new Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($p);
+        ob_get_clean();
+        $domPdf->setPaper("A4", "landscape");
+        $domPdf->render();
+        $domPdf->stream("Relatório de Entrada de Itens.pdf", array("Attachment" => false));
+    }
+
+    public function comprasNotas(Request $request)
+    {
+        $locais = __getLocaisAtivoUsuario()->pluck('id');
+
+        $start_date    = $request->start_date;
+        $end_date      = $request->end_date;
+        $local_id      = $request->local_id;
+        $fornecedor_id = $request->fornecedor_id;
+        $esportar_excel = $request->esportar_excel;
+
+        $notas = Nfe::where('empresa_id', request()->empresa_id)
+            ->where('tpNF', 0)
+            ->tap(fn ($q) => ReportPeriodFilter::apply(
+                $q,
+                ReportPeriodFilter::coalesce('data_emissao', 'created_at'),
+                $start_date,
+                $end_date
+            ))
+            ->when(!empty($fornecedor_id), fn ($q) => $q->where('fornecedor_id', $fornecedor_id))
+            ->when($local_id, fn ($q) => $q->where('local_id', $local_id))
+            ->when(!$local_id, fn ($q) => $q->whereIn('local_id', $locais))
+            ->with(['fornecedor', 'empresa', 'itens'])
+            ->orderByRaw('COALESCE(data_emissao, created_at) DESC')
+            ->get();
+
+        $data = $notas->map(function ($nota) {
+            $cfops = $nota->itens->pluck('cfop')->filter()->unique()->values()->implode(', ');
+
+            $icms = 0;
+            $icmsSt = 0;
+            $ipi = 0;
+            foreach ($nota->itens as $item) {
+                $icms   += $item->valor_icms > 0
+                    ? (float)$item->valor_icms
+                    : ((float)$item->vbc_icms * (float)$item->perc_icms / 100);
+                $icmsSt += (float)($item->vICMSST ?? 0);
+                $ipi    += $item->valor_ipi > 0
+                    ? (float)$item->valor_ipi
+                    : ((float)$item->vbc_ipi * (float)$item->perc_ipi / 100);
+            }
+
+            return [
+                'codigo'           => $nota->id,
+                'numero'           => $nota->numero ?? '--',
+                'serie'            => $nota->numero_serie ?? '--',
+                'chave'            => $nota->chave_importada ?: ($nota->chave ?: '--'),
+                'data'             => $nota->data_emissao ?: $nota->created_at,
+                'cfop'             => $cfops !== '' ? $cfops : '--',
+                'empresa'          => $nota->empresa ? $nota->empresa->razao_social : '--',
+                'fornecedor'       => $nota->fornecedor ? $nota->fornecedor->razao_social : '--',
+                'valor_produtos'   => (float)$nota->valor_produtos,
+                'desconto'         => (float)$nota->desconto,
+                'outras_despesas'  => (float)$nota->acrescimo,
+                'valor_total'      => (float)$nota->total,
+                'icms'             => round($icms, 2),
+                'icms_st'          => round($icmsSt, 2),
+                'ipi'              => round($ipi, 2),
+            ];
+        })->values()->all();
+
+        if ($esportar_excel == 1) {
+            $relatorioEx = new RelatorioComprasNotasExport($data, $start_date, $end_date);
+            return Excel::download($relatorioEx, 'relatorio_compras_notas.xlsx');
+        }
+
+        $p = view('relatorios.compras_notas', compact('data', 'start_date', 'end_date'))
+            ->with('title', 'Relatório de Notas de Compra');
+
+        $domPdf = new Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($p);
+        ob_get_clean();
+        // A3 landscape: 15 colunas densas (chave, fiscais) nao cabem em A4 sem corte.
+        $domPdf->setPaper("A3", "landscape");
+        $domPdf->render();
+        $domPdf->stream("Relatório de Notas de Compra.pdf", array("Attachment" => false));
     }
 
     public function taxas(Request $request)

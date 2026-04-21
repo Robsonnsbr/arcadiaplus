@@ -17,7 +17,7 @@ class ItemNfe extends Model
         'infAdProd', 'pMVAST', 'vBCST', 'pICMSST', 'vICMSST', 'vBCFCPST', 'pFCPST', 'vFCPST', 'modBCST',
         'nDI', 'dDI', 'cidade_desembarque_id', 'dDesemb', 'tpViaTransp', 'vAFRMM', 'tpIntermedio', 'cpf_cnpj_di',
         'UFTerceiro', 'cExportador', 'nAdicao', 'cFabricante', 'vBCII', 'vDespAdu', 'vII', 'vIOF', 'descricao',
-        'vICMSSubstituto'
+        'vICMSSubstituto', 'valor_icms', 'valor_ipi'
     ];
 
     public function produto(){

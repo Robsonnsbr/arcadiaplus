@@ -322,6 +322,9 @@
                                             </td>
                                             <td width="120">
                                                 <input style="width: 120px" value="{{ $prod->perc_ipi }}" class="form-control perc_ipi percentual" type="tel" name="perc_ipi[]" id="inp-perc_ipi">
+                                                <input type="hidden" name="valor_icms[]"    value="{{ $prod->vICMS_total   ?? 0 }}">
+                                                <input type="hidden" name="valor_icms_st[]" value="{{ $prod->vICMSST_total ?? 0 }}">
+                                                <input type="hidden" name="valor_ipi[]"     value="{{ $prod->vIPI_total    ?? 0 }}">
                                             </td>
                                             <td>
                                                 <input style="width: 120px" value="{{ $prod->perc_red_bc }}" class="form-control perc_red_bc percentual ignore" type="tel" name="perc_red_bc[]" id="inp-perc_red_bc">

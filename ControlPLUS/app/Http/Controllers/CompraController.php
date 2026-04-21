@@ -462,6 +462,13 @@ class CompraController extends Controller
 
                 $prod->codigo_beneficio_fiscal = '';
 
+                $icmsArr = (array_values((array)$item->imposto->ICMS));
+                $prod->vICMS_total   = isset($icmsArr[0]->vICMS)   ? (float)$icmsArr[0]->vICMS   : 0;
+                $prod->vICMSST_total = isset($icmsArr[0]->vICMSST) ? (float)$icmsArr[0]->vICMSST : 0;
+                $prod->vIPI_total    = isset($item->imposto->IPI->IPITrib->vIPI)
+                    ? (float)$item->imposto->IPI->IPITrib->vIPI
+                    : 0;
+
                 array_push($itens, $prod);
             }
 
@@ -743,6 +750,9 @@ class CompraController extends Controller
                         'perc_pis' => __convert_value_bd($request->perc_pis[$i]),
                         'perc_cofins' => __convert_value_bd($request->perc_cofins[$i]),
                         'perc_ipi' => __convert_value_bd($request->perc_ipi[$i]),
+                        'valor_icms' => __convert_value_bd($request->valor_icms[$i] ?? 0),
+                        'vICMSST'    => __convert_value_bd($request->valor_icms_st[$i] ?? 0),
+                        'valor_ipi'  => __convert_value_bd($request->valor_ipi[$i] ?? 0),
                         'cst_csosn' => $request->cst_csosn[$i],
                         'cst_pis' => $request->cst_pis[$i],
                         'cst_cofins' => $request->cst_cofins[$i],

@@ -277,23 +277,25 @@
             </div>
 
             <div class="col-12 col-md-6 collapse relatorios-compras" style="order: 32;">
-                <form method="get" action="{{ route('relatorios.fornecedores') }}" target="_blank">
+                <form method="get" action="{{ route('relatorios.compras-notas') }}" target="_blank" id="form-relatorio-compras-notas">
+                    <input type="hidden" name="empresa_id" value="{{ request()->empresa_id }}">
                     <div class="card">
                         <div class="card-header">
-                            <h5>Relatório de Fornecedores</h5>
+                            <h5>Relatório de Notas de Compra</h5>
                         </div>
                         <div class="card-body">
-                            <div class="row">
-                                @include('partials.period-filter')
-                                <div class="col-md-4 col-12">
-                                    {!! Form::select('tipo', 'Tipo', [
-                                        '' => 'Selecione',
-                                        '1' => 'Mais compras',
-                                        '-1' => 'Menos compras',
-                                    ])->attrs(['class' => 'form-select']) !!}
-                                </div>
+                            <div class="row g-2">
                                 <div class="col-12">
-                                    <p class="small text-muted mb-0">Com ranking ativo, o período limita as NF-e de entrada consideradas no total.</p>
+                                    <p class="small text-muted mb-0">Uma linha por NF-e com totais fiscais consolidados (ICMS, ICMS ST, IPI). Período considera a data de emissão; se não houver, usa a data de cadastro.</p>
+                                </div>
+                                @include('partials.period-filter', [
+                                    'startId' => 'compras-notas-start-date',
+                                    'endId'   => 'compras-notas-end-date',
+                                ])
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('fornecedor_id', 'Fornecedor',
+                                        ['' => 'Todos'] + $fornecedores->pluck('razao_social', 'id')->all()
+                                    )->attrs(['class' => 'form-select select2']) !!}
                                 </div>
                                 @if (__countLocalAtivo() > 1)
                                     <div class="col-md-6 col-12">
@@ -301,10 +303,8 @@
                                     </div>
                                 @endif
 
-                                <div class="col-md-4 col-12 mt-2">
-                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs([
-                                        'class' => 'form-select',
-                                    ]) !!}
+                                <div class="col-md-6 col-12">
+                                    {!! Form::select('esportar_excel', 'Exportar Excel', ['-1' => 'Não', '1' => 'Sim'])->attrs(['class' => 'form-select']) !!}
                                 </div>
                             </div>
                         </div>
@@ -666,17 +666,20 @@
         --}}
 
             <div class="col-12 col-md-6 collapse relatorios-compras" style="order: 31;">
-                <form method="get" action="{{ route('relatorios.compras') }}" target="_blank" id="form-relatorio-compras">
+                <form method="get" action="{{ route('relatorios.compras-itens') }}" target="_blank" id="form-relatorio-compras-itens">
                     <input type="hidden" name="empresa_id" value="{{ request()->empresa_id }}">
                     <div class="card">
                         <div class="card-header">
-                            <h5>Relatório de Compras</h5>
+                            <h5>Relatório de Entrada de Itens</h5>
                         </div>
                         <div class="card-body">
                             <div class="row g-2">
+                                <div class="col-12">
+                                    <p class="small text-muted mb-0">Uma linha por item de nota. Período considera a data de emissão; se não houver, usa a data de cadastro.</p>
+                                </div>
                                 @include('partials.period-filter', [
-                                    'startId' => 'compras-start-date',
-                                    'endId'   => 'compras-end-date',
+                                    'startId' => 'compras-itens-start-date',
+                                    'endId'   => 'compras-itens-end-date',
                                 ])
                                 <div class="col-md-6 col-12">
                                     {!! Form::select('fornecedor_id', 'Fornecedor',
@@ -684,11 +687,11 @@
                                     )->attrs(['class' => 'form-select select2']) !!}
                                 </div>
                                 <div class="col-md-6 col-12">
-                                    {!! Form::select('produto_id', 'Produto')->attrs(['class' => 'form-select produtos_filtro'])->id('produto-compras') !!}
+                                    {!! Form::select('produto_id', 'Produto')->attrs(['class' => 'form-select produtos_filtro'])->id('produto-compras-itens') !!}
                                 </div>
                                 @if (__countLocalAtivo() > 1)
                                     <div class="col-md-6 col-12">
-                                        {!! Form::select('local_id', 'Depósito', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
+                                        {!! Form::select('local_id', 'Local', __getLocaisAtivoUsuarioParaSelect())->attrs(['class' => 'form-select']) !!}
                                     </div>
                                 @endif
                                 <div class="col-md-6 col-12">

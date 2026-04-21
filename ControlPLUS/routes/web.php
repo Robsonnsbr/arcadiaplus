@@ -1145,6 +1145,8 @@ Route::middleware(['verificaEmpresa', 'validaPlano', 'validaContrato'])->group(f
         Route::get('relatorio-vendas', 'RelatorioController@vendas')->name('relatorios.vendas');
         Route::get('relatorio-vendas-pdv', 'RelatorioController@vendasPdv')->name('relatorios.vendas-pdv');
         Route::get('relatorio-compras', 'RelatorioController@compras')->name('relatorios.compras');
+        Route::get('relatorio-compras-itens', 'RelatorioController@comprasItens')->name('relatorios.compras-itens');
+        Route::get('relatorio-compras-notas', 'RelatorioController@comprasNotas')->name('relatorios.compras-notas');
         Route::get('relatorio-taxas', 'RelatorioController@taxas')->name('relatorios.taxas');
         Route::get('relatorio-lucro', 'RelatorioController@lucro')->name('relatorios.lucro');
         Route::get('relatorio-venda-produtos', 'RelatorioController@vendaProdutos')->name('relatorios.venda-produtos');
