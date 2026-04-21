@@ -3224,7 +3224,7 @@ class RelatorioController extends Controller
             ->when(!empty($cliente_id), function ($q) use ($cliente_id) {
                 return $q->where('cliente_id', $cliente_id);
             })
-            ->with('cliente', 'categoria')
+            ->with('cliente', 'categoria', 'contaEmpresa.planoConta')
             ->get();
 
         $pagar = ContaPagar::where('empresa_id', $request->empresa_id)
@@ -3244,21 +3244,28 @@ class RelatorioController extends Controller
             ->when(!empty($fornecedor_id), function ($q) use ($fornecedor_id) {
                 return $q->where('fornecedor_id', $fornecedor_id);
             })
-            ->with('fornecedor', 'categoria')
+            ->with('fornecedor', 'categoria', 'contaEmpresa.planoConta')
             ->get();
 
         $lancamentos = collect();
 
+        $tiposPagamento = ContaReceber::tiposPagamento();
+
         if ($tipo !== 'pagar') {
             foreach ($receber as $item) {
                 $lancamentos->push([
-                    'tipo'           => 'receber',
-                    'descricao'      => $item->descricao,
-                    'pessoa'         => $item->cliente ? $item->cliente->razao_social : null,
-                    'categoria'      => $item->categoria ? $item->categoria->nome : null,
-                    'data_vencimento'=> $item->data_vencimento,
-                    'valor'          => $item->valor_integral,
-                    'status'         => $item->status,
+                    'codigo'          => $item->id,
+                    'tipo'            => 'receber',
+                    'descricao'       => $item->descricao,
+                    'pessoa'          => $item->cliente ? $item->cliente->razao_social : null,
+                    'numero_documento'=> $item->referencia ?: '--',
+                    'categoria'       => $item->categoria ? $item->categoria->nome : null,
+                    'plano_contas'    => optional(optional($item->contaEmpresa)->planoConta)->descricao ?? '--',
+                    'data_vencimento' => $item->data_vencimento,
+                    'data_pagamento'  => $item->data_recebimento,
+                    'forma_pagamento' => $tiposPagamento[$item->tipo_pagamento] ?? '--',
+                    'valor'           => $item->valor_integral,
+                    'status'          => $item->status,
                 ]);
             }
         }
@@ -3266,13 +3273,18 @@ class RelatorioController extends Controller
         if ($tipo !== 'receber') {
             foreach ($pagar as $item) {
                 $lancamentos->push([
-                    'tipo'           => 'pagar',
-                    'descricao'      => $item->descricao,
-                    'pessoa'         => $item->fornecedor ? $item->fornecedor->razao_social : null,
-                    'categoria'      => $item->categoria ? $item->categoria->nome : null,
-                    'data_vencimento'=> $item->data_vencimento,
-                    'valor'          => $item->valor_integral,
-                    'status'         => $item->status,
+                    'codigo'          => $item->id,
+                    'tipo'            => 'pagar',
+                    'descricao'       => $item->descricao,
+                    'pessoa'          => $item->fornecedor ? $item->fornecedor->razao_social : null,
+                    'numero_documento'=> $item->referencia ?: '--',
+                    'categoria'       => $item->categoria ? $item->categoria->nome : null,
+                    'plano_contas'    => optional(optional($item->contaEmpresa)->planoConta)->descricao ?? '--',
+                    'data_vencimento' => $item->data_vencimento,
+                    'data_pagamento'  => $item->data_pagamento,
+                    'forma_pagamento' => $tiposPagamento[$item->tipo_pagamento] ?? '--',
+                    'valor'           => $item->valor_integral,
+                    'status'          => $item->status,
                 ]);
             }
         }
