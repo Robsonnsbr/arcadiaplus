@@ -47,6 +47,8 @@ database/*.sqlite
 .phpstan/resultCache.php
 phpstan.neon.tmp
 
+#TESTE GIT AGAPAR
+
 # Ignorar debugbar (se usar)
 public/debugbar/*
 
