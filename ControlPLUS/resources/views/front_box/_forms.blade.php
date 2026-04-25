@@ -370,7 +370,7 @@
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between pdv-meta-card-head">
                             <div class="flex-grow-1 overflow-hidden pe-2">
-                                <h5 class="text-muted text-uppercase fs-13 mt-0">Vendedor</h5>
+                                <h5 class="text-muted text-uppercase fs-13 mt-0">Consultor</h5>
                                 @isset($funcionario)
                                 <h6 class="funcionario_selecionado mb-0">{{ $funcionario->nome }}</h6>
                                 @else

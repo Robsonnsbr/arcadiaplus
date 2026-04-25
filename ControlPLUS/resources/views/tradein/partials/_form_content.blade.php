@@ -77,7 +77,17 @@
         </div>
         <div class="col-md-3">
             <label class="form-label">Consultor</label>
-            <input type="text" class="form-control" name="cabecalho[consultor]" value="{{ old('cabecalho.consultor', $cabecalho['consultor'] ?? '') }}">
+            @php $consultorSelecionado = old('cabecalho.consultor', $cabecalho['consultor'] ?? ''); @endphp
+            <select
+                class="form-select select2-consultor"
+                name="cabecalho[consultor]"
+                data-placeholder="Digite para buscar vendedor..."
+                style="width:100%"
+            >
+                @if($consultorSelecionado)
+                    <option value="{{ $consultorSelecionado }}" selected>{{ $consultorSelecionado }}</option>
+                @endif
+            </select>
         </div>
         <div class="col-md-3">
             <label class="form-label">Valor do aparelho</label>
@@ -279,6 +289,39 @@
 @push('scripts')
 <script>
 (function() {
+    function initConsultorSelect2(el) {
+        $(el).select2({
+            minimumInputLength: 2,
+            language: "pt-BR",
+            placeholder: "Digite para buscar funcionário...",
+            allowClear: true,
+            width: "100%",
+            ajax: {
+                cache: true,
+                url: path_url + "api/funcionarios/pesquisa",
+                dataType: "json",
+                data: function (params) {
+                    var $container = $(el).closest("form, [data-tradein-evaluation-form]");
+                    var empresaId = $container.find('input[name="empresa_id"]').val() || $("#empresa_id").val();
+                    return {
+                        pesquisa: params.term,
+                        empresa_id: empresaId
+                    };
+                },
+                processResults: function (response) {
+                    var results = [];
+                    $.each(response, function (i, v) {
+                        results.push({
+                            id: v.nome,
+                            text: v.nome
+                        });
+                    });
+                    return { results: results };
+                },
+            },
+        });
+    }
+
     function initPecaProdutoSelect2(el) {
         $(el).select2({
             minimumInputLength: 2,
@@ -309,6 +352,10 @@
     }
 
     $(function () {
+        $(".select2-consultor").each(function () {
+            initConsultorSelect2(this);
+        });
+
         $(".select2-peca-produto").each(function () {
             initPecaProdutoSelect2(this);
         });
