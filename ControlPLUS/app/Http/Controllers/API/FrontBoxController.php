@@ -931,6 +931,63 @@ class FrontBoxController extends Controller
         return (float) $total;
     }
 
+    private function hasMultiplePaymentInput(Request $request): bool
+    {
+        return sizeof($this->getRequestArray($request, 'tipo_pagamento_row')) > 0
+            || (is_array($request->fatura) && sizeof($request->fatura) > 0);
+    }
+
+    private function extractMultiplePaymentAmount(Request $request): float
+    {
+        $total = 0;
+        $tiposPagamentoRows = $this->getRequestArray($request, 'tipo_pagamento_row');
+        $valorIntegralRows = $this->getRequestArray($request, 'valor_integral_row');
+
+        if (sizeof($tiposPagamentoRows) > 0 || sizeof($valorIntegralRows) > 0) {
+            for ($i = 0; $i < max(sizeof($tiposPagamentoRows), sizeof($valorIntegralRows)); $i++) {
+                $tipo = trim((string)($tiposPagamentoRows[$i] ?? ''));
+                if ($tipo === '') {
+                    continue;
+                }
+                $valorLinha = max(0, (float) __convert_value_bd($valorIntegralRows[$i] ?? 0));
+                $total += $valorLinha;
+            }
+            return (float) $total;
+        }
+
+        if (is_array($request->fatura) && sizeof($request->fatura) > 0) {
+            foreach ($request->fatura as $fatura) {
+                $tipo = is_array($fatura)
+                    ? ($fatura['tipo_pagamento'] ?? ($fatura['tipo'] ?? ($fatura['forma'] ?? null)))
+                    : ($fatura->tipo_pagamento ?? ($fatura->tipo ?? ($fatura->forma ?? null)));
+                if (trim((string)$tipo) === '') {
+                    continue;
+                }
+
+                $valor = is_array($fatura)
+                    ? ($fatura['valor'] ?? ($fatura['valor_integral'] ?? 0))
+                    : ($fatura->valor ?? ($fatura->valor_integral ?? 0));
+                $total += max(0, (float) __convert_value_bd($valor));
+            }
+        }
+
+        return (float) $total;
+    }
+
+    private function validateMultiplePaymentAmountAgainstSale(Request $request): void
+    {
+        if (!$this->hasMultiplePaymentInput($request)) {
+            return;
+        }
+
+        $valorVenda = max(0, (float) __convert_value_bd($request->valor_total));
+        $valorPagamentos = $this->extractMultiplePaymentAmount($request);
+
+        if ($valorPagamentos > ($valorVenda + 0.0001)) {
+            abort(422, 'A soma dos pagamentos não pode ser maior que o total da venda.');
+        }
+    }
+
     private function validateTradeinAmountAgainstSale(Request $request, float $tradeinValor): void
     {
         if ($tradeinValor <= 0) {
@@ -1213,6 +1270,8 @@ class FrontBoxController extends Controller
             if($retornoCredito != 0){
                 return response()->json($retornoCredito, 401);
             }
+
+            $this->validateMultiplePaymentAmountAgainstSale($request);
 
             $nfce = DB::transaction(function () use ($request) {
                 // $caixa = __isCaixaAberto();

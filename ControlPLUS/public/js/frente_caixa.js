@@ -2425,6 +2425,19 @@ $(".btn-add-payment").click(() => {
 
     let v = convertMoedaToFloat(valor_integral_row);
     let total = total_venda + parseFloat(VALORACRESCIMO) - parseFloat(DESCONTO);
+    const restanteAtual = getRestantePagamentoMultiplo();
+    const tolerancia = 0.0001;
+    if (v > restanteAtual + tolerancia) {
+        swal(
+            "Atenção",
+            "O valor informado ultrapassa o restante da venda (" +
+                convertFloatToMoeda(restanteAtual) +
+                ").",
+            "warning",
+        );
+        $("#inp-valor_row").focus();
+        return;
+    }
     // console.log(total)
     // console.log(v)
     // console.log(total_payment)
@@ -2682,6 +2695,21 @@ function getTotalPagamentosSemTradein() {
         total += valor > 0 ? valor : 0;
     });
     return total;
+}
+
+function getTotalPagamentosMultiploAtual() {
+    let total = 0;
+    $(".table-payment tbody tr").each(function () {
+        const valor = convertMoedaToFloat(
+            $(this).find("input[name='valor_integral_row[]']").val() || "0",
+        );
+        total += valor > 0 ? valor : 0;
+    });
+    return total;
+}
+
+function getRestantePagamentoMultiplo() {
+    return Math.max(getTotalVendaAtual() - getTotalPagamentosMultiploAtual(), 0);
 }
 
 function getValorTradeinMaximoPermitido() {
@@ -3518,6 +3546,9 @@ function buildValidMultiplePaymentRows(json) {
 }
 
 function sanitizePagamentoPayload(json) {
+    // O endpoint da API recebe POST; evita method spoofing do form web.
+    deletePayloadField(json, "_method");
+
     const multipleRows = buildValidMultiplePaymentRows(json);
     if (multipleRows.length > 0) {
         json.tipo_pagamento = "";
