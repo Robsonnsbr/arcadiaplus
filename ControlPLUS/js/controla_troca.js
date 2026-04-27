@@ -4,6 +4,24 @@ $(function(){
 
 })
 
+/** Alinha com trocas/create: devolução PDV não exige item novo. Usa fallbacks se #inp-modalidade falhar. */
+function trocaIsDevolucaoPdv() {
+	var m = String($("#inp-modalidade").val() || "").trim()
+	if (m === "devolucao_pdv") {
+		return true
+	}
+	m = String($("#form-troca [data-troca-modalidade]").attr("data-troca-modalidade") || "").trim()
+	if (m === "devolucao_pdv") {
+		return true
+	}
+	try {
+		if (new URLSearchParams(window.location.search).get("modalidade") === "devolucao_pdv") {
+			return true
+		}
+	} catch (e) {}
+	return false
+}
+
 function comparaValor(){
 	setTimeout(() => {
 		let total = convertMoedaToFloat($('#inp-valor_total').val())
@@ -47,7 +65,8 @@ $("body").on("click", ".btn-qtd", function () {
 $("body").on('click', '.salvar_troca', function () {
 	let cliente = $("#inp-cliente_id").val();
 	if(!cliente){
-		swal("Alerta", "Informe o cliente para finalizar a troca!", "warning")
+		var isDev = trocaIsDevolucaoPdv()
+		swal("Alerta", isDev ? "Informe o cliente para finalizar a devolução!" : "Informe o cliente para finalizar a troca!", "warning")
 		.then(() => {
 			setTimeout(() => {
 				$('#finalizar_troca .btn-close').trigger('click')
@@ -77,8 +96,18 @@ $("body").on('click', '#btn-comprovante-troca', function () {
 })
 
 $("#form-troca").on("submit", function (e) {
-
 	e.preventDefault();
+	var isDev = trocaIsDevolucaoPdv()
+	if (typeof validateCodigoUnicoRows === "function" && !validateCodigoUnicoRows()) {
+		return;
+	}
+	if (!isDev) {
+		var nOrig = parseInt($("#troca_linhas_venda_origem").val() || "0", 10);
+		if ($(".table-itens tbody tr").length <= nOrig) {
+			swal("Atenção", "Inclua ao menos um produto novo (saída de estoque) na troca antes de finalizar.", "warning");
+			return;
+		}
+	}
 	const form = $(e.target);
 	var json = $(this).serializeFormJSON();
 
@@ -86,6 +115,7 @@ $("#form-troca").on("submit", function (e) {
 	json.usuario_id = $('#usuario_id').val()
 	json.venda_id = $('#venda_id').val()
 	json.tipo = $('#tipo').val()
+	json.modalidade = isDev ? "devolucao_pdv" : (String($("#inp-modalidade").val() || "").trim() || "troca")
 
 	// console.log(json)
 	// return;
@@ -96,7 +126,7 @@ $("#form-troca").on("submit", function (e) {
 		
 		swal({
 			title: "Sucesso",
-			text: "Troca finalizada com sucesso, deseja imprimir o comprovante?",
+			text: (json.modalidade === "devolucao_pdv" ? "Devolução registrada" : "Troca finalizada") + " com sucesso, deseja imprimir o comprovante?",
 			icon: "success",
 			buttons: true,
 			buttons: ["Não", "Sim"],
@@ -111,6 +141,13 @@ $("#form-troca").on("submit", function (e) {
 		});
 
 	}).fail((err) => {
+		let message = (err.responseJSON && (typeof err.responseJSON === "string" ? err.responseJSON : err.responseJSON.message)) || err.responseText || "Não foi possível concluir a operação."
+		if (typeof message !== "string") {
+			message = JSON.stringify(message)
+		}
+		if (typeof swal === "function") {
+			swal("Erro", message, "error")
+		}
 		console.log(err)
 	})
 })

@@ -10,8 +10,21 @@ class Troca extends Model
     use HasFactory;
 
     protected $fillable = [
-        'empresa_id', 'nfce_id', 'observacao', 'total', 'numero_sequencial', 'codigo', 'valor_troca', 'valor_original',
-        'tipo_pagamento', 'nfe_id', 'caixa_id', 'funcionario_id'
+        'empresa_id', 'modalidade', 'nfce_id', 'observacao', 'total', 'numero_sequencial', 'codigo', 'valor_troca', 'valor_original',
+        'tipo_pagamento', 'nfe_id', 'caixa_id', 'funcionario_id', 'seriais_devolvidos',
+    ];
+
+    public const MODALIDADE_TROCA = 'troca';
+
+    public const MODALIDADE_DEVOLUCAO_PDV = 'devolucao_pdv';
+
+    public function isDevolucaoPdv(): bool
+    {
+        return $this->modalidade === self::MODALIDADE_DEVOLUCAO_PDV;
+    }
+
+    protected $casts = [
+        'seriais_devolvidos' => 'array',
     ];
 
     public function nfce()

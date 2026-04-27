@@ -13,7 +13,12 @@ use App\Models\Caixa;
 use App\Models\Empresa;
 use App\Models\ConfigGeral;
 use App\Models\UsuarioEmpresa;
+use App\Models\Cliente;
 use App\Utils\EstoqueUtil;
+use App\Services\TrocaSerialService;
+use App\Models\ProdutoUnico;
+use App\Models\CreditoCliente;
+use Illuminate\Support\Facades\DB;
 use NFePHP\DA\NFe\CupomNaoFiscal;
 use Dompdf\Dompdf;
 
@@ -21,9 +26,13 @@ class TrocaController extends Controller
 {
     protected $util;
 
-    public function __construct(EstoqueUtil $util)
+    /** @var TrocaSerialService */
+    protected $seriais;
+
+    public function __construct(EstoqueUtil $util, TrocaSerialService $seriais)
     {
         $this->util = $util;
+        $this->seriais = $seriais;
 
         $this->middleware('permission:troca_create', ['only' => ['create', 'store']]);
         $this->middleware('permission:troca_view', ['only' => ['show', 'index']]);
@@ -57,6 +66,10 @@ class TrocaController extends Controller
     public function create(Request $request){
         $tipo = $request->tipo;
         $id = $request->id;
+        $modalidade = $request->get('modalidade', \App\Models\Troca::MODALIDADE_TROCA);
+        if (!in_array($modalidade, [\App\Models\Troca::MODALIDADE_TROCA, \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV], true)) {
+            $modalidade = \App\Models\Troca::MODALIDADE_TROCA;
+        }
 
         if($tipo == 'nfce'){
             $item = Nfce::findOrFail($id);
@@ -74,6 +87,14 @@ class TrocaController extends Controller
             return redirect()->route('caixa.create');
         }
         __validaObjetoEmpresa($item);
+
+        if ($modalidade === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV) {
+            $fimPrazo = \Carbon\Carbon::parse($item->created_at)->addHours(24);
+            if (now()->gt($fimPrazo)) {
+                session()->flash('flash_error', 'Prazo de 24 horas para devolução desta venda já expirou.');
+                return redirect()->route('trocas.index');
+            }
+        }
 
         $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)->get();
         $cliente = $item->cliente;
@@ -112,7 +133,7 @@ class TrocaController extends Controller
         }
 
         return view('trocas.create', compact('item', 'funcionarios', 'cliente', 'funcionario', 'caixa', 'abertura', 
-            'isVendaSuspensa', 'categorias', 'tiposPagamento', 'msgTroca', 'config'));
+            'isVendaSuspensa', 'categorias', 'tiposPagamento', 'msgTroca', 'config', 'modalidade'));
     }
 
     public function show($id)
@@ -123,18 +144,80 @@ class TrocaController extends Controller
 
     public function destroy($id)
     {
-        $item = Troca::findOrFail($id);
+        $item = Troca::with(['itens.produto', 'nfce', 'nfe'])->findOrFail($id);
+        __validaObjetoEmpresa($item);
+        $descricaoLog = "#$item->numero_sequencial - R$ " . __moeda($item->valor_troca);
         try {
-            $descricaoLog = "#$item->numero_sequencial - R$ " . __moeda($item->valor_troca);
-
-            foreach($item->itens as $i){
-                if ($i->produto->gerenciar_estoque) {
-                    $local_id = $item->nfce ? $item->nfce->local_id : $item->nfe->local_id;
-                    $this->util->incrementaEstoque($i->produto->id, $i->quantidade, null, $local_id);
+            DB::transaction(function () use ($item) {
+                $venda = $item->nfce ?? $item->nfe;
+                if (!$venda) {
+                    throw new \Exception('Venda vinculada à troca não encontrada.');
                 }
-            }
-            $item->itens()->delete();
-            $item->delete();
+                $localId = (int) $venda->local_id;
+                $isNfce = (bool) $item->nfce_id;
+                $nfceId = $isNfce ? $venda->id : null;
+                $nfeId = $isNfce ? null : $venda->id;
+
+                foreach ($item->itens as $it) {
+                    $p = $it->produto;
+                    if (!$p->gerenciar_estoque) {
+                        continue;
+                    }
+                    if ($p->tipo_unico && $it->serial_codigo) {
+                        $q = ProdutoUnico::query()
+                            ->where('tipo', 'saida')
+                            ->where('produto_id', $p->id)
+                            ->where('codigo', $it->serial_codigo);
+                        if ($isNfce) {
+                            $q->where('nfce_id', $venda->id);
+                        } else {
+                            $q->where('nfe_id', $venda->id);
+                        }
+                        $saida = $q->lockForUpdate()->first();
+                        if ($saida) {
+                            $this->seriais->restaurarUmaSaidaSerial($saida, $localId);
+                        }
+                    }
+                    $this->util->incrementaEstoque($p->id, $it->quantidade, null, $localId);
+                }
+
+                foreach ($item->seriais_devolvidos ?? [] as $entry) {
+                    if (empty($entry['produto_id']) || empty($entry['codigo'])) {
+                        continue;
+                    }
+                    $this->seriais->expedirSerialComoVendido(
+                        (int) $entry['produto_id'],
+                        (string) $entry['codigo'],
+                        $localId,
+                        $nfceId,
+                        $nfeId
+                    );
+                }
+
+                $venda->load('itens.produto');
+                foreach ($venda->itens as $linha) {
+                    if ($linha->produto->gerenciar_estoque) {
+                        $this->util->reduzEstoque($linha->produto_id, $linha->quantidade, null, $localId);
+                    }
+                }
+
+                $venda->total = $item->valor_original;
+                $venda->save();
+
+                foreach (CreditoCliente::where('troca_id', $item->id)->get() as $cred) {
+                    if ($cred->cliente_id) {
+                        $cliente = Cliente::lockForUpdate()->find($cred->cliente_id);
+                        if ($cliente) {
+                            $cliente->valor_credito = max(0, (float) $cliente->valor_credito - (float) $cred->valor);
+                            $cliente->save();
+                        }
+                    }
+                    $cred->delete();
+                }
+
+                $item->itens()->delete();
+                $item->delete();
+            });
 
             __createLog(request()->empresa_id, 'PDV Troca', 'excluir', $descricaoLog);
 
@@ -149,13 +232,18 @@ class TrocaController extends Controller
     public function imprimir($id)
     {
 
-        $item = Troca::findOrFail($id);
+        $item = Troca::with([
+            'itens.produto',
+            'nfce.itens.produto',
+            'nfe.itens.produto',
+        ])->findOrFail($id);
         __validaObjetoEmpresa($item);
 
         $config = Empresa::where('id', $item->empresa_id)
         ->first();
 
-        $config = __objetoParaEmissao($config, $item->local_id);
+        $localEmissao = $item->nfce->local_id ?? $item->nfe->local_id ?? null;
+        $config = __objetoParaEmissao($config, $localEmissao);
         
         $usuario = UsuarioEmpresa::find(get_id_user());
 

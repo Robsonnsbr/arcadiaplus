@@ -10,7 +10,7 @@ class ItemTroca extends Model
     use HasFactory;
 
     protected $fillable = [
-        'produto_id', 'quantidade', 'troca_id', 'valor_unitario', 'sub_total'
+        'produto_id', 'quantidade', 'troca_id', 'valor_unitario', 'sub_total', 'serial_codigo',
     ];
 
     public function produto(){

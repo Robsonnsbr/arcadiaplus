@@ -27,6 +27,7 @@
 		<form action="{{ route('trocas.create') }}">
 			<input type="hidden" name="tipo" value="{{ isset($l->troco) ? 'nfce' : 'nfe' }}">
 			<input type="hidden" name="id" value="{{ $l->id }}">
+			<input type="hidden" name="modalidade" value="{{ $modalidade ?? 'troca' }}">
 			<button class="btn btn-sm btn-primary">
 				<i class="ri-arrow-right-circle-fill"></i>
 			</button>

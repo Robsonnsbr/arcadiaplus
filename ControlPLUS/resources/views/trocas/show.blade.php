@@ -1,10 +1,10 @@
-@extends('layouts.app', ['title' => 'Detalhes da Troca'])
+@extends('layouts.app', ['title' => ($item->modalidade ?? \App\Models\Troca::MODALIDADE_TROCA) === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV ? 'Detalhes da devolução' : 'Detalhes da troca'])
 @section('content')
 <div class="mt-3">
     <div class="row">
         <div class="card">
             <div class="card-body">
-                <h4>Detalhes da Troca</h4>
+                <h4>{{ ($item->modalidade ?? \App\Models\Troca::MODALIDADE_TROCA) === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV ? 'Detalhes da devolução' : 'Detalhes da troca' }}</h4>
                 <div style="text-align: right; margin-top: -35px;">
                     <a href="{{ route('trocas.index') }}" class="btn btn-danger btn-sm px-3">
                         <i class="ri-arrow-left-double-fill"></i>Voltar
@@ -13,8 +13,9 @@
                 <hr class="mt-3">
                 <div class="">
                     <h4>Cliente: <strong style="color: steelblue">{{ $item->nfce->cliente_id ? $item->nfce->cliente->razao_social : 'Consumidor Final'}}</strong></h4>
+                    <label>Tipo: <strong class="text-primary">{{ ($item->modalidade ?? \App\Models\Troca::MODALIDADE_TROCA) === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV ? 'Devolução (PDV)' : 'Troca' }}</strong></label><br>
                     <label>Valor da venda original: <strong class="text-success">R$ {{ __moeda($item->valor_original) }}</strong></label><br>
-                    <label>Valor da troca: <strong class="text-success">R$ {{ __moeda($item->valor_troca) }}</strong></label><br>
+                    <label>Valor do documento: <strong class="text-success">R$ {{ __moeda($item->valor_troca) }}</strong></label><br>
                     <label>Data da troca: <strong class="text-success">{{ __data_pt($item->created_at) }}</strong></label><br>
 
                     <a title="Imprimir não fiscal" onclick="imprimir('{{$item->id}}')" class="btn btn-primary btn-sm">

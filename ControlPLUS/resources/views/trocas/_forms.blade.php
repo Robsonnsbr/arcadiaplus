@@ -25,6 +25,12 @@
 <input type="hidden" id="tipo" name="tipo" value="{{ isset($item->troco) ? 'nfce' : 'nfe' }}">
 <input type="hidden" id="lista_id" value="" name="lista_id">
 <input type="hidden" id="local_id" value="{{ $caixa->localizacao->id }}">
+<input type="hidden" id="inp-produto_tipo_unico" value="0">
+<input type="hidden" id="troca_linhas_venda_origem" value="{{ isset($item) ? $item->itens->count() : 0 }}">
+@php
+    $mod = $modalidade ?? \App\Models\Troca::MODALIDADE_TROCA;
+@endphp
+<input type="hidden" id="inp-modalidade" name="modalidade" value="{{ $mod }}">
 
 @if ($isVendaSuspensa)
     <input type="hidden" value="{{ $item->id }}" name="venda_suspensa_id">
@@ -56,7 +62,14 @@
             <input type="hidden" id="estoque_view" value="@can('estoque_view') 1 @else 0 @endif">
 
 <div class="row">
-    <div class="col-lg-4">
+    @if($mod === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV)
+    <div class="col-12 mb-2">
+        <div class="alert alert-info mb-0">
+            <strong>Devolução de venda (até 24h):</strong> os itens da venda serão estornados ao estoque. Defina o crédito ao cliente se aplicável. Não é necessário adicionar produtos novos.
+        </div>
+    </div>
+    @endif
+    <div class="col-lg-4 @if($mod === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV) d-none @endif">
         <div class="row">
             <div class="col-lg-12">
                 <div class="card widget-icon-box">
@@ -126,9 +139,9 @@
 
         </div>
     </div>
-    <div class="col-lg-8 produtos">
+    <div class="col-lg-8 {{ $mod === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV ? 'col-lg-12' : '' }} produtos">
         <div class="card" style="height: 850px">
-            <div class="row m-2">
+            <div class="row m-2 @if($mod === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV) d-none @endif">
                 <div class="col-md-6">
                     <div class="form-group">
                         <label for="inp-produto_id" class="">Produto</label>
@@ -177,9 +190,10 @@
                         <tbody>
                             @if (isset($item))
                             @foreach ($item->itens as $key => $product)
-                            <tr class="line-product">
+                            <tr class="line-product" data-tipo-unico="{{ $product->produto->tipo_unico ? 1 : 0 }}" data-produto="{{ $product->produto->nome }}">
                                 <input readonly type="hidden" name="key" class="form-control" value="{{ $product->key }}">
                                 <input readonly type="hidden" name="produto_id[]" class="produto_row" value="{{ $product->produto->id }}">
+                                <input type="hidden" class="codigo_unico_ids" name="codigo_unico_ids[]" value="">
                                 <input name="variacao_id[]" type="hidden" value="{{ $product->variacao_id }}">
 
                                 <td>
@@ -252,9 +266,10 @@
 
                             @if (isset($pedido) && isset($itens))
                             @foreach ($itens as $key => $product)
-                            <tr class="line-product">
+                            <tr class="line-product" data-tipo-unico="{{ $product->produto->tipo_unico ? 1 : 0 }}" data-produto="{{ $product->produto->nome }}">
                                 <input readonly type="hidden" name="key" class="form-control" value="{{ $product->key }}">
                                 <input readonly type="hidden" name="produto_id[]" class="produto_row" value="{{ $product->produto->id }}">
+                                <input type="hidden" class="codigo_unico_ids" name="codigo_unico_ids[]" value="">
                                 <input name="variacao_id[]" type="hidden" value="{{ $product->variacao_id }}">
 
                                 <td>
@@ -295,7 +310,7 @@
             </div>
         </div>
         <div class="">
-            <h4 class="text-center">Finalização da Troca</h4>
+            <h4 class="text-center">{{ $mod === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV ? 'Finalização da devolução' : 'Finalização da troca' }}</h4>
             <div class="row">
                 <div class="col-lg-3 col-6">
                     <div class="card widget-icon-box div-pagamento">
@@ -486,7 +501,7 @@
 </div>
 
 @include('modals._pagamento_multiplo', ['not_submit' => true])
-@include('modals._finalizar_troca', ['not_submit' => true])
+@include('modals._finalizar_troca', ['not_submit' => true, 'modalidade' => $mod])
 @include('modals._funcionario', ['not_submit' => true])
 @include('modals._cartao_credito', ['not_submit' => true])
 @include('modals._variacao', ['not_submit' => true])
@@ -527,6 +542,31 @@
                     $('#modal_novo_cliente').modal('show')
 
                 })
+
+    @if(($modalidade ?? \App\Models\Troca::MODALIDADE_TROCA) === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV)
+    $(function () {
+        setTimeout(function () {
+            const oldT = parseFloat($('#valor_total_old').val()) || 0;
+            if (typeof convertFloatToMoeda === 'function') {
+                const z = convertFloatToMoeda(0);
+                const c = convertFloatToMoeda(oldT);
+                $('.total-venda').html('R$ ' + z);
+                if ($('#inp-valor_total').length) {
+                    $('#inp-valor_total').val(z);
+                }
+                if ($('#inp-valor_credito').length) {
+                    $('#inp-valor_credito').val(c);
+                }
+                if (typeof comparaValor === 'function') {
+                    comparaValor();
+                }
+                if (typeof calcTotal === 'function') {
+                    calcTotal();
+                }
+            }
+        }, 600);
+    });
+    @endif
             </script>
 
         @endsection

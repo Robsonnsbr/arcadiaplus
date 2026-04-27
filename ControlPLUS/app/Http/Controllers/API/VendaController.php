@@ -59,7 +59,13 @@ class VendaController extends Controller
         $perPage = 20;
         $page = $request->page ?? 1;
 
+        $modalidade = $request->input('modalidade', 'troca');
+        $limite24h = $modalidade === 'devolucao_pdv';
+
         $queryNfe = Nfe::where('empresa_id', $request->empresa_id)
+        ->when($limite24h, function ($query) {
+            return $query->where('created_at', '>=', now()->subHours(24));
+        })
         ->when(!empty($start_date), function ($query) use ($start_date) {
             return $query->whereDate('created_at', '>=', $start_date);
         })
@@ -77,6 +83,9 @@ class VendaController extends Controller
         ->orderBy('created_at', 'desc');
 
         $queryNfce = Nfce::where('empresa_id', $request->empresa_id)
+        ->when($limite24h, function ($query) {
+            return $query->where('created_at', '>=', now()->subHours(24));
+        })
         ->when(!empty($start_date), function ($query) use ($start_date) {
             return $query->whereDate('created_at', '>=', $start_date);
         })
@@ -99,7 +108,7 @@ class VendaController extends Controller
         $isLastPage = $data->count() < $perPage;
 
         return response()->json([
-            'html' => view('trocas.partials.linha_escolha', compact('data'))->render(),
+            'html' => view('trocas.partials.linha_escolha', compact('data', 'modalidade'))->render(),
             'lastPage' => $isLastPage
         ]);
     }

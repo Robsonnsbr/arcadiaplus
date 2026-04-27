@@ -191,8 +191,13 @@
             </div>
         </div>
 
+        @php
+            $tituloComp = ($item->modalidade ?? \App\Models\Troca::MODALIDADE_TROCA) === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV
+                ? 'COMPROVANTE DE DEVOLUÇÃO (PDV)'
+                : 'COMPROVANTE DE TROCA';
+        @endphp
         <div class="row">
-            <h4 style="text-align:center; margin-top: -50px;">COMPROVANTE DE TROCA</h4>
+            <h4 style="text-align:center; margin-top: -50px;">{{ $tituloComp }}</h4>
         </div>
 
     </div>
@@ -201,7 +206,7 @@
 <body>
 
     <div class="status-box">
-        <div class="title">COMPROVANTE DE TROCA</div>
+        <div class="title">{{ $tituloComp }}</div>
         <div class="subtitle">COMPROVANTE NÃO FISCAL | DOCUMENTO SEM VALIDADE FISCAL</div>
     </div>
 
@@ -305,21 +310,32 @@
         </tr>
     </table>
 
+    @php
+        $seriaisDev = collect($item->seriais_devolvidos ?? []);
+    @endphp
     <table>
         <thead>
             <tr>
-                <td style="width: 80px; text-align: left;">Código</td>
-                <td style="width: 350px; text-align: left;">Descrição</td>
-                <td style="width: 80px; text-align: left;">Qtd.</td>
-                <td style="width: 95px; text-align: left;">Vl Unit.</td>
-                <td style="width: 95px; text-align: left;">Vl Total</td>
+                <td style="width: 64px; text-align: left;">Código</td>
+                <td style="width: 270px; text-align: left;">Descrição</td>
+                <td style="width: 110px; text-align: left;">Serial</td>
+                <td style="width: 50px; text-align: left;">Qtd.</td>
+                <td style="width: 75px; text-align: left;">Vl Unit.</td>
+                <td style="width: 75px; text-align: left;">Vl Total</td>
             </tr>
         </thead>
         <tbody>
             @foreach(($item->nfe ? $item->nfe->itens : $item->nfce->itens) as $i)
+            @php
+                $serialLine = $seriaisDev->where('produto_id', (int) $i->produto_id)->pluck('codigo')->filter()->implode(', ');
+                if ($serialLine === '' && !empty($i->infAdProd)) {
+                    $serialLine = (string) $i->infAdProd;
+                }
+            @endphp
             <tr>
                 <td class="b-top text-left">{{ $i->produto->numero_sequencial }}</td>
                 <td class="b-top text-left">{{ $i->descricao() }}</td>
+                <td class="b-top text-left" style="font-size: 0.7rem;">{{ $serialLine }}</td>
                 <td class="b-top text-left">
                     @if(!$i->produto->unidadeDecimal())
                         {{ number_format($i->quantidade, 0, ',', '.') }}
@@ -347,11 +363,12 @@
     <table>
         <thead>
             <tr>
-                <td style="width: 80px; text-align: left;">Código</td>
-                <td style="width: 350px; text-align: left;">Descrição</td>
-                <td style="width: 80px; text-align: left;">Qtd.</td>
-                <td style="width: 95px; text-align: left;">Vl Unit.</td>
-                <td style="width: 95px; text-align: left;">Vl Total</td>
+                <td style="width: 64px; text-align: left;">Código</td>
+                <td style="width: 250px; text-align: left;">Descrição</td>
+                <td style="width: 110px; text-align: left;">Serial</td>
+                <td style="width: 50px; text-align: left;">Qtd.</td>
+                <td style="width: 75px; text-align: left;">Vl Unit.</td>
+                <td style="width: 75px; text-align: left;">Vl Total</td>
             </tr>
         </thead>
         <tbody>
@@ -361,6 +378,7 @@
             <tr>
                 <td class="b-top text-left">{{ $i->produto->numero_sequencial }}</td>
                 <td class="b-top text-left">{{ $i->descricao() }}</td>
+                <td class="b-top text-left" style="font-size: 0.7rem;">{{ $i->serial_codigo ? $i->serial_codigo : '' }}</td>
                 <td class="b-top text-left">
                     @if(!$i->produto->unidadeDecimal())
                         {{ number_format($i->quantidade, 0, ',', '.') }}

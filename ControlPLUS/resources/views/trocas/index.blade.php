@@ -19,10 +19,15 @@
                 <div class="row">
                     <div class="col-md-12">
                         @can('troca_create')
-                        <button class="btn btn-success btn-nova-troca" data-bs-toggle="modal" data-bs-target="#modal-nova-troca">
+                        <button type="button" class="btn btn-success btn-nova-troca" data-bs-toggle="modal" data-bs-target="#modal-nova-troca" data-modalidade="troca">
                             <i class="ri-add-circle-fill"></i>
-                            Nova Troca/Devolução
+                            Nova troca
                         </button>
+                        <button type="button" class="btn btn-outline-primary btn-nova-troca" data-bs-toggle="modal" data-bs-target="#modal-nova-troca" data-modalidade="devolucao_pdv">
+                            <i class="ri-arrow-go-back-line"></i>
+                            Devolução (até 24h)
+                        </button>
+                        <input type="hidden" id="inp-modalidade-busca-troca" value="troca">
                         @endcan
                     </div>
 
@@ -70,6 +75,7 @@
                                     <th>Valor da venda</th>
                                     <th>Data da troca</th>
                                     <th>Venda ID</th>
+                                    <th>Tipo</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -99,7 +105,13 @@
                                     <td data-label="Venda ID">
                                         {{ $item->nfce ? $item->nfce->numero_sequencial : ($item->nfe ? $item->nfe->numero_sequencial : '--') }}
                                     </td>
-
+                                    <td data-label="Tipo">
+                                        @if(($item->modalidade ?? \App\Models\Troca::MODALIDADE_TROCA) === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV)
+                                        <span class="badge bg-info">Devolução</span>
+                                        @else
+                                        <span class="badge bg-secondary">Troca</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <form action="{{ route('trocas.destroy', $item->id) }}" method="post" id="form-{{$item->id}}" style="width: 320px">
                                             @method('delete')
@@ -124,7 +136,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="8" class="text-center">Nada encontrado</td>
+                                    <td colspan="9" class="text-center">Nada encontrado</td>
                                 </tr>
                                 @endforelse
                             </tbody>
@@ -145,7 +157,7 @@
             <div class="modal-content">
 
                 <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Nova Troca/Devolução</h5>
+                    <h5 class="modal-title" id="exampleModalLabel">Selecionar venda</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -213,6 +225,11 @@
     let loading = false;
     let lastPage = false;
 
+    $('.btn-nova-troca').on('click', function () {
+        var m = $(this).data('modalidade') || 'troca';
+        $('#inp-modalidade-busca-troca').val(m);
+    });
+
     $('#btn-pesquisar-troca').on('click', function () {
 
         page = 1;
@@ -234,7 +251,8 @@
             end_date: $('#inp-end_date_aux').val(),
             codigo_venda: $('#inp-codigo_venda').val(),
             numero_documento: $('#inp-numero_documento').val(),
-            page: page
+            page: page,
+            modalidade: $('#inp-modalidade-busca-troca').val() || 'troca'
         })
         .done((res) => {
 
@@ -263,15 +281,6 @@
         }
 
     });
-
-
-    $(document).on("click", ".btn-nova-troca", function () {
-        page = 1;
-        lastPage = false;
-        $('#scroll-trocas tbody').html('');
-        carregarLinhas();
-    })
-
 
     function imprimir(id){
         var disp_setting="toolbar=yes,location=no,";
