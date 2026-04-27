@@ -525,6 +525,11 @@
 <script src="/js/frente_caixa.js" type=""></script>
 <script type="text/javascript" src="/js/mousetrap.js"></script>
 <script type="text/javascript" src="/js/controla_conta_empresa.js"></script>
+{{-- Fonte de verdade para o JS: evita validação "produto novo" na devolução se #inp-modalidade não for lido (cache/outro script) --}}
+<script>
+window.CP_TROCA_MODALIDADE = @json($mod);
+window.CP_TROCA_IS_DEVOLUCAO_PDV = @json($mod === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV);
+</script>
 <script type="text/javascript" src="/js/controla_troca.js"></script>
 <script src="/js/novo_cliente.js"></script>
 

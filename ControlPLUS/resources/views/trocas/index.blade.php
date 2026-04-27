@@ -162,7 +162,10 @@
                 </div>
                 <div class="modal-body">
 
-                    <div class="row">
+                    <p class="text-muted small d-none mt-1 mb-2" id="hint-datas-devolucao-troca">
+                        Período sugerido para as últimas 24h. Altere as datas e clique em Pesquisar se precisar.
+                    </p>
+                    <div class="row align-items-end">
 
                         <div class="col-md-2">
                             {!!Form::date('start_date_aux', 'Data inicial')
@@ -225,9 +228,44 @@
     let loading = false;
     let lastPage = false;
 
+    function _trocaDataYmdLocal(d) {
+        var y = d.getFullYear();
+        var mo = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + mo + '-' + day;
+    }
+
+    /** Devolução PDV: ontem e hoje cobrem a janela móvel de 24h; a API ainda aplica a regra de 24h. */
+    function trocasPreencherDatasDevolucao() {
+        var fim = new Date();
+        var ini = new Date();
+        ini.setDate(ini.getDate() - 1);
+        $('#inp-start_date_aux').val(_trocaDataYmdLocal(ini));
+        $('#inp-end_date_aux').val(_trocaDataYmdLocal(fim));
+    }
+
     $('.btn-nova-troca').on('click', function () {
         var m = $(this).data('modalidade') || 'troca';
         $('#inp-modalidade-busca-troca').val(m);
+    });
+
+    $('#modal-nova-troca').on('shown.bs.modal', function () {
+        var m = $('#inp-modalidade-busca-troca').val() || 'troca';
+        if (m === 'devolucao_pdv') {
+            $('#hint-datas-devolucao-troca').removeClass('d-none');
+            trocasPreencherDatasDevolucao();
+            page = 1;
+            lastPage = false;
+            $('#scroll-trocas tbody').html('');
+            carregarLinhas();
+        } else {
+            $('#hint-datas-devolucao-troca').addClass('d-none');
+            $('#inp-start_date_aux').val('');
+            $('#inp-end_date_aux').val('');
+            page = 1;
+            lastPage = false;
+            $('#scroll-trocas tbody').html('');
+        }
     });
 
     $('#btn-pesquisar-troca').on('click', function () {

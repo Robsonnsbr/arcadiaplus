@@ -4,14 +4,29 @@ $(function(){
 
 })
 
-/** Alinha com trocas/create: devolução PDV não exige item novo. Usa fallbacks se #inp-modalidade falhar. */
+/**
+ * Devolução PDV não exige item novo.
+ * 1) window.CP_TROCA_IS_DEVOLUCAO_PDV vem do Blade (confiável).
+ * 2) Depois: hidden, data-* na página, query string, input[name=modalidade].
+ */
 function trocaIsDevolucaoPdv() {
+	if (window.CP_TROCA_IS_DEVOLUCAO_PDV === true) {
+		return true
+	}
 	var m = String($("#inp-modalidade").val() || "").trim()
 	if (m === "devolucao_pdv") {
 		return true
 	}
 	m = String($("#form-troca [data-troca-modalidade]").attr("data-troca-modalidade") || "").trim()
 	if (m === "devolucao_pdv") {
+		return true
+	}
+	m = String($('#form-troca input[name="modalidade"]').val() || "").trim()
+	if (m === "devolucao_pdv") {
+		return true
+	}
+	var el = document.getElementById("inp-modalidade")
+	if (el && String(el.value || "").trim() === "devolucao_pdv") {
 		return true
 	}
 	try {
