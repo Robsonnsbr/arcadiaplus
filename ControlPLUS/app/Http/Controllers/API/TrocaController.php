@@ -155,48 +155,41 @@ class TrocaController extends Controller
                 if ($modalidade === Troca::MODALIDADE_TROCA && $request->produto_id) {
                     $n = count($request->produto_id);
                     for ($i = 0; $i < $n; $i++) {
-                        $produto_id = $request->produto_id[$i];
-                        $quantidade = __convert_value_bd($request->quantidade[$i]);
-                        $add = 1;
-                        foreach ($venda->itens as $itemVenda) {
-                            if ($itemVenda->produto_id == $produto_id && $itemVenda->quantidade == $quantidade) {
-                                $add = 0;
-                            } else {
-                                if ($itemVenda->produto_id == $produto_id && $itemVenda->quantidade != $quantidade) {
-                                    $quantidade -= $itemVenda->quantidade;
-                                }
-                            }
+                        $tipoLinha = $this->getTipoLinhaFromRequest($request, $i);
+                        if ($tipoLinha === 'retorno') {
+                            continue;
                         }
 
-                        if ($add == 1) {
-                            $product = Produto::findOrFail($produto_id);
-                            $serialCodigo = null;
-                            if ($product->tipo_unico && $product->gerenciar_estoque) {
-                                if (QuantidadeUtil::toUnits($quantidade) !== QuantidadeUtil::FACTOR) {
-                                    throw new \Exception(
-                                        "Produto serializado {$product->nome} deve ser trocado com quantidade 1 por código."
-                                    );
-                                }
-                                $raw = $this->getCodigoUnicoRawFromRequest($request, $i);
-                                $serialCodigo = $this->consumirSerialTroca(
-                                    $raw,
-                                    $product,
-                                    $localId,
-                                    $isNfce ? $venda->id : null,
-                                    $isNfce ? null : $venda->id
+                        $produto_id = $request->produto_id[$i];
+                        $quantidade = __convert_value_bd($request->quantidade[$i]);
+
+                        $product = Produto::findOrFail($produto_id);
+                        $serialCodigo = null;
+                        if ($product->tipo_unico && $product->gerenciar_estoque) {
+                            if (QuantidadeUtil::toUnits($quantidade) !== QuantidadeUtil::FACTOR) {
+                                throw new \Exception(
+                                    "Produto serializado {$product->nome} deve ser trocado com quantidade 1 por código."
                                 );
                             }
-                            ItemTroca::create([
-                                'produto_id' => $produto_id,
-                                'quantidade' => $quantidade,
-                                'troca_id' => $troca->id,
-                                'valor_unitario' => __convert_value_bd($request->valor_unitario[$i]),
-                                'sub_total' => __convert_value_bd($request->subtotal_item[$i]),
-                                'serial_codigo' => $serialCodigo,
-                            ]);
-                            if ($product->gerenciar_estoque) {
-                                $this->util->reduzEstoque($product->id, $quantidade, null, $localId);
-                            }
+                            $raw = $this->getCodigoUnicoRawFromRequest($request, $i);
+                            $serialCodigo = $this->consumirSerialTroca(
+                                $raw,
+                                $product,
+                                $localId,
+                                $isNfce ? $venda->id : null,
+                                $isNfce ? null : $venda->id
+                            );
+                        }
+                        ItemTroca::create([
+                            'produto_id' => $produto_id,
+                            'quantidade' => $quantidade,
+                            'troca_id' => $troca->id,
+                            'valor_unitario' => __convert_value_bd($request->valor_unitario[$i]),
+                            'sub_total' => __convert_value_bd($request->subtotal_item[$i]),
+                            'serial_codigo' => $serialCodigo,
+                        ]);
+                        if ($product->gerenciar_estoque) {
+                            $this->util->reduzEstoque($product->id, $quantidade, null, $localId);
                         }
                     }
                 }
@@ -236,23 +229,21 @@ class TrocaController extends Controller
         $n = count($request->produto_id);
         $criados = 0;
         for ($i = 0; $i < $n; $i++) {
-            $produto_id = $request->produto_id[$i];
-            $quantidade = __convert_value_bd($request->quantidade[$i]);
-            $add = 1;
-            foreach ($venda->itens as $itemVenda) {
-                if ($itemVenda->produto_id == $produto_id && $itemVenda->quantidade == $quantidade) {
-                    $add = 0;
-                } else {
-                    if ($itemVenda->produto_id == $produto_id && $itemVenda->quantidade != $quantidade) {
-                        $quantidade -= $itemVenda->quantidade;
-                    }
-                }
-            }
-            if ($add == 1) {
+            if ($this->getTipoLinhaFromRequest($request, $i) === 'saida') {
                 $criados++;
             }
         }
         return $criados;
+    }
+
+    private function getTipoLinhaFromRequest(Request $request, int $index): string
+    {
+        $arr = $request->input('tipo_linha');
+        $tipoLinha = is_array($arr) && array_key_exists($index, $arr)
+            ? (string) $arr[$index]
+            : 'saida';
+
+        return $tipoLinha === 'retorno' ? 'retorno' : 'saida';
     }
 
     /**

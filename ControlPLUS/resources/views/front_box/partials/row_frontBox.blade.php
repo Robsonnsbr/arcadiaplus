@@ -13,8 +13,9 @@
         }
     }
 @endphp
-<tr class="line-product" data-tipo-unico="{{ $isTipoUnico ? 1 : 0 }}" data-produto="{{ $product->nome }}">
+<tr class="line-product linha-saida" data-tipo-linha="saida" data-tipo-unico="{{ $isTipoUnico ? 1 : 0 }}" data-produto="{{ $product->nome }}">
     <input readonly type="hidden" name="key" class="form-control" value="{{ $product->key }}">
+    <input type="hidden" name="tipo_linha[]" value="saida">
     <input class="produto_row" readonly type="hidden" name="produto_id[]" class="form-control" value="{{ $product->id }}">
     <input type="hidden" class="codigo_unico_ids" name="codigo_unico_ids[]" value="{{ $codigoUnicoJson }}">
     <td>
@@ -22,6 +23,7 @@
         <input class="variacao_id" type="hidden" name="variacao_id[]" class="form-control" value="{{ $variacao_id }}">
     </td>
     <td>
+        <span class="badge bg-warning text-dark badge-tipo-linha d-none mb-1">Saída</span>
         <input style="width: 350px" readonly type="text" name="produto_nome[]" class="form-control" value="{{ $product->nome }}@if($variacao != null) - {{ $variacao->descricao }} @endif">
 
         @if($product->precoComPromocao())

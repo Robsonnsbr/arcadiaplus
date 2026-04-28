@@ -14,6 +14,41 @@
             display: block;
             min-width: 200px;
         }
+
+        .troca-pdv-context .badge-tipo-linha.d-none {
+            display: inline-flex !important;
+        }
+
+        .troca-pdv-context .badge-tipo-linha {
+            align-items: center;
+            gap: 4px;
+            font-size: 0.72rem;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .troca-pdv-context .table-itens tbody tr[data-tipo-linha="retorno"] td {
+            background-color: #eefaf4 !important;
+        }
+
+        .troca-pdv-context .table-itens tbody tr[data-tipo-linha="saida"] td {
+            background-color: #fff7e8 !important;
+        }
+
+        .troca-pdv-context .table-itens tbody tr[data-tipo-linha="retorno"] td:first-of-type {
+            border-left: 4px solid #198754;
+        }
+
+        .troca-pdv-context .table-itens tbody tr[data-tipo-linha="saida"] td:first-of-type {
+            border-left: 4px solid #fd7e14;
+        }
+
+        .troca-legenda-movimento {
+            border: 1px solid #e8edf3;
+            background: #f8fafc;
+            border-radius: 10px;
+        }
     </style>
 
     {{-- <link rel="stylesheet" type="text/css" href="/css/pdv.css"> --}}
@@ -61,7 +96,7 @@
 
             <input type="hidden" id="estoque_view" value="@can('estoque_view') 1 @else 0 @endif">
 
-<div class="row">
+<div class="row troca-pdv-context">
     @if($mod === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV)
     <div class="col-12 mb-2">
         <div class="alert alert-info mb-0">
@@ -175,6 +210,20 @@
                 </div>
             </div>
             <div class="card m-1">
+                <div class="troca-legenda-movimento m-2 p-2">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <strong class="me-1">Movimento dos produtos:</strong>
+                        @if($mod === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV)
+                            <span class="badge bg-info text-dark badge-tipo-linha">Devolução</span>
+                            <small class="text-muted">Produtos da venda original retornam ao estoque. Não há produto saindo.</small>
+                        @else
+                            <span class="badge bg-success badge-tipo-linha">Entrada / Retorno</span>
+                            <small class="text-muted me-2">Produto vindo da venda original.</small>
+                            <span class="badge bg-warning text-dark badge-tipo-linha">Saída</span>
+                            <small class="text-muted">Produto novo entregue na troca.</small>
+                        @endif
+                    </div>
+                </div>
                 <div data-bs-target="#navbar-example2" class="scrollspy-example" style="height: 440px">
                     <table class="table table-striped dt-responsive nowrap table-itens">
                         <thead>
@@ -190,8 +239,9 @@
                         <tbody>
                             @if (isset($item))
                             @foreach ($item->itens as $key => $product)
-                            <tr class="line-product" data-tipo-unico="{{ $product->produto->tipo_unico ? 1 : 0 }}" data-produto="{{ $product->produto->nome }}">
+                            <tr class="line-product linha-retorno" data-tipo-linha="retorno" data-tipo-unico="{{ $product->produto->tipo_unico ? 1 : 0 }}" data-produto="{{ $product->produto->nome }}">
                                 <input readonly type="hidden" name="key" class="form-control" value="{{ $product->key }}">
+                                <input type="hidden" name="tipo_linha[]" value="retorno">
                                 <input readonly type="hidden" name="produto_id[]" class="produto_row" value="{{ $product->produto->id }}">
                                 <input type="hidden" class="codigo_unico_ids" name="codigo_unico_ids[]" value="">
                                 <input name="variacao_id[]" type="hidden" value="{{ $product->variacao_id }}">
@@ -200,6 +250,11 @@
                                     <img src="{{ $product->produto->img }}" style="width: 30px; height: 40px; border-radius: 10px;">
                                 </td>
                                 <td>
+                                    @if($mod === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV)
+                                        <span class="badge bg-info text-dark badge-tipo-linha mb-1">Devolução</span>
+                                    @else
+                                        <span class="badge bg-success badge-tipo-linha mb-1">Entrada / Retorno</span>
+                                    @endif
                                     <input style="width: 350px" readonly type="text" name="produto_nome[]" class="form-control" value="{{ $product->produto->nome }} @if ($product->produtoVariacao != null) - {{ $product->produtoVariacao->descricao }} @endif">
                                 </td>
 
@@ -266,8 +321,9 @@
 
                             @if (isset($pedido) && isset($itens))
                             @foreach ($itens as $key => $product)
-                            <tr class="line-product" data-tipo-unico="{{ $product->produto->tipo_unico ? 1 : 0 }}" data-produto="{{ $product->produto->nome }}">
+                            <tr class="line-product linha-retorno" data-tipo-linha="retorno" data-tipo-unico="{{ $product->produto->tipo_unico ? 1 : 0 }}" data-produto="{{ $product->produto->nome }}">
                                 <input readonly type="hidden" name="key" class="form-control" value="{{ $product->key }}">
+                                <input type="hidden" name="tipo_linha[]" value="retorno">
                                 <input readonly type="hidden" name="produto_id[]" class="produto_row" value="{{ $product->produto->id }}">
                                 <input type="hidden" class="codigo_unico_ids" name="codigo_unico_ids[]" value="">
                                 <input name="variacao_id[]" type="hidden" value="{{ $product->variacao_id }}">
@@ -276,6 +332,11 @@
                                     <img src="{{ $product->produto->img }}" style="width: 30px; height: 40px; border-radius: 10px;">
                                 </td>
                                 <td>
+                                    @if($mod === \App\Models\Troca::MODALIDADE_DEVOLUCAO_PDV)
+                                        <span class="badge bg-info text-dark badge-tipo-linha mb-1">Devolução</span>
+                                    @else
+                                        <span class="badge bg-success badge-tipo-linha mb-1">Entrada / Retorno</span>
+                                    @endif
                                     <input style="width: 350px" readonly type="text" name="produto_nome[]" class="form-control" value="{{ $product->produto->nome }} @if ($product->produtoVariacao != null) - {{ $product->produtoVariacao->descricao }} @endif">
                                 </td>
 

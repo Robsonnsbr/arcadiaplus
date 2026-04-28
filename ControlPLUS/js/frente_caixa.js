@@ -1531,7 +1531,8 @@ function validateCodigoUnicoRows() {
             return;
         }
         const row = $(this);
-        if (parseInt(row.data("tipo-unico")) === 1) {
+        const tipoLinha = String(row.data("tipo-linha") || "saida");
+        if (parseInt(row.data("tipo-unico")) === 1 && tipoLinha !== "retorno") {
             const qtd = Math.max(
                 1,
                 Math.round(convertMoedaToFloat(row.find(".qtd_row").val())),

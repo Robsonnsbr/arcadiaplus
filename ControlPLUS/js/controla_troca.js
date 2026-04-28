@@ -117,8 +117,8 @@ $("#form-troca").on("submit", function (e) {
 		return;
 	}
 	if (!isDev) {
-		var nOrig = parseInt($("#troca_linhas_venda_origem").val() || "0", 10);
-		if ($(".table-itens tbody tr").length <= nOrig) {
+		var nSaida = $('.table-itens tbody tr[data-tipo-linha="saida"]').length;
+		if (nSaida < 1) {
 			swal("Atenção", "Inclua ao menos um produto novo (saída de estoque) na troca antes de finalizar.", "warning");
 			return;
 		}

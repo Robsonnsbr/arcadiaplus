@@ -13,14 +13,16 @@
     }
     $isTipoUnico = $item->tipo_unico ?? ($item->produto->tipo_unico ?? 0);
 @endphp
-<tr class="line-product" data-tipo-unico="{{ $isTipoUnico ? 1 : 0 }}" data-produto="{{ $item->nome }}">
+<tr class="line-product linha-saida" data-tipo-linha="saida" data-tipo-unico="{{ $isTipoUnico ? 1 : 0 }}" data-produto="{{ $item->nome }}">
     <input readonly type="hidden" name="key" class="form-control" value="{{ $item->key }}">
+    <input type="hidden" name="tipo_linha[]" value="saida">
     <input readonly type="hidden" name="produto_id[]" class="form-control" value="{{ $item->id }}">
     <input type="hidden" class="codigo_unico_ids" name="codigo_unico_ids[]" value="{{ $codigoUnicoJson }}">
     <td>
         <img src="{{ $item->img }}" style="width: 30px; height: 40px; border-radius: 10px;">
     </td>
     <td class="col-6">
+        <span class="badge bg-warning text-dark badge-tipo-linha d-none mb-1">Saída</span>
         <input readonly type="text" name="produto_nome[]" class="form-control" value="{{ $item->nome }}">
         <div class="codigo-unico-wrapper @if(!$isTipoUnico) d-none @endif mt-2">
             @if($isTipoUnico)
