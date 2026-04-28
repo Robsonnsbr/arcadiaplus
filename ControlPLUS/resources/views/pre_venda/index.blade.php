@@ -91,7 +91,7 @@
                                     <td data-label="Local" class="text-danger">{{ $item->localizacao->descricao }}</td>
                                     @endif
                                     <td data-label="Data">{{ __data_pt($item->created_at) }}</td>
-                                    <td data-label="Funcionário">{{ $item->vendedor() }}</td>
+                                    <td data-label="Consultor">{{ $item->vendedor() }}</td>
                                     <td data-label="Valor">{{ __moeda($item->valor_total) }}</td>
                                     <td data-label="Status">
                                         @if($item->status == false)
@@ -181,5 +181,4 @@
 @section('js')
 <script src="/js/pre_venda.js"></script>
 @endsection
-
 

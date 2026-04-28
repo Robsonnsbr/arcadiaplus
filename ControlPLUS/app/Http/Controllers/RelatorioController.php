@@ -85,6 +85,10 @@ class RelatorioController extends Controller
         // ->where('categoria_id', null)
         ->where('status', 1)->get();
         $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)->get();
+        $funcionariosComerciais = Funcionario::cargosComerciais()
+        ->where('empresa_id', request()->empresa_id)
+        ->where('status', 1)
+        ->get();
         $caixas = Caixa::with('usuario:id,email')
         ->where('empresa_id', request()->empresa_id)
         ->orderBy('id', 'desc')
@@ -102,6 +106,7 @@ class RelatorioController extends Controller
 
         return view('relatorios.index', compact(
             'funcionarios',
+            'funcionariosComerciais',
             'marcas',
             'categorias',
             'caixas',

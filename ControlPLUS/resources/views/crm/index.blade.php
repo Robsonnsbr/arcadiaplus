@@ -31,8 +31,9 @@
                         </div>
 
                         <div class="col-md-2">
-                            {!!Form::select('funcionario_id', 'Vendedor')
+                            {!!Form::select('funcionario_id', 'Consultor')
                             ->options($funcionario != null ? [$funcionario->id => $funcionario->nome] : [])
+                            ->attrs(['data-cargo-context' => 'comercial'])
                             !!}
                         </div>
 
@@ -87,7 +88,7 @@
                                 <tr>
                                     <th>Cliente</th>
                                     <th>Fornecedor</th>
-                                    <th>Vendedor</th>
+                                    <th>Consultor</th>
                                     <th>Status</th>
                                     <th>Assunto</th>
                                     <th>Conclusão</th>
@@ -175,5 +176,3 @@
     })
 </script>
 @endsection
-
-

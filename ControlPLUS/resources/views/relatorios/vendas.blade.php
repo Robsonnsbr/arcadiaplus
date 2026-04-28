@@ -7,7 +7,7 @@
             <th>#</th>
             <th>Nome do Cliente</th>
             <th>CPF/CNPJ</th>
-            <th>Vendedor</th>
+            <th>Consultor</th>
             <th>Data</th>
             <th>Tipo</th>
             <th>Produto</th>

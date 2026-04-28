@@ -2267,6 +2267,7 @@ function consultaStatusTef(hash) {
 }
 
 $(".modal-funcioario select").each(function () {
+    let $select = $(this);
     let id = $(this).prop("id");
 
     if (id == "inp-funcionario_id") {
@@ -2285,6 +2286,7 @@ $(".modal-funcioario select").each(function () {
                     var query = {
                         pesquisa: params.term,
                         empresa_id: $("#empresa_id").val(),
+                        cargo_context: $select.data("cargo-context"),
                     };
                     return query;
                 },

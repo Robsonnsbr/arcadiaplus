@@ -88,7 +88,7 @@
                                 </th>
                                 @endcan
                                 <th data-label="Cliente">Cliente</th>
-                                <th data-label="Vendedor">Vendedor</th>
+                                <th data-label="Consultor">Consultor</th>
                                 <th data-label="Descrição">Descrição</th>
                                 @if(__countLocalAtivo() > 1)
                                 <th data-label="Local">Local</th>
@@ -116,7 +116,7 @@
                                 @endcan
 
                                 <td data-label="Cliente"><label style="width:400px">{{ $item->cliente ? $item->cliente->razao_social : '--' }}</label></td>
-                                <td data-label="Vendedor">
+                                <td data-label="Consultor">
                                     @if($item->nfce && $item->nfce->funcionario)
                                     {{ $item->nfce->funcionario->nome }}
                                     @elseif($item->nfe && $item->nfe->funcionario)

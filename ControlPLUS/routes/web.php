@@ -806,6 +806,10 @@ Route::middleware(['verificaEmpresa', 'validaPlano', 'validaContrato'])->group(f
         Route::delete('/deletarAtribuicao/{id}', 'FuncionarioController@deletarAtribuicao')->name('funcionarios.deletarAtribuicao');
     });
 
+    Route::get('funcionario-cargos', 'FuncionarioCargoController@index')->name('funcionario-cargos.index');
+    Route::post('funcionario-cargos', 'FuncionarioCargoController@store')->name('funcionario-cargos.store');
+    Route::put('funcionario-cargos/{id}', 'FuncionarioCargoController@update')->name('funcionario-cargos.update');
+    Route::delete('funcionario-cargos/{id}', 'FuncionarioCargoController@destroy')->name('funcionario-cargos.destroy');
     Route::resource('funcionarios', 'FuncionarioController');
     Route::resource('lista-preco', 'ListaPrecoController');
     Route::delete('lista-preco-destroy-select', 'ListaPrecoController@destroySelecet')->name('lista-preco.destroy-select');

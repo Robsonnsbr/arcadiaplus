@@ -4,7 +4,7 @@
             <th style="width: 100px">NÚMERO</th>
             <th style="width: 280px">NOME DO CLIENTE</th>
             <th style="width: 160px">CPF/CNPJ</th>
-            <th style="width: 200px">VENDEDOR</th>
+            <th style="width: 200px">CONSULTOR</th>
             <th style="width: 160px">DATA</th>
             <th style="width: 100px">TIPO</th>
             <th style="width: 280px">PRODUTO</th>

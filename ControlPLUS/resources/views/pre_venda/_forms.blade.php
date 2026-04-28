@@ -59,7 +59,7 @@
                     <div class="card-body">
                         <div class="d-flex justify-content-between">
                             <div class="flex-grow-1 overflow-hidden">
-                                <h5 class="text-muted text-uppercase fs-13 mt-0" title="Conversation Ration">Vendedor</h5>
+                                <h5 class="text-muted text-uppercase fs-13 mt-0" title="Conversation Ration">Consultor</h5>
                                 <h4 class="funcionario_selecionado">
                                     {{ (isset($item) && $item->funcionario) ? $item->funcionario->nome : '--'}}
                                 </h4>
@@ -406,6 +406,5 @@
     })
 </script>
 @endsection
-
 
 

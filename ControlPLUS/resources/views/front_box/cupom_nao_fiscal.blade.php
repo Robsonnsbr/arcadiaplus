@@ -280,7 +280,7 @@
 
 			@if($item->funcionario)
 			<tr>
-				<th class="total">Vendedor</th>
+				<th class="total">Consultor</th>
 				<th class="total" style="text-align: right;">{{ $item->funcionario->nome }}</th>
 			</tr>
 			@endif

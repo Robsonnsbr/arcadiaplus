@@ -1064,7 +1064,7 @@
             </td>
             @if ($item->vendedor_id)
                 <td class="" style="width: 240px;">
-                    Vendedor: <strong>{{ $item->vendedor_setado->funcionario->nome }}</strong>
+                    Consultor: <strong>{{ $item->vendedor_setado->funcionario->nome }}</strong>
                 </td>
             @endif
             @if ($item->data_entrega != null)
@@ -1262,7 +1262,7 @@
         <table>
             <tr>
                 <td class="" style="width: 200px;">
-                    <strong>Vendedor:
+                    <strong>Consultor:
                         {{ $item->usuario->nome }}
                     </strong>
                 </td>

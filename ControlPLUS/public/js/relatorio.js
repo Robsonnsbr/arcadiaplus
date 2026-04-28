@@ -76,6 +76,7 @@ $(function(){
         });
 
         $(".funcionario").each(function (i) {
+            let $select = $(this);
             $(this).select2({
                 minimumInputLength: 2,
                 language: "pt-BR",
@@ -90,6 +91,7 @@ $(function(){
                         var query = {
                             pesquisa: params.term,
                             empresa_id: $("#empresa_id").val(),
+                            cargo_context: $select.data("cargo-context"),
                         };
                         return query;
                     },

@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\UsuarioEmpresa;
 use App\Models\Funcionario;
+use App\Models\FuncionarioCargo;
 use App\Models\FuncionarioServico;
 use App\Models\Servico;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Laravel\Ui\Presets\React;
 
 class FuncionarioController extends Controller
@@ -41,11 +43,14 @@ class FuncionarioController extends Controller
         ->join('usuario_empresas', 'users.id', '=', 'usuario_empresas.usuario_id')
         ->select('users.*')
         ->get();
-        return view('funcionario.create', compact('usuario'));
+        $cargos = $this->getFuncionarioCargos();
+        return view('funcionario.create', compact('usuario', 'cargos'));
     }
 
     public function store(Request $request)
     {
+        $this->validateCargo($request, true);
+
         try {
             $request->merge([
                 'comissao' => $request->comissao ? __convert_value_bd($request->comissao) : 0,
@@ -77,16 +82,20 @@ class FuncionarioController extends Controller
         ->join('usuario_empresas', 'users.id', '=', 'usuario_empresas.usuario_id')
         ->select('users.*')
         ->get();
-        return view('funcionario.edit', compact('item', 'usuario'));
+        $cargos = $this->getFuncionarioCargos();
+        return view('funcionario.edit', compact('item', 'usuario', 'cargos'));
     }
 
     public function update(Request $request, $id)
     {
         $item = Funcionario::findOrFail($id);
+        $this->validateCargo($request, false);
+
         try {
             $request->merge([
                 'comissao' => $request->comissao ? __convert_value_bd($request->comissao) : 0,
                 'salario' => $request->salario ? __convert_value_bd($request->salario) : 0,
+                'funcionario_cargo_id' => $request->funcionario_cargo_id ?: null,
             ]);
 
             if($request->codigo){
@@ -158,5 +167,46 @@ class FuncionarioController extends Controller
             session()->flash("flash_error", 'Algo deu errado ' . $e->getMessage());
         }
         return redirect()->back();
+    }
+
+    private function getFuncionarioCargos()
+    {
+        return FuncionarioCargo::where('status', 1)
+        ->where(function ($q) {
+            $q->whereNull('empresa_id')
+            ->orWhere('empresa_id', request()->empresa_id);
+        })
+        ->orderBy('empresa_id')
+        ->orderBy('nome')
+        ->get();
+    }
+
+    private function validateCargo(Request $request, bool $required)
+    {
+        if ($required) {
+            $request->validate([
+                'funcionario_cargo_id' => 'required',
+            ], [
+                'funcionario_cargo_id.required' => 'Informe a classe/cargo do funcionário.',
+            ]);
+        }
+
+        if (!$request->funcionario_cargo_id) {
+            return;
+        }
+
+        $cargoValido = FuncionarioCargo::where('id', $request->funcionario_cargo_id)
+        ->where('status', 1)
+        ->where(function ($q) use ($request) {
+            $q->whereNull('empresa_id')
+            ->orWhere('empresa_id', $request->empresa_id);
+        })
+        ->exists();
+
+        if (!$cargoValido) {
+            throw ValidationException::withMessages([
+                'funcionario_cargo_id' => 'Classe/cargo inválido para esta empresa.',
+            ]);
+        }
     }
 }

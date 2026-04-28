@@ -27,7 +27,7 @@
   font-size: 1.15rem !important;
 }
 
-/* Cliente / Vendedor: mesma altura visual e rodapé alinhado */
+/* Cliente / Consultor: mesma altura visual e rodapé alinhado */
 .pdv-cliente-row > [class*="col-"] {
   display: flex;
 }
@@ -52,7 +52,7 @@
 .pdv-meta-card-footer {
   flex-shrink: 0;
 }
-/* Reserva a mesma faixa do botão TRADE-IN (btn-sm) no card Vendedor */
+/* Reserva a mesma faixa do botão TRADE-IN (btn-sm) no card Consultor */
 .pdv-meta-card-footer-spacer {
   min-height: 31px;
 }
@@ -378,7 +378,7 @@
                                 @endif
                             </div>
                             <div class="avatar-sm flex-shrink-0 align-self-start">
-                                <button type="button" class="avatar-title text-bg-warning rounded rounded-3 fs-3 widget-icon-box-avatar" data-bs-toggle="modal" data-bs-target="#funcionario" aria-label="Selecionar vendedor">
+                                <button type="button" class="avatar-title text-bg-warning rounded rounded-3 fs-3 widget-icon-box-avatar" data-bs-toggle="modal" data-bs-target="#funcionario" aria-label="Selecionar consultor">
                                     <i class="ri-user-2-line"></i>
                                 </button>
                             </div>

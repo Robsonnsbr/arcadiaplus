@@ -86,7 +86,10 @@ class PreVendaController extends Controller
         $categorias = CategoriaProduto::where('empresa_id', request()->empresa_id)->where('status', 1)
         ->where('categoria_id', null)
         ->get();
-        $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)->get();
+        $funcionarios = Funcionario::cargosComerciais()
+        ->where('empresa_id', request()->empresa_id)
+        ->where('status', 1)
+        ->get();
         $naturezas = NaturezaOperacao::where('empresa_id', request()->empresa_id)->get();
         if (sizeof($naturezas) == 0) {
             session()->flash("flash_warning", "Primeiro cadastre um natureza de operação!");
@@ -145,7 +148,10 @@ class PreVendaController extends Controller
         $categorias = CategoriaProduto::where('empresa_id', request()->empresa_id)->where('status', 1)
         ->where('categoria_id', null)
         ->get();
-        $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)->get();
+        $funcionarios = Funcionario::cargosComerciais()
+        ->where('empresa_id', request()->empresa_id)
+        ->where('status', 1)
+        ->get();
         $naturezas = NaturezaOperacao::where('empresa_id', request()->empresa_id)->get();
         if (sizeof($naturezas) == 0) {
             session()->flash("flash_warning", "Primeiro cadastre um natureza de operação!");

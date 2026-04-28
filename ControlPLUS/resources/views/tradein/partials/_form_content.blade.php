@@ -81,7 +81,8 @@
             <select
                 class="form-select select2-consultor"
                 name="cabecalho[consultor]"
-                data-placeholder="Digite para buscar vendedor..."
+                data-placeholder="Digite para buscar consultor..."
+                data-cargo-context="comercial"
                 style="width:100%"
             >
                 @if($consultorSelecionado)
@@ -305,7 +306,8 @@
                     var empresaId = $container.find('input[name="empresa_id"]').val() || $("#empresa_id").val();
                     return {
                         pesquisa: params.term,
-                        empresa_id: empresaId
+                        empresa_id: empresaId,
+                        cargo_context: $(el).data("cargo-context")
                     };
                 },
                 processResults: function (response) {

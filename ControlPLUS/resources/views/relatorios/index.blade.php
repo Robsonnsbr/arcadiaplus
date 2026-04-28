@@ -257,7 +257,7 @@
                                     </div>
                                 @endif
                                 <div class="col-md-6 col-12">
-                                    {!! Form::select('funcionario_id', 'Vendedor')->attrs(['class' => 'form-select funcionario'])->id('funcionario-relatorio-clientes') !!}
+                                    {!! Form::select('funcionario_id', 'Consultor')->attrs(['class' => 'form-select funcionario', 'data-cargo-context' => 'comercial'])->id('funcionario-relatorio-clientes') !!}
                                 </div>
 
                                 <div class="col-md-4 col-12 mt-2">
@@ -386,7 +386,7 @@
                                 </div>
 
                                 <div class="col-md-6 col-12 mt-2">
-                                    {!! Form::select('funcionario_id', 'Vendedor')->attrs(['class' => 'form-select funcionario'])->id('funcionario-relatorio-nfce') !!}
+                                    {!! Form::select('funcionario_id', 'Consultor')->attrs(['class' => 'form-select funcionario', 'data-cargo-context' => 'comercial'])->id('funcionario-relatorio-nfce') !!}
                                 </div>
 
                                 <div class="col-md-4 col-12">
@@ -732,7 +732,7 @@
                                 </div>
 
                                 <div class="col-md-6 col-12 mt-2">
-                                    {!! Form::select('funcionario_id', 'Vendedor')->attrs(['class' => 'form-select funcionario'])->id('funcionario4') !!}
+                                    {!! Form::select('funcionario_id', 'Consultor')->attrs(['class' => 'form-select funcionario', 'data-cargo-context' => 'comercial'])->id('funcionario4') !!}
                                 </div>
 
                                 <div class="col-md-3 col-6 mt-2">
@@ -778,7 +778,7 @@
                                 @include('partials.period-filter')
 
                                 <div class="col-md-4 col-12">
-                                    {!! Form::select('funcionario_id', 'Vendedor')->attrs(['class' => 'form-select funcionario'])->id('funcionario-vendas-pdv') !!}
+                                    {!! Form::select('funcionario_id', 'Consultor')->attrs(['class' => 'form-select funcionario', 'data-cargo-context' => 'comercial'])->id('funcionario-vendas-pdv') !!}
                                 </div>
 
                                 @if (__countLocalAtivo() > 1)
@@ -1185,7 +1185,7 @@
                 <form method="get" action="{{ route('relatorios.venda-por-vendedor') }}" target="_blank">
                     <div class="card">
                         <div class="card-header">
-                            <h5>Relatório de Vendas por Vendedor</h5>
+                            <h5>Relatório de Vendas por Consultor</h5>
                         </div>
                         <div class="card-body">
                             <div class="row g-2">
@@ -1197,7 +1197,7 @@
                                 </div>
 
                                 <div class="col-md-6 col-12">
-                                    {!! Form::select('funcionario_id', 'Vendedor', ['' => 'Selecione'] + $funcionarios->pluck('nome', 'id')->all())->attrs(['class' => 'form-select'])->required() !!}
+                                    {!! Form::select('funcionario_id', 'Consultor', ['' => 'Selecione'] + $funcionariosComerciais->pluck('nome', 'id')->all())->attrs(['class' => 'form-select'])->required() !!}
                                 </div>
 
                                 <div class="col-md-6 col-12">

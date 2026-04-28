@@ -1218,7 +1218,8 @@ $("#inp-ingrediente_id").select2({
     },
 });
 
-$("#inp-funcionario_id").select2({
+var $selectFuncionario = $("#inp-funcionario_id");
+$selectFuncionario.select2({
     minimumInputLength: 2,
     language: "pt-BR",
     placeholder: "Digite para buscar o funcionário",
@@ -1232,6 +1233,7 @@ $("#inp-funcionario_id").select2({
             var query = {
                 pesquisa: params.term,
                 empresa_id: $("#empresa_id").val(),
+                cargo_context: $selectFuncionario.data("cargo-context"),
             };
             return query;
         },
@@ -1520,4 +1522,3 @@ function notifications(){
         }
     }
 }
-

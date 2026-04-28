@@ -244,7 +244,7 @@
                             @if(isset($item) && $item->funcionario)
                             {{ $item->funcionario->nome }}
                             @else
-                            Vendedor
+                            Consultor
                             @endif
                         </span>
                     </button>

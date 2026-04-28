@@ -92,9 +92,9 @@
 
 
                         @isset($funcionario)
-                        <h5 class="funcionario_selecionado">Vendedor: <strong class="text-primary">{{ $funcionario->nome }}</strong></h5>
+                        <h5 class="funcionario_selecionado">Consultor: <strong class="text-primary">{{ $funcionario->nome }}</strong></h5>
                         @else
-                        <h5 class="funcionario_selecionado">Vendedor: <strong class="text-primary">--</strong></h5>
+                        <h5 class="funcionario_selecionado">Consultor: <strong class="text-primary">--</strong></h5>
                         @endif
                     </div>
                 </div>

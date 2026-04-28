@@ -83,7 +83,7 @@
                                         <th>Data</th>
                                         <th>Lista de preço</th>
                                         <th>Usuário</th>
-                                        <th>Vendedor</th>
+                                        <th>Consultor</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -327,7 +327,7 @@
 
                                             <td data-label="Usuário">{{ $item->user ? $item->user->name : '--' }}</td>
 
-                                            <td data-label="Vendedor">{{ $item->vendedor() ? $item->vendedor() : '--' }}
+                                            <td data-label="Consultor">{{ $item->vendedor() ? $item->vendedor() : '--' }}
                                             </td>
                                         </tr>
                                     @empty

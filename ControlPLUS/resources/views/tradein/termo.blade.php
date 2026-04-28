@@ -202,7 +202,7 @@
         <table class="no-border">
             <tr>
                 <td style="width: 50%; padding-right: 12px;">
-                    <div class="assinatura-linha">Assinatura e nome do vendedor responsável pela análise</div>
+                    <div class="assinatura-linha">Assinatura e nome do consultor responsável pela análise</div>
                 </td>
                 <td style="width: 50%; padding-left: 12px;">
                     <div class="assinatura-linha">Assinatura do cliente / Nome / CPF ({{ $cpfCnpj }})</div>

@@ -242,8 +242,9 @@
 							</div>
 						</div>
 						<div class="col-12 mt-1">
-							{!! Form::select('funcionario_id', 'Vendedor')
+							{!! Form::select('funcionario_id', 'Consultor')
 							->options(isset($item) && $item->funcionario ? [$item->funcionario->id => $item->funcionario->nome] : [])
+							->attrs(['data-cargo-context' => 'comercial'])
 							!!}
 						</div>
 						<div class="col-12 mt-2">

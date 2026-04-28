@@ -11,7 +11,7 @@ class Funcionario extends Model
 
     protected $fillable = [
         'empresa_id', 'usuario_id', 'nome', 'cpf_cnpj', 'telefone', 'cidade_id', 'rua', 'numero', 'bairro', 'comissao',
-        'salario', 'codigo', 'status', 'permite_alterar_valor_app'
+        'salario', 'codigo', 'status', 'permite_alterar_valor_app', 'funcionario_cargo_id'
     ];
 
     public function cidade()
@@ -22,6 +22,18 @@ class Funcionario extends Model
     public function usuario()
     {
         return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    public function cargo()
+    {
+        return $this->belongsTo(FuncionarioCargo::class, 'funcionario_cargo_id');
+    }
+
+    public function scopeCargosComerciais($query)
+    {
+        return $query->whereHas('cargo', function ($q) {
+            $q->whereRaw('LOWER(nome) in (?, ?)', ['vendedor', 'consultor']);
+        });
     }
 
     public function funcionamento()

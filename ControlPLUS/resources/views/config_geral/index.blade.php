@@ -50,7 +50,7 @@
 
                                         <div class="col-md-2">
                                             {!! Form::select('tipo_comissao', 'Tipo de comissão', [
-                                                'percentual_vendedor' => '% Vendedor',
+                                                'percentual_vendedor' => '% Consultor',
                                                 'percentual_margem' => '% Margem',
                                             ])->attrs(['class' => 'form-select tooltipp3']) !!}
                                             <div class="text-tooltip3 d-none">
@@ -77,7 +77,7 @@
                                         </div>
 
                                         <div class="col-md-2">
-                                            {!! Form::select('definir_vendedor_pdv', 'Definir vendedor', ['0' => 'Não', '1' => 'Sim'])->attrs([
+                                            {!! Form::select('definir_vendedor_pdv', 'Definir consultor', ['0' => 'Não', '1' => 'Sim'])->attrs([
                                                 'class' => 'form-select',
                                             ]) !!}
                                         </div>
@@ -285,7 +285,7 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-2">
-                                        {!! Form::select('definir_vendedor_pdv_off', 'Definir vendedor', ['0' => 'Não', '1' => 'Sim'])->attrs([
+                                        {!! Form::select('definir_vendedor_pdv_off', 'Definir consultor', ['0' => 'Não', '1' => 'Sim'])->attrs([
                                             'class' => 'form-select',
                                         ]) !!}
                                     </div>

@@ -6,7 +6,7 @@
         <tr>
             <th>Cliente</th>
             <th>Fornecedor</th>
-            <th>Vendedor</th>
+            <th>Consultor</th>
             <th>Assunto</th>
             <th>Data de cadastro</th>
             <th>Data de retorno</th>

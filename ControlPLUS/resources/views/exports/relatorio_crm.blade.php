@@ -3,7 +3,7 @@
         <tr>
             <th style="width: 300px">Cliente</th>
             <th style="width: 300px">Fornecedor</th>
-            <th style="width: 300px">Vendedor</th>
+            <th style="width: 300px">Consultor</th>
             <th style="width: 300px">Assunto</th>
             <th style="width: 120px">Data de cadastro</th>
             <th style="width: 120px">Data de retorno</th>

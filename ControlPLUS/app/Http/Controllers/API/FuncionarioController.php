@@ -15,6 +15,9 @@ class FuncionarioController extends Controller
         ->where('empresa_id', $request->empresa_id)
         ->where('nome', 'like', "%$request->pesquisa%")
         ->where('status', 1)
+        ->when($request->cargo_context == 'comercial', function ($q) {
+            return $q->cargosComerciais();
+        })
         ->get();
         return response()->json($data, 200);
     }

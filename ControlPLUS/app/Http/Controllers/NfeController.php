@@ -259,7 +259,8 @@ class NfeController extends Controller
         ->where('padrao', 1)->first();
 
         $config = ConfigGeral::where('empresa_id', request()->empresa_id)->first();
-        $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)
+        $funcionarios = Funcionario::cargosComerciais()
+        ->where('empresa_id', request()->empresa_id)
         ->where('status', 1)->get();
 
         return view('nfe.create', 
@@ -288,7 +289,8 @@ class NfeController extends Controller
         $cidades = Cidade::all();
         $naturezas = NaturezaOperacao::where('empresa_id', request()->empresa_id)->get();
         $caixa = __isCaixaAberto();
-        $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)
+        $funcionarios = Funcionario::cargosComerciais()
+        ->where('empresa_id', request()->empresa_id)
         ->where('status', 1)->get();
         $config = ConfigGeral::where('empresa_id', request()->empresa_id)->first();
 
@@ -307,7 +309,8 @@ class NfeController extends Controller
         $cidades = Cidade::all();
         $naturezas = NaturezaOperacao::where('empresa_id', request()->empresa_id)->get();
         $caixa = __isCaixaAberto();
-        $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)
+        $funcionarios = Funcionario::cargosComerciais()
+        ->where('empresa_id', request()->empresa_id)
         ->where('status', 1)->get();
 
         $config = ConfigGeral::where('empresa_id', request()->empresa_id)->first();

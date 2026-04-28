@@ -18,7 +18,8 @@ class ClienteController extends Controller
     }
 
     public function vendedores(Request $request){
-        $data = Funcionario::where('empresa_id', $request->empresa_id)
+        $data = Funcionario::cargosComerciais()
+        ->where('empresa_id', $request->empresa_id)
         ->select('id', 'nome', 'cpf_cnpj', 'rua', 'numero', 'bairro', 'status', 'cidade_id')
         ->with('cidade')
         ->where('status', 1)

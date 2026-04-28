@@ -5,7 +5,7 @@
             <th>DATA</th>
             <th>CÓDIGO</th>
             <th>EMPRESA</th>
-            <th>VENDEDOR</th>
+            <th>CONSULTOR</th>
             <th>CAIXA</th>
             <th>CLIENTE</th>
             <th>DESCONTO</th>

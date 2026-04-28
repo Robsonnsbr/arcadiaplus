@@ -1,6 +1,6 @@
 @extends('relatorios.default')
 @section('content')
-<h5>Vendedor <strong style="color: #49526B">{{ $funcionario->nome }}</strong></h5>
+<h5>Consultor <strong style="color: #49526B">{{ $funcionario->nome }}</strong></h5>
 <table class="table-sm table-borderless" style="border-bottom: 1px solid rgb(206, 206, 206); margin-bottom:10px;  width: 100%;">
     <thead>
         <tr>

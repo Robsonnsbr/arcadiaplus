@@ -1082,7 +1082,7 @@
         <tr>
             {{-- @if (!$item->vendedor_id)
             <td class="" style="width: 350px;">
-                Vendedor: <strong>
+                    Consultor: <strong>
                     {{$item->usuario->nome}}
                 </strong>
             </td>
@@ -1113,7 +1113,7 @@
             </td>
             @if ($item->vendedor_id)
                 <td class="" style="width: 250px;">
-                    Vendedor: <strong>{{ $item->vendedor_setado->funcionario->nome }}</strong>
+                    Consultor: <strong>{{ $item->vendedor_setado->funcionario->nome }}</strong>
                 </td>
             @endif
             <td class="" style="width: 250px;">
@@ -1320,7 +1320,7 @@
         <table>
             <tr>
                 <td class="" style="width: 200px;">
-                    <strong>Vendedor:
+                    <strong>Consultor:
                         {{ $item->usuario->nome }}
                     </strong>
                 </td>

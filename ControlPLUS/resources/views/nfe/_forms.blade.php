@@ -975,8 +975,9 @@
 
                         @if(!isset($isCompra))
                         <div class="col-md-3 mt-3">
-                            {!! Form::select('funcionario_id', 'Vendedor')
+                            {!! Form::select('funcionario_id', 'Consultor')
                             ->options(isset($item) && $item->funcionario ? [$item->funcionario->id => $item->funcionario->nome] : [])
+                            ->attrs(['data-cargo-context' => 'comercial'])
                             !!}
                         </div>
                         @endif

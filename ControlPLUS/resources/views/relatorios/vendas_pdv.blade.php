@@ -15,7 +15,7 @@
             <th>Data</th>
             <th>Código</th>
             <th>Empresa</th>
-            <th>Vendedor</th>
+            <th>Consultor</th>
             <th>Caixa</th>
             <th>Cliente</th>
             <th>Desconto</th>

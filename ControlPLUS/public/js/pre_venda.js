@@ -1257,6 +1257,7 @@ $('.funcionario-venda').click(() => {
 })
 
 $(".modal-funcioario select").each(function () {
+    let $select = $(this);
 
     let id = $(this).prop("id");
 
@@ -1277,6 +1278,7 @@ $(".modal-funcioario select").each(function () {
                     var query = {
                         pesquisa: params.term,
                         empresa_id: $("#empresa_id").val(),
+                        cargo_context: $select.data("cargo-context"),
                     };
                     return query;
                 },

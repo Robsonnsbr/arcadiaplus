@@ -226,7 +226,8 @@ class FrontBoxController extends Controller
             return redirect()->route('config.index');
         }
 
-        $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)
+        $funcionarios = Funcionario::cargosComerciais()
+        ->where('empresa_id', request()->empresa_id)
         ->where('status', 1)->get();
 
         $config = ConfigGeral::where('empresa_id', request()->empresa_id)->first();
@@ -502,7 +503,8 @@ class FrontBoxController extends Controller
             }
         }
 
-        $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)
+        $funcionarios = Funcionario::cargosComerciais()
+        ->where('empresa_id', request()->empresa_id)
         ->where('status', 1)->get();
         $cliente = $item->cliente;
         $funcionario = $item->funcionario;
@@ -936,7 +938,8 @@ class FrontBoxController extends Controller
             return redirect()->route('config.index');
         }
 
-        $funcionarios = Funcionario::where('empresa_id', request()->empresa_id)
+        $funcionarios = Funcionario::cargosComerciais()
+        ->where('empresa_id', request()->empresa_id)
         ->where('status', 1)->get();
 
         $config = ConfigGeral::where('empresa_id', request()->empresa_id)->first();

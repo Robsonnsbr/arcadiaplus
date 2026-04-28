@@ -7,7 +7,8 @@ function montaSelect2(){
 	$('#inp-data_retorno').val('')
 	$('#inp-data_entrega').val('')
 	
-	$("#inp-funcionario_id").select2({
+	let $selectFuncionario = $("#inp-funcionario_id");
+	$selectFuncionario.select2({
 		minimumInputLength: 2,
 		language: "pt-BR",
 		dropdownParent: $('#modal_crm'),
@@ -22,6 +23,7 @@ function montaSelect2(){
 				var query = {
 					pesquisa: params.term,
 					empresa_id: $("#empresa_id").val(),
+					cargo_context: $selectFuncionario.data("cargo-context"),
 				};
 				return query;
 			},
