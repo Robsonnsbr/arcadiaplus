@@ -709,6 +709,26 @@
     @endif
     </div>
 
+    @if (in_array('Dashboard Comercial', $homeComponentes))
+        @can('dashboard_view')
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <div>
+                                <h5 class="mb-1">Dashboard Comercial</h5>
+                                <div class="text-muted">Acesso ao painel por vendedor, com metas, funil e ranking.</div>
+                            </div>
+                            <a href="{{ route('dashboard.vendedor') }}" class="btn btn-primary">
+                                Abrir Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endcan
+    @endif
+
 @endsection
 
 @if (__isAdmin())

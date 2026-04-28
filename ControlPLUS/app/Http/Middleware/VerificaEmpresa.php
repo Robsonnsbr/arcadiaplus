@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\User;
 use Closure;
+use App\Utils\EmpresaUtil;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
@@ -20,9 +21,12 @@ class VerificaEmpresa
         if(__isMaster()){
     		return $next($request);
         }
+        if (auth()->check() && auth()->user()->empresa && $request->routeIs('dashboard.vendedor')) {
+            app(EmpresaUtil::class)->syncCompanyPermissions(auth()->user()->empresa->empresa_id);
+        }
     	if(auth::user()->empresa){
     		return $next($request);
-    	}
+        }
 
         if(auth::user()->suporte){
             return $next($request);

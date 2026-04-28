@@ -82,7 +82,7 @@ class ConfigGeral extends Model
             'Cards de receita', 'Cards por período', 'Cards de recebimento', 'Gráfico de vendas', 'Gráfico de compras', 
             'Gráfico de emissão mensal',
             'Gráfico de emissão quantidade', 'Gráfico de emissão acumulado', 'Gráfico contas a receber', 'Gráfico contas a pagar',
-            'Gráfico de emissão de CTe', 'Gráfico de emissão de MDFe'
+            'Gráfico de emissão de CTe', 'Gráfico de emissão de MDFe', 'Dashboard Comercial'
         ];
     }
 

@@ -846,6 +846,7 @@ Route::middleware(['verificaEmpresa', 'validaPlano', 'validaContrato'])->group(f
     Route::resource('conta-receber', 'ContaReceberController');
 
     Route::get('/financeiro-dashboard', 'FinanceiroDashboardController@index')->name('financeiro.dashboard');
+    Route::get('/dashboard-vendedor', 'DashboardVendedorController@index')->name('dashboard.vendedor');
 
     Route::delete('conta-receber-destroy-select', 'ContaReceberController@destroySelecet')->name('conta-receber.destroy-select');
     Route::get('conta-receber-download-file/{id}', 'ContaReceberController@downloadFile')->name('conta-receber.download-file');

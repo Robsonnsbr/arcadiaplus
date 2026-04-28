@@ -65,6 +65,37 @@ class EmpresaUtil
                 }
             }
         }
+
+        $this->syncCompanyPermissions($empresa_id);
+    }
+
+    public function syncCompanyPermissions($empresa_id)
+    {
+        $baseAdmin = Role::where('empresa_id', null)
+            ->where('name', 'admin')
+            ->first();
+
+        if (!$baseAdmin) {
+            return;
+        }
+
+        $baseAdmin->permissions()->sync(Permission::all());
+
+        $companyRoles = Role::where('empresa_id', $empresa_id)
+            ->where('description', $baseAdmin->description)
+            ->get();
+
+        if ($companyRoles->count() == 0) {
+            Artisan::call('cache:forget spatie.permission.cache');
+            return;
+        }
+
+        $permissionIds = $baseAdmin->permissions()->pluck('permissions.id')->all();
+        foreach ($companyRoles as $companyRole) {
+            $companyRole->permissions()->sync($permissionIds);
+        }
+
+        Artisan::call('cache:forget spatie.permission.cache');
     }
 
     public function getPermissions($empresa_id)
