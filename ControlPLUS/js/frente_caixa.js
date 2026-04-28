@@ -770,11 +770,39 @@ function setProdutoTipoUnico(flag) {
     $("#inp-produto_tipo_unico").val(currentProdutoTipoUnico);
 }
 
+function getTipoLinhaProdutoRow($row) {
+    const attrValue = String($row.attr("data-tipo-linha") || "").trim();
+    if (attrValue) {
+        return attrValue;
+    }
+
+    const dataValue = String($row.data("tipo-linha") || "").trim();
+    if (dataValue) {
+        return dataValue;
+    }
+
+    const inputValue = String(
+        $row.find('input[name="tipo_linha[]"]').val() || "",
+    ).trim();
+    return inputValue || "saida";
+}
+
+function isProdutoRowTipoUnico($row) {
+    const attrValue = $row.attr("data-tipo-unico");
+    const value =
+        typeof attrValue !== "undefined" ? attrValue : $row.data("tipo-unico");
+    return parseInt(value || 0) === 1;
+}
+
 function handleCodigoUnicoRow($row, autoOpen) {
     if (!$row || $row.length === 0) {
         return;
     }
-    const isTipoUnico = parseInt($row.data("tipo-unico")) === 1;
+    if (getTipoLinhaProdutoRow($row) === "retorno") {
+        $row.find(".codigo-unico-wrapper").addClass("d-none");
+        return;
+    }
+    const isTipoUnico = isProdutoRowTipoUnico($row);
     if (isTipoUnico) {
         $row.find(".codigo-unico-wrapper").removeClass("d-none");
         const value = $row.find(".codigo_unico_ids").val();
@@ -800,6 +828,9 @@ function handleCodigoUnicoRow($row, autoOpen) {
 }
 
 function openCodigoUnicoModal($row) {
+    if (getTipoLinhaProdutoRow($row) === "retorno") {
+        return;
+    }
     codigoUnicoRow = $row;
     modalCodigoUnicoProdutoId = $row.find(".produto_row").val();
     const produtoNome =
@@ -1531,8 +1562,8 @@ function validateCodigoUnicoRows() {
             return;
         }
         const row = $(this);
-        const tipoLinha = String(row.data("tipo-linha") || "saida");
-        if (parseInt(row.data("tipo-unico")) === 1 && tipoLinha !== "retorno") {
+        const tipoLinha = getTipoLinhaProdutoRow(row);
+        if (isProdutoRowTipoUnico(row) && tipoLinha !== "retorno") {
             const qtd = Math.max(
                 1,
                 Math.round(convertMoedaToFloat(row.find(".qtd_row").val())),

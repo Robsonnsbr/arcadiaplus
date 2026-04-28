@@ -331,10 +331,18 @@
                 if ($serialLine === '' && !empty($i->infAdProd)) {
                     $serialLine = (string) $i->infAdProd;
                 }
+                $serialLabel = $serialLine !== '' ? 'Serial / Código único' : '';
             @endphp
             <tr>
                 <td class="b-top text-left">{{ $i->produto->numero_sequencial }}</td>
-                <td class="b-top text-left">{{ $i->descricao() }}</td>
+                <td class="b-top text-left">
+                    <div>{{ $i->descricao() }}</div>
+                    @if($serialLine !== '')
+                        <div style="font-size: 0.7rem; margin-top: 2px;">
+                            <strong>{{ $serialLabel }}:</strong> {{ $serialLine }}
+                        </div>
+                    @endif
+                </td>
                 <td class="b-top text-left" style="font-size: 0.7rem;">{{ $serialLine }}</td>
                 <td class="b-top text-left">
                     @if(!$i->produto->unidadeDecimal())

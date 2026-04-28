@@ -113,7 +113,7 @@ $("body").on('click', '#btn-comprovante-troca', function () {
 $("#form-troca").on("submit", function (e) {
 	e.preventDefault();
 	var isDev = trocaIsDevolucaoPdv()
-	if (typeof validateCodigoUnicoRows === "function" && !validateCodigoUnicoRows()) {
+	if (!isDev && typeof validateCodigoUnicoRows === "function" && !validateCodigoUnicoRows()) {
 		return;
 	}
 	if (!isDev) {
