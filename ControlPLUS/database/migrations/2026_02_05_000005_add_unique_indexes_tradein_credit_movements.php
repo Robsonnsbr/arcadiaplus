@@ -32,18 +32,22 @@ return new class extends Migration
         }
 
         if ($this->indexExists('tradein_credit_movements', 'tcm_uniq_debit_origin')) {
-            DB::statement('DROP INDEX IF EXISTS tcm_uniq_debit_origin');
+            DB::statement('DROP INDEX tcm_uniq_debit_origin ON tradein_credit_movements');
         }
 
         if ($this->indexExists('tradein_credit_movements', 'tcm_uniq_credit_origin')) {
-            DB::statement('DROP INDEX IF EXISTS tcm_uniq_credit_origin');
+            DB::statement('DROP INDEX tcm_uniq_credit_origin ON tradein_credit_movements');
         }
     }
 
     private function indexExists(string $table, string $indexName): bool
     {
         $result = DB::select(
-            "SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ? LIMIT 1",
+            "SELECT 1 FROM information_schema.statistics
+            WHERE table_schema = DATABASE()
+            AND table_name = ?
+            AND index_name = ?
+            LIMIT 1",
             [$table, $indexName]
         );
 
