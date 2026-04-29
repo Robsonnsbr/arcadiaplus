@@ -1,7 +1,11 @@
 TOTALOLD = 0
 $(function(){
 	TOTALOLD = $('#valor_total_old').val()
-
+	setTimeout(() => {
+		if (typeof comparaValor === "function") {
+			comparaValor()
+		}
+	}, 700)
 })
 
 /**
@@ -39,28 +43,46 @@ function trocaIsDevolucaoPdv() {
 
 function comparaValor(){
 	setTimeout(() => {
-		let total = convertMoedaToFloat($('#inp-valor_total').val())
-		TOTALOLD = parseFloat(TOTALOLD)
+		let totalSaida = typeof window.CP_TROCA_TOTAL_SAIDA === "number"
+			? window.CP_TROCA_TOTAL_SAIDA
+			: convertMoedaToFloat($('#inp-valor_total').val())
+		let totalRetorno = typeof window.CP_TROCA_TOTAL_RETORNO === "number"
+			? window.CP_TROCA_TOTAL_RETORNO
+			: parseFloat(TOTALOLD)
+		TOTALOLD = totalRetorno
+		let saldo = totalSaida - totalRetorno
+		let absSaldo = Math.abs(saldo)
+		let isZero = absSaldo < 0.005
+		let isPagar = saldo > 0 && !isZero
+		let isDevolver = saldo < 0 && !isZero
 
-		if(total > TOTALOLD){
-			$('.h-valor_pagar').removeClass('d-none')
-			$('.h-valor_restante').addClass('d-none')
-			$('.valor_pagar').text('R$ ' + convertFloatToMoeda(total - TOTALOLD))
-			$('#inp-valor_pagar').val(total - TOTALOLD)
+		$('.total-venda').text('R$ ' + convertFloatToMoeda(totalSaida))
+		$('.total-saida').text('R$ ' + convertFloatToMoeda(totalSaida))
+		$('.total-retorno').text('R$ ' + convertFloatToMoeda(totalRetorno))
+		$('.h-valor_pagar').toggleClass('d-none', !isPagar)
+		$('.h-valor_restante').toggleClass('d-none', !isDevolver)
+		$('.h-valor_zero').toggleClass('d-none', !isZero)
+		$('.bloco-tipo-pagamento').toggleClass('d-none', isZero)
+
+		if(isPagar){
+			$('.valor_pagar').text('R$ ' + convertFloatToMoeda(absSaldo))
+			$('#inp-valor_pagar').val(absSaldo)
 			$('#inp-valor_credito').val('0')
-		}else if(total < TOTALOLD){
-			$('.h-valor_pagar').addClass('d-none')
-			$('.h-valor_restante').removeClass('d-none')
-			$('.valor_restante').text('R$ ' + convertFloatToMoeda(TOTALOLD - total))
+			$('#inp-tipo_pagamento').prop('disabled', false)
+		}else if(isDevolver){
+			$('.valor_restante').text('R$ ' + convertFloatToMoeda(absSaldo))
 			$('#inp-valor_pagar').val('0')
-			$('#inp-valor_credito').val(TOTALOLD - total)
+			$('#inp-valor_credito').val(absSaldo)
+			$('#inp-tipo_pagamento').prop('disabled', false)
 		}else{
-			$('.valor_pagar').text('R$ ' + convertFloatToMoeda(0))
-			$('.h-valor_pagar').removeClass('d-none')
-			$('.h-valor_restante').addClass('d-none')
-			$('.valor_restante').text('R$ ' + convertFloatToMoeda(0))
 			$('#inp-valor_pagar').val('0')
 			$('#inp-valor_credito').val('0')
+			$('#inp-tipo_pagamento').val('')
+			$('#inp-tipo_pagamento').prop('disabled', true)
+			$('.valor_pagar').text('R$ ' + convertFloatToMoeda(0))
+			$('.valor_restante').text('R$ ' + convertFloatToMoeda(0))
+			$('#salvar_venda').removeAttr('disabled')
+			$('#editar_venda').removeAttr('disabled')
 		}
 	}, 500)
 }

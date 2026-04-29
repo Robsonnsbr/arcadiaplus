@@ -442,7 +442,7 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div class="flex-grow-1 overflow-hidden">
-                                    <h5 class="text-muted text-uppercase fs-13 mt-0" title="Number of Customers">TOTAL</h5>
+                                    <h5 class="text-muted text-uppercase fs-13 mt-0" title="Number of Customers">Novo produto entregue pela loja</h5>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0">
                                     <span class="avatar-title text-bg-dark rounded rounded-3 fs-3 widget-icon-box-avatar shadow">
@@ -451,11 +451,7 @@
                                 </div>
                             </div>
                             <h3 class="">
-                                @isset($item)
-                                <strong class="total-venda">{{ __moeda($item->valor_total) }}</strong>
-                                @else
-                                <strong class="total-venda">0,00</strong>
-                                @endif
+                                <strong class="total-venda total-saida">R$ 0,00</strong>
                             </h3>
                         </div> <!-- end card-body-->
                     </div> <!-- end card-->
@@ -463,7 +459,7 @@
             </div>
             <div class="row">
                 <div class="col-lg-3 col-6">
-                    <div class="card widget-icon-box div-pagamento" style="height: 93%">
+                    <div class="card widget-icon-box div-pagamento bloco-tipo-pagamento" style="height: 93%">
                         <div class="card-body">
                             <div class="d-flex justify-content-between">
                                 <div class="flex-grow-1 overflow-hidden">
@@ -515,9 +511,12 @@
                     <div class="card widget-icon-box div-pagamento" style="height: 93%">
                         <div class="card-body">
                             <div class="">
-                                <h4 class="text-muted">Valor original da venda: <strong class="text-primary">R$ {{ __moeda($item->total) }}</strong></h4>
-                                <h4 class="h-valor_pagar text-muted">Valor à pagar: <strong class="text-success valor_pagar">R$ {{ __moeda(0) }}</strong></h4>
-                                <h4 class="h-valor_restante d-none">Valor restante: <strong class="text-warning valor_restante">R$ {{ __moeda(0) }}</strong></h4>
+                                <h5 class="text-muted text-uppercase fs-13 mt-0">Produto devolvido pelo cliente</h5>
+                                <h4 class="text-muted">Total: <strong class="text-primary total-retorno">R$ {{ __moeda($item->total) }}</strong></h4>
+                                <h5 class="text-muted text-uppercase fs-13 mt-3">Resultado financeiro</h5>
+                                <h4 class="h-valor_pagar text-muted">Diferença a pagar pelo cliente: <strong class="text-success valor_pagar">R$ {{ __moeda(0) }}</strong></h4>
+                                <h4 class="h-valor_restante d-none">Loja devolve ao cliente: <strong class="text-warning valor_restante">R$ {{ __moeda(0) }}</strong></h4>
+                                <h4 class="h-valor_zero d-none text-muted">Troca sem diferença de valores</h4>
                                 <h5>Data da venda: <strong class="text-danger">{{ __data_pt($item->created_at) }}</strong></h5>
                                 <div class="mt-2">
                                     {!! Form::text('observacao', 'Motivo/Observação')->attrs(['maxlength' => 200]) !!}
@@ -617,6 +616,8 @@ window.CP_TROCA_IS_DEVOLUCAO_PDV = @json($mod === \App\Models\Troca::MODALIDADE_
                 const z = convertFloatToMoeda(0);
                 const c = convertFloatToMoeda(oldT);
                 $('.total-venda').html('R$ ' + z);
+                $('.total-saida').html('R$ ' + z);
+                $('.total-retorno').html('R$ ' + c);
                 if ($('#inp-valor_total').length) {
                     $('#inp-valor_total').val(z);
                 }

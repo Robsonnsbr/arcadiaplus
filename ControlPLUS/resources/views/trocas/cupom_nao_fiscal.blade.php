@@ -312,6 +312,18 @@
 
     @php
         $seriaisDev = collect($item->seriais_devolvidos ?? []);
+        $totalRetorno = (float) ($item->valor_original ?? 0);
+        $totalSaida = (float) ($item->valor_troca ?? 0);
+        $saldoTroca = round($totalSaida - $totalRetorno, 2);
+        $creditoGerado = (float) \App\Models\CreditoCliente::where('troca_id', $item->id)->sum('valor');
+        $valorPagoCliente = $saldoTroca > 0 ? $saldoTroca : 0;
+        $valorDevolverCliente = $saldoTroca < 0 ? abs($saldoTroca) : 0;
+        $resultadoFinanceiro = 'Sem diferença financeira';
+        if ($saldoTroca > 0) {
+            $resultadoFinanceiro = 'Cliente paga a diferença';
+        } elseif ($saldoTroca < 0) {
+            $resultadoFinanceiro = 'Loja devolve/gera crédito ao cliente';
+        }
     @endphp
     <table>
         <thead>
@@ -385,7 +397,14 @@
             @php $somaLinhas++; $somaQtd += $i->quantidade; @endphp
             <tr>
                 <td class="b-top text-left">{{ $i->produto->numero_sequencial }}</td>
-                <td class="b-top text-left">{{ $i->descricao() }}</td>
+                <td class="b-top text-left">
+                    <div>{{ $i->descricao() }}</div>
+                    @if($i->serial_codigo)
+                        <div style="font-size: 0.7rem; margin-top: 2px;">
+                            <strong>Serial / Código único:</strong> {{ $i->serial_codigo }}
+                        </div>
+                    @endif
+                </td>
                 <td class="b-top text-left" style="font-size: 0.7rem;">{{ $i->serial_codigo ? $i->serial_codigo : '' }}</td>
                 <td class="b-top text-left">
                     @if(!$i->produto->unidadeDecimal())
@@ -416,21 +435,21 @@
 
     <table>
         <tr>
-            <td class="text-left" style="width: 240px;">
-                Desconto (-): <strong>R$ {{ __moeda($item->desconto) }}</strong>
+            <td class="text-left" style="width: 350px;">
+                Total dos produtos retornados: <strong>R$ {{ __moeda($totalRetorno) }}</strong>
             </td>
-            <td class="text-left" style="width: 240px;">
-                Acréscimo (+): <strong>R$ {{ __moeda($item->acrescimo) }}</strong>
+            <td class="text-left" style="width: 350px;">
+                Total dos produtos que saem: <strong>R$ {{ __moeda($totalSaida) }}</strong>
             </td>
-            <td class="text-left" style="width: 220px;">
-                Valor Total:
-                <strong>
-                    @isset($preVenda)
-                        R$ {{ __moeda($item->valor_total) }}
-                    @else
-                        R$ {{ __moeda($item->total) }}
-                    @endisset
-                </strong>
+        </tr>
+    </table>
+    <table>
+        <tr>
+            <td class="text-left" style="width: 350px;">
+                Diferença: <strong>R$ {{ __moeda(abs($saldoTroca)) }}</strong>
+            </td>
+            <td class="text-left" style="width: 350px;">
+                Resultado: <strong>{{ $resultadoFinanceiro }}</strong>
             </td>
         </tr>
     </table>
@@ -461,27 +480,47 @@
     <table>
         <tr>
             <td class="b-bottom" style="width: 700px; height: 40px;">
-                <strong>PAGAMENTO:</strong>
+                <strong>FECHAMENTO FINANCEIRO:</strong>
             </td>
         </tr>
     </table>
     <table>
         <tr>
             <td class="b-bottom text-left" style="width: 350px;">
-                Tipo de pagamento
+                Forma
             </td>
             <td class="b-bottom text-left" style="width: 350px;">
-                Valor pago
+                Valor
             </td>
         </tr>
+        @if($saldoTroca > 0)
         <tr>
             <td class="text-left">
                 <strong>{{ \App\Models\Nfce::getTipoPagamento($item->tipo_pagamento) }}</strong>
             </td>
             <td class="text-left">
-                <strong>R$ {{ __moeda($item->valor_troca) }}</strong>
+                Cliente paga: <strong>R$ {{ __moeda($valorPagoCliente) }}</strong>
             </td>
         </tr>
+        @elseif($saldoTroca < 0)
+        <tr>
+            <td class="text-left">
+                <strong>Crédito gerado ao cliente</strong>
+            </td>
+            <td class="text-left">
+                Loja devolve/credita: <strong>R$ {{ __moeda($creditoGerado > 0 ? $creditoGerado : $valorDevolverCliente) }}</strong>
+            </td>
+        </tr>
+        @else
+        <tr>
+            <td class="text-left">
+                <strong>Sem cobrança</strong>
+            </td>
+            <td class="text-left">
+                <strong>R$ {{ __moeda(0) }}</strong>
+            </td>
+        </tr>
+        @endif
     </table>
     <br>
 

@@ -1211,48 +1211,82 @@ function validaCaixa() {
 }
 
 var total_venda = 0;
+function isTrocaContext() {
+    return $("#form-troca").length > 0 || $(".troca-pdv-context").length > 0;
+}
+
 function calcTotal() {
     var total = 0;
     let qtdTotal = 0;
-    $(".subtotal-item").each(function () {
-        total += convertMoedaToFloat($(this).val());
-        qtdTotal = convertMoedaToFloat(
-            $(this).closest("tr").find(".qtd_row").val(),
-        );
-    });
+    let totalSaida = 0;
+    let totalRetorno = 0;
+
+    if (isTrocaContext()) {
+        $(".table-itens tbody tr.line-product").each(function () {
+            let subtotal = convertMoedaToFloat($(this).find(".subtotal-item").val());
+            let tipoLinha = String($(this).attr("data-tipo-linha") || "saida");
+
+            if (tipoLinha === "retorno") {
+                totalRetorno += subtotal;
+            } else {
+                totalSaida += subtotal;
+            }
+            total += subtotal;
+            qtdTotal += convertMoedaToFloat($(this).find(".qtd_row").val());
+        });
+    } else {
+        $(".subtotal-item").each(function () {
+            total += convertMoedaToFloat($(this).val());
+            qtdTotal = convertMoedaToFloat(
+                $(this).closest("tr").find(".qtd_row").val(),
+            );
+        });
+    }
 
     $(".total-linhas").text($(".table-itens tbody tr").length);
     $(".total-itens").text(qtdTotal);
     setTimeout(() => {
-        total_venda = total;
+        if (isTrocaContext()) {
+            total_venda = totalSaida;
+            window.CP_TROCA_TOTAL_SAIDA = totalSaida;
+            window.CP_TROCA_TOTAL_RETORNO = totalRetorno;
+            $(".total-venda").html("R$ " + convertFloatToMoeda(totalSaida));
+            $(".total-saida").html("R$ " + convertFloatToMoeda(totalSaida));
+            $(".total-retorno").html("R$ " + convertFloatToMoeda(totalRetorno));
+            $("#inp-valor_total").val(convertFloatToMoeda(totalSaida));
+            $(".total-venda-modal").html("R$ " + convertFloatToMoeda(totalSaida));
+            $("#inp-valor_integral").val(convertFloatToMoeda(totalSaida));
+        } else {
+            total_venda = total;
 
-        $(".total-venda").html(
-            "R$ " +
+            $(".total-venda").html(
+                "R$ " +
+                    convertFloatToMoeda(
+                        total +
+                            parseFloat(VALORACRESCIMO) +
+                            parseFloat(VALORFRETE) -
+                            parseFloat(DESCONTO),
+                    ),
+            );
+            $("#inp-valor_total").val(
                 convertFloatToMoeda(
                     total +
                         parseFloat(VALORACRESCIMO) +
                         parseFloat(VALORFRETE) -
                         parseFloat(DESCONTO),
                 ),
-        );
-        $("#inp-valor_total").val(
-            convertFloatToMoeda(
-                total +
-                    parseFloat(VALORACRESCIMO) +
-                    parseFloat(VALORFRETE) -
-                    parseFloat(DESCONTO),
-            ),
-        );
-        $(".total-venda-modal").html(
-            "R$ " +
-                convertFloatToMoeda(
-                    total +
-                        parseFloat(VALORACRESCIMO) +
-                        parseFloat(VALORFRETE) -
-                        parseFloat(DESCONTO),
-                ),
-        );
-        $("#inp-valor_integral").val(convertFloatToMoeda(total_venda));
+            );
+            $(".total-venda-modal").html(
+                "R$ " +
+                    convertFloatToMoeda(
+                        total +
+                            parseFloat(VALORACRESCIMO) +
+                            parseFloat(VALORFRETE) -
+                            parseFloat(DESCONTO),
+                    ),
+            );
+            $("#inp-valor_integral").val(convertFloatToMoeda(total_venda));
+        }
 
         $("#inp-quantidade").val("");
         $("#inp-valor_unitario").val("");
@@ -1974,6 +2008,14 @@ function validateButtonSave() {
     }
 
     let total = convertMoedaToFloat($(".total-venda").text());
+    let isTroca = isTrocaContext();
+    let hasTrocaTotals = isTroca
+        && typeof window.CP_TROCA_TOTAL_SAIDA === "number"
+        && typeof window.CP_TROCA_TOTAL_RETORNO === "number";
+    let totalSaidaTroca = hasTrocaTotals ? window.CP_TROCA_TOTAL_SAIDA : total;
+    let totalRetornoTroca = hasTrocaTotals ? window.CP_TROCA_TOTAL_RETORNO : 0;
+    let saldoTroca = totalSaidaTroca - totalRetornoTroca;
+    let isSaldoZeroTroca = hasTrocaTotals && Math.abs(saldoTroca) < 0.005;
     var tipo = $("#inp-tipo_pagamento").val();
     var tipo_row = $(".table-payment").length
         ? $(".table-payment tbody tr").length
@@ -1982,7 +2024,13 @@ function validateButtonSave() {
     var valor_recebido = convertMoedaToFloat($("#inp-valor_recebido").val());
     // console.log(tipo_row)
 
-    if (total > 0 && (tipo || tipo_row)) {
+    if (isSaldoZeroTroca) {
+        $("#salvar_venda").removeAttr("disabled");
+        $("#editar_venda").removeAttr("disabled");
+        return;
+    }
+
+    if ((hasTrocaTotals ? (totalSaidaTroca > 0 || totalRetornoTroca > 0) : total > 0) && (tipo || tipo_row)) {
         if (tipo == "01" && valor_recebido >= total) {
             $("#salvar_venda").removeAttr("disabled");
             $("#editar_venda").removeAttr("disabled");

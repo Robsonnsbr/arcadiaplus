@@ -75,6 +75,15 @@ class TrocaController extends Controller
                 $localId = (int) $venda->local_id;
                 $isNfce = $request->tipo === 'nfce';
 
+                $linhasSaidaFinanceiras = $modalidade === Troca::MODALIDADE_DEVOLUCAO_PDV
+                    ? []
+                    : $this->calcularLinhasSaidaFinanceiras($request);
+                $totalRetorno = $this->calcularTotalRetornoVenda($venda);
+                $totalSaida = $this->calcularTotalSaida($linhasSaidaFinanceiras);
+                $saldoTroca = round($totalSaida - $totalRetorno, 2);
+                $valorCreditoCalculado = $saldoTroca < 0 ? abs($saldoTroca) : 0;
+                $valorPagoCalculado = $saldoTroca > 0 ? $saldoTroca : 0;
+
                 if ($modalidade === Troca::MODALIDADE_DEVOLUCAO_PDV) {
                     $fimPrazo = Carbon::parse($venda->created_at)->addHours(self::HORAS_PRAZO_DEVOLUCAO_PDV);
                     if (Carbon::now()->gt($fimPrazo)) {
@@ -84,7 +93,7 @@ class TrocaController extends Controller
                         );
                     }
                 } else {
-                    $novoItemCriado = $this->countNovosItensTroca($request, $venda);
+                    $novoItemCriado = count($linhasSaidaFinanceiras);
                     if ($novoItemCriado < 1) {
                         return response()->json('Informe ao menos um produto novo na troca (itens que saem do estoque).', 422);
                     }
@@ -107,12 +116,10 @@ class TrocaController extends Controller
                         ->first();
                 }
 
-                $valorOriginalVenda = (float) $venda->total;
+                $valorOriginalVenda = $totalRetorno;
                 $seriaisDevolvidos = [];
 
-                $valorTrocaDocumento = $modalidade === Troca::MODALIDADE_DEVOLUCAO_PDV
-                    ? 0
-                    : __convert_value_bd($request->valor_total);
+                $valorTrocaDocumento = $totalSaida;
 
                 $troca = Troca::create([
                     'empresa_id' => $request->empresa_id,
@@ -132,7 +139,7 @@ class TrocaController extends Controller
 
                 $venda->total = $modalidade === Troca::MODALIDADE_DEVOLUCAO_PDV
                     ? 0
-                    : __convert_value_bd($request->valor_total);
+                    : $totalSaida;
                 $venda->save();
 
                 foreach ($venda->itens as $linhaVenda) {
@@ -152,16 +159,10 @@ class TrocaController extends Controller
                 $troca->seriais_devolvidos = $seriaisDevolvidos;
                 $troca->save();
 
-                if ($modalidade === Troca::MODALIDADE_TROCA && $request->produto_id) {
-                    $n = count($request->produto_id);
-                    for ($i = 0; $i < $n; $i++) {
-                        $tipoLinha = $this->getTipoLinhaFromRequest($request, $i);
-                        if ($tipoLinha === 'retorno') {
-                            continue;
-                        }
-
-                        $produto_id = $request->produto_id[$i];
-                        $quantidade = __convert_value_bd($request->quantidade[$i]);
+                if ($modalidade === Troca::MODALIDADE_TROCA && count($linhasSaidaFinanceiras) > 0) {
+                    foreach ($linhasSaidaFinanceiras as $i => $linhaSaida) {
+                        $produto_id = $linhaSaida['produto_id'];
+                        $quantidade = $linhaSaida['quantidade'];
 
                         $product = Produto::findOrFail($produto_id);
                         $serialCodigo = null;
@@ -184,8 +185,8 @@ class TrocaController extends Controller
                             'produto_id' => $produto_id,
                             'quantidade' => $quantidade,
                             'troca_id' => $troca->id,
-                            'valor_unitario' => __convert_value_bd($request->valor_unitario[$i]),
-                            'sub_total' => __convert_value_bd($request->subtotal_item[$i]),
+                            'valor_unitario' => $linhaSaida['valor_unitario'],
+                            'sub_total' => $linhaSaida['sub_total'],
                             'serial_codigo' => $serialCodigo,
                         ]);
                         if ($product->gerenciar_estoque) {
@@ -194,11 +195,11 @@ class TrocaController extends Controller
                     }
                 }
 
-                if ($request->valor_credito > 0 && $request->cliente_id) {
-                    $valorCredito = __convert_value_bd($request->valor_credito);
-                    if ($modalidade === Troca::MODALIDADE_DEVOLUCAO_PDV && $valorCredito > $valorOriginalVenda) {
-                        $valorCredito = $valorOriginalVenda;
+                if ($valorCreditoCalculado > 0) {
+                    if (!$request->cliente_id) {
+                        throw new \Exception('Informe o cliente para gerar o crédito da troca/devolução.');
                     }
+                    $valorCredito = $valorCreditoCalculado;
                     $cliente = Cliente::lockForUpdate()->findOrFail($request->cliente_id);
                     CreditoCliente::create([
                         'valor' => $valorCredito,
@@ -211,7 +212,7 @@ class TrocaController extends Controller
                     $cliente->save();
                 }
                 $logCategoria = $modalidade === Troca::MODALIDADE_DEVOLUCAO_PDV ? 'Devolução PDV' : 'Troca';
-                __createLog($request->empresa_id, $logCategoria, 'cadastrar', "#$troca->numero_sequencial - R$ " . __moeda($troca->valor_troca));
+                __createLog($request->empresa_id, $logCategoria, 'cadastrar', "#$troca->numero_sequencial - R$ " . __moeda($valorPagoCalculado));
 
                 return response()->json($troca->fresh(), 200);
             });
@@ -221,19 +222,79 @@ class TrocaController extends Controller
         }
     }
 
-    private function countNovosItensTroca(Request $request, $venda): int
+    private function calcularTotalRetornoVenda($venda): float
     {
-        if (!$request->produto_id) {
-            return 0;
-        }
-        $n = count($request->produto_id);
-        $criados = 0;
-        for ($i = 0; $i < $n; $i++) {
-            if ($this->getTipoLinhaFromRequest($request, $i) === 'saida') {
-                $criados++;
+        $total = 0;
+        foreach ($venda->itens as $linhaVenda) {
+            $subTotal = $linhaVenda->sub_total ?? null;
+            if ($subTotal === null) {
+                $subTotal = (float) $linhaVenda->valor_unitario * (float) $linhaVenda->quantidade;
             }
+            $total += (float) $subTotal;
         }
-        return $criados;
+        return round($total, 2);
+    }
+
+    /**
+     * @return array<int, array{produto_id:int, quantidade:float, valor_unitario:float, sub_total:float}>
+     */
+    private function calcularLinhasSaidaFinanceiras(Request $request): array
+    {
+        $produtoIds = $this->getRequestArray($request, 'produto_id');
+        $quantidades = $this->getRequestArray($request, 'quantidade');
+        $valoresUnitarios = $this->getRequestArray($request, 'valor_unitario');
+
+        $linhas = [];
+        foreach ($produtoIds as $i => $produtoId) {
+            if ($this->getTipoLinhaFromRequest($request, (int) $i) !== 'saida') {
+                continue;
+            }
+            if ($produtoId === null || $produtoId === '') {
+                throw new \Exception('Produto de saída inválido na troca.');
+            }
+            if (!array_key_exists($i, $quantidades) || !array_key_exists($i, $valoresUnitarios)) {
+                throw new \Exception('Dados financeiros incompletos para produto de saída na troca.');
+            }
+
+            $quantidade = __convert_value_bd((string) $quantidades[$i]);
+            $valorUnitario = __convert_value_bd((string) $valoresUnitarios[$i]);
+            if ($quantidade <= 0) {
+                throw new \Exception('Quantidade inválida para produto de saída na troca.');
+            }
+            if ($valorUnitario < 0) {
+                throw new \Exception('Valor unitário inválido para produto de saída na troca.');
+            }
+
+            $linhas[(int) $i] = [
+                'produto_id' => (int) $produtoId,
+                'quantidade' => $quantidade,
+                'valor_unitario' => $valorUnitario,
+                'sub_total' => round($quantidade * $valorUnitario, 2),
+            ];
+        }
+
+        return $linhas;
+    }
+
+    /**
+     * @param array<int, array{sub_total:float}> $linhasSaida
+     */
+    private function calcularTotalSaida(array $linhasSaida): float
+    {
+        $total = 0;
+        foreach ($linhasSaida as $linha) {
+            $total += (float) $linha['sub_total'];
+        }
+        return round($total, 2);
+    }
+
+    private function getRequestArray(Request $request, string $key): array
+    {
+        $value = $request->input($key, []);
+        if ($value === null || $value === '') {
+            return [];
+        }
+        return is_array($value) ? $value : [$value];
     }
 
     private function getTipoLinhaFromRequest(Request $request, int $index): string
