@@ -1223,8 +1223,29 @@ function calcTotal() {
 
     if (isTrocaContext()) {
         $(".table-itens tbody tr.line-product").each(function () {
-            let subtotal = convertMoedaToFloat($(this).find(".subtotal-item").val());
-            let tipoLinha = String($(this).attr("data-tipo-linha") || "saida");
+            const $row = $(this);
+            let subtotal = convertMoedaToFloat(
+                String(
+                    $row.find(".subtotal-item").val() ||
+                        $row.find('input[name="subtotal_item[]"]').val() ||
+                        "0",
+                ),
+            );
+            let tipoLinha = getTipoLinhaProdutoRow($row);
+            let qtdLinha = convertMoedaToFloat(
+                String(
+                    $row.find(".qtd_row").val() ||
+                        $row.find('input[name="quantidade[]"]').val() ||
+                        "0",
+                ),
+            );
+
+            if (isNaN(subtotal)) {
+                subtotal = 0;
+            }
+            if (isNaN(qtdLinha)) {
+                qtdLinha = 0;
+            }
 
             if (tipoLinha === "retorno") {
                 totalRetorno += subtotal;
@@ -1232,7 +1253,7 @@ function calcTotal() {
                 totalSaida += subtotal;
             }
             total += subtotal;
-            qtdTotal += convertMoedaToFloat($(this).find(".qtd_row").val());
+            qtdTotal += qtdLinha;
         });
     } else {
         $(".subtotal-item").each(function () {
@@ -1256,6 +1277,9 @@ function calcTotal() {
             $("#inp-valor_total").val(convertFloatToMoeda(totalSaida));
             $(".total-venda-modal").html("R$ " + convertFloatToMoeda(totalSaida));
             $("#inp-valor_integral").val(convertFloatToMoeda(totalSaida));
+            if (typeof comparaValor === "function") {
+                comparaValor();
+            }
         } else {
             total_venda = total;
 

@@ -41,14 +41,62 @@ function trocaIsDevolucaoPdv() {
 	return false
 }
 
+function moedaTrocaToFloat(value) {
+	let parsed = convertMoedaToFloat(String(value || "0"))
+	return isNaN(parsed) ? 0 : parsed
+}
+
+function getTipoLinhaTroca($row) {
+	let attrValue = String($row.attr("data-tipo-linha") || "").trim()
+	if (attrValue) {
+		return attrValue
+	}
+	let dataValue = String($row.data("tipo-linha") || "").trim()
+	if (dataValue) {
+		return dataValue
+	}
+	let inputValue = String($row.find('input[name="tipo_linha[]"]').val() || "").trim()
+	return inputValue || "saida"
+}
+
+function calcularTotaisTrocaPdv() {
+	let totalSaida = 0
+	let totalRetorno = 0
+	let hasRows = false
+
+	$(".table-itens tbody tr.line-product").each(function () {
+		hasRows = true
+		let $row = $(this)
+		let subtotal = moedaTrocaToFloat(
+			$row.find('input[name="subtotal_item[]"]').val() ||
+			$row.find(".subtotal-item").val()
+		)
+
+		if (getTipoLinhaTroca($row) === "retorno") {
+			totalRetorno += subtotal
+		} else {
+			totalSaida += subtotal
+		}
+	})
+
+	return { totalSaida, totalRetorno, hasRows }
+}
+
 function comparaValor(){
 	setTimeout(() => {
-		let totalSaida = typeof window.CP_TROCA_TOTAL_SAIDA === "number"
-			? window.CP_TROCA_TOTAL_SAIDA
-			: convertMoedaToFloat($('#inp-valor_total').val())
-		let totalRetorno = typeof window.CP_TROCA_TOTAL_RETORNO === "number"
-			? window.CP_TROCA_TOTAL_RETORNO
-			: parseFloat(TOTALOLD)
+		let totaisTroca = calcularTotaisTrocaPdv()
+		let totalSaida = totaisTroca.hasRows
+			? totaisTroca.totalSaida
+			: (typeof window.CP_TROCA_TOTAL_SAIDA === "number"
+				? window.CP_TROCA_TOTAL_SAIDA
+				: convertMoedaToFloat($('#inp-valor_total').val()))
+		let totalRetorno = totaisTroca.hasRows
+			? totaisTroca.totalRetorno
+			: (typeof window.CP_TROCA_TOTAL_RETORNO === "number"
+				? window.CP_TROCA_TOTAL_RETORNO
+				: parseFloat(TOTALOLD))
+		window.CP_TROCA_TOTAL_SAIDA = totalSaida
+		window.CP_TROCA_TOTAL_RETORNO = totalRetorno
 		TOTALOLD = totalRetorno
 		let saldo = totalSaida - totalRetorno
 		let absSaldo = Math.abs(saldo)
@@ -59,6 +107,7 @@ function comparaValor(){
 		$('.total-venda').text('R$ ' + convertFloatToMoeda(totalSaida))
 		$('.total-saida').text('R$ ' + convertFloatToMoeda(totalSaida))
 		$('.total-retorno').text('R$ ' + convertFloatToMoeda(totalRetorno))
+		$('#inp-valor_total').val(convertFloatToMoeda(totalSaida))
 		$('.h-valor_pagar').toggleClass('d-none', !isPagar)
 		$('.h-valor_restante').toggleClass('d-none', !isDevolver)
 		$('.h-valor_zero').toggleClass('d-none', !isZero)

@@ -451,7 +451,8 @@
                                 </div>
                             </div>
                             <h3 class="">
-                                <strong class="total-venda total-saida">R$ 0,00</strong>
+                                <strong class="total-saida">R$ 0,00</strong>
+                                <span class="d-none total-venda">R$ 0,00</span>
                             </h3>
                         </div> <!-- end card-body-->
                     </div> <!-- end card-->
@@ -634,6 +635,95 @@ window.CP_TROCA_IS_DEVOLUCAO_PDV = @json($mod === \App\Models\Troca::MODALIDADE_
         }, 600);
     });
     @endif
+
+    $(function () {
+        function trocaMoedaToFloat(value) {
+            if (typeof convertMoedaToFloat === 'function') {
+                const parsed = convertMoedaToFloat(String(value || '0'));
+                return isNaN(parsed) ? 0 : parsed;
+            }
+            const normalized = String(value || '0').replace(/\./g, '').replace(',', '.').replace(/[^0-9.]/g, '');
+            const parsed = parseFloat(normalized);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        function trocaFloatToMoeda(value) {
+            if (typeof convertFloatToMoeda === 'function') {
+                return convertFloatToMoeda(value);
+            }
+            return Number(value || 0).toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function tipoLinhaTroca($row) {
+            return String(
+                $row.attr('data-tipo-linha') ||
+                $row.data('tipo-linha') ||
+                $row.find('input[name="tipo_linha[]"]').val() ||
+                'saida'
+            ).trim();
+        }
+
+        function recalcularCardsTroca() {
+            let totalRetorno = 0;
+            let totalSaida = 0;
+
+            $('.table-itens tbody tr.line-product').each(function () {
+                const $row = $(this);
+                const subtotal = trocaMoedaToFloat(
+                    $row.find('input[name="subtotal_item[]"]').val() ||
+                    $row.find('.subtotal-item').val()
+                );
+
+                if (tipoLinhaTroca($row) === 'retorno') {
+                    totalRetorno += subtotal;
+                } else {
+                    totalSaida += subtotal;
+                }
+            });
+
+            const saldo = totalSaida - totalRetorno;
+            const absSaldo = Math.abs(saldo);
+            const isZero = absSaldo < 0.005;
+            const isPagar = saldo > 0 && !isZero;
+            const isDevolver = saldo < 0 && !isZero;
+
+            $('.total-saida').text('R$ ' + trocaFloatToMoeda(totalSaida));
+            $('.total-retorno').text('R$ ' + trocaFloatToMoeda(totalRetorno));
+            $('.total-venda').text('R$ ' + trocaFloatToMoeda(totalSaida));
+            $('.valor_pagar').text('R$ ' + trocaFloatToMoeda(isPagar ? absSaldo : 0));
+            $('.valor_restante').text('R$ ' + trocaFloatToMoeda(isDevolver ? absSaldo : 0));
+
+            $('.h-valor_pagar').toggleClass('d-none', !isPagar);
+            $('.h-valor_restante').toggleClass('d-none', !isDevolver);
+            $('.h-valor_zero').toggleClass('d-none', !isZero);
+            $('.bloco-tipo-pagamento').toggleClass('d-none', isZero);
+
+            $('#inp-valor_total').val(trocaFloatToMoeda(totalSaida));
+            $('#inp-valor_pagar').val(isPagar ? absSaldo : 0);
+            $('#inp-valor_credito').val(isDevolver ? absSaldo : 0);
+        }
+
+        function agendarRecalculoCardsTroca() {
+            [0, 80, 250, 700].forEach(function (delay) {
+                setTimeout(recalcularCardsTroca, delay);
+            });
+        }
+
+        agendarRecalculoCardsTroca();
+        $('.table-itens tbody').each(function () {
+            new MutationObserver(agendarRecalculoCardsTroca).observe(this, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['value', 'data-tipo-linha']
+            });
+        });
+        $(document).on('click input change', '.btn-add-item, .btn-qtd, .btn-delete-row, .subtotal-item, input[name="subtotal_item[]"], input[name="quantidade[]"]', agendarRecalculoCardsTroca);
+        $(document).ajaxComplete(agendarRecalculoCardsTroca);
+    });
             </script>
 
         @endsection
